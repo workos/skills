@@ -10,10 +10,5 @@
   "repository": "https://github.com/workos/skills",
   "license": "MIT",
   "category": "migration",
-  "keywords": [
-    "workos",
-    "migrate",
-    "auth0",
-    "migration"
-  ]
+  "keywords": ["workos", "migrate", "auth0", "migration"]
 }

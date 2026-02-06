@@ -32,7 +32,13 @@ export async function refineSkill(
   const isRouter = skillName === "workos-router";
   const prompt = isRouter
     ? buildRouterRefinePrompt(skillName, frontmatter, body)
-    : buildRefinePrompt(skillName, frontmatter, body, docUrls, options.goldStandard);
+    : buildRefinePrompt(
+        skillName,
+        frontmatter,
+        body,
+        docUrls,
+        options.goldStandard,
+      );
 
   const refined = await callAnthropic(prompt, options);
   const content = ensureMarkers(frontmatter, refined);
@@ -162,9 +168,7 @@ async function callAnthropic(
 
   if (!response.ok) {
     const errorBody = await response.text();
-    throw new Error(
-      `Anthropic API error ${response.status}: ${errorBody}`,
-    );
+    throw new Error(`Anthropic API error ${response.status}: ${errorBody}`);
   }
 
   const data = (await response.json()) as {

@@ -12,8 +12,12 @@ function makeSpec(overrides: Partial<SkillSpec> = {}): SkillSpec {
     description: "Configure Single Sign-On.",
     title: "WorkOS Single Sign-On",
     anchor: "sso",
-    content: "SSO content here.\n\n### Getting Started\n\nStart with SSO.\n\n### Configuration\n\nConfigure SSO settings.",
-    docUrls: ["https://workos.com/docs/sso/index", "https://workos.com/docs/sso/test-sso"],
+    content:
+      "SSO content here.\n\n### Getting Started\n\nStart with SSO.\n\n### Configuration\n\nConfigure SSO settings.",
+    docUrls: [
+      "https://workos.com/docs/sso/index",
+      "https://workos.com/docs/sso/test-sso",
+    ],
     generated: true,
     ...overrides,
   };
@@ -121,7 +125,11 @@ describe("generateRouter", () => {
 
   it("groups migration skills separately", () => {
     const specs = [
-      makeSpec({ name: "workos-migrate-auth0", anchor: "migrate", title: "WorkOS Migration: Auth0" }),
+      makeSpec({
+        name: "workos-migrate-auth0",
+        anchor: "migrate",
+        title: "WorkOS Migration: Auth0",
+      }),
       makeSpec({ name: "workos-sso", anchor: "sso" }),
     ];
     const result = generateRouter(specs, "");

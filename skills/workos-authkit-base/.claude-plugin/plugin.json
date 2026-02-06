@@ -10,10 +10,5 @@
   "repository": "https://github.com/workos/skills",
   "license": "MIT",
   "category": "authentication",
-  "keywords": [
-    "workos",
-    "authkit",
-    "base",
-    "authentication"
-  ]
+  "keywords": ["workos", "authkit", "base", "authentication"]
 }

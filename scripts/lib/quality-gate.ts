@@ -28,9 +28,7 @@ export interface QualityReport {
  * Pass threshold: 70/100
  */
 export function runQualityGate(skills: GeneratedSkill[]): QualityReport {
-  const results: QualityResult[] = skills.map((skill) =>
-    scoreSkill(skill),
-  );
+  const results: QualityResult[] = skills.map((skill) => scoreSkill(skill));
 
   return {
     total: results.length,
@@ -69,9 +67,8 @@ function scoreSkill(skill: GeneratedSkill): QualityResult {
   }
 
   // 3. WebFetch doc references (20 pts)
-  const docUrlCount = (
-    content.match(/https:\/\/workos\.com\/docs\//g) || []
-  ).length;
+  const docUrlCount = (content.match(/https:\/\/workos\.com\/docs\//g) || [])
+    .length;
   if (docUrlCount >= 3) {
     score += 20;
   } else if (docUrlCount >= 1) {
@@ -96,15 +93,12 @@ function scoreSkill(skill: GeneratedSkill): QualityResult {
   if (skill.sizeBytes > 1024) {
     score += 10;
   } else {
-    issues.push(
-      `Content is only ${skill.sizeBytes}B, below 1KB minimum`,
-    );
+    issues.push(`Content is only ${skill.sizeBytes}B, below 1KB minimum`);
   }
 
   // 6. Has verification or error recovery (15 pts)
   const hasVerification =
-    /verification|checklist/i.test(content) &&
-    content.includes("- [ ]");
+    /verification|checklist/i.test(content) && content.includes("- [ ]");
   const hasErrorRecovery =
     /error recovery/i.test(content) && /###/.test(content);
   const hasBashCommands = /```bash/i.test(content);

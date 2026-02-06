@@ -10,8 +10,5 @@
   "repository": "https://github.com/workos/skills",
   "license": "MIT",
   "category": "authentication",
-  "keywords": [
-    "workos",
-    "mfa"
-  ]
+  "keywords": ["workos", "mfa"]
 }

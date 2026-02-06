@@ -129,7 +129,9 @@ async function main() {
     `Refining ${skillNames.length} skills with concurrency=${flags.concurrency}`,
   );
   if (flags.model) console.log(`  Model: ${flags.model}`);
-  console.log(`  Gold standard: workos-authkit-nextjs (${(goldStandard.length / 1024).toFixed(1)}KB)\n`);
+  console.log(
+    `  Gold standard: workos-authkit-nextjs (${(goldStandard.length / 1024).toFixed(1)}KB)\n`,
+  );
 
   // Read all scaffolds from disk
   const skills: GeneratedSkill[] = [];

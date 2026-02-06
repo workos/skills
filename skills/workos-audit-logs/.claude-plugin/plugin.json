@@ -10,9 +10,5 @@
   "repository": "https://github.com/workos/skills",
   "license": "MIT",
   "category": "enterprise",
-  "keywords": [
-    "workos",
-    "audit",
-    "logs"
-  ]
+  "keywords": ["workos", "audit", "logs"]
 }

@@ -1,4 +1,4 @@
-# @workos-inc/skills
+# @workos/skills
 
 WorkOS Skills for AI coding agents. 44 skills covering AuthKit, SSO, Directory Sync, RBAC, Vault, Migrations, API references, and more.
 
@@ -14,72 +14,72 @@ Works with Claude Code, Cursor, Codex, Goose, and any agent that supports the sk
 
 ### AuthKit
 
-| Skill | Description |
-|-------|-------------|
-| `workos-authkit-nextjs` | Next.js App Router integration |
-| `workos-authkit-react` | React SPA integration |
-| `workos-authkit-react-router` | React Router v6/v7 integration |
-| `workos-authkit-tanstack-start` | TanStack Start integration |
-| `workos-authkit-vanilla-js` | Vanilla JS integration |
-| `workos-authkit-base` | Architecture reference |
+| Skill                           | Description                    |
+| ------------------------------- | ------------------------------ |
+| `workos-authkit-nextjs`         | Next.js App Router integration |
+| `workos-authkit-react`          | React SPA integration          |
+| `workos-authkit-react-router`   | React Router v6/v7 integration |
+| `workos-authkit-tanstack-start` | TanStack Start integration     |
+| `workos-authkit-vanilla-js`     | Vanilla JS integration         |
+| `workos-authkit-base`           | Architecture reference         |
 
 ### Features
 
-| Skill | Description |
-|-------|-------------|
-| `workos-sso` | Single Sign-On with SAML/OIDC |
-| `workos-directory-sync` | User directory sync from IdPs |
-| `workos-rbac` | Role-based access control |
-| `workos-fga` | Fine-grained authorization |
-| `workos-vault` | Encrypted data storage |
-| `workos-events` | Webhook event handling |
-| `workos-audit-logs` | Compliance audit logging |
-| `workos-admin-portal` | Self-service admin portal |
-| `workos-mfa` | Multi-factor authentication |
-| `workos-magic-link` | Passwordless email auth |
-| `workos-feature-flags` | Feature flag management |
-| `workos-domain-verification` | Domain ownership verification |
-| `workos-custom-domains` | Custom domain configuration |
-| `workos-email` | Email delivery configuration |
-| `workos-pipes` | Third-party service connections |
-| `workos-widgets` | Embeddable UI components |
+| Skill                        | Description                     |
+| ---------------------------- | ------------------------------- |
+| `workos-sso`                 | Single Sign-On with SAML/OIDC   |
+| `workos-directory-sync`      | User directory sync from IdPs   |
+| `workos-rbac`                | Role-based access control       |
+| `workos-fga`                 | Fine-grained authorization      |
+| `workos-vault`               | Encrypted data storage          |
+| `workos-events`              | Webhook event handling          |
+| `workos-audit-logs`          | Compliance audit logging        |
+| `workos-admin-portal`        | Self-service admin portal       |
+| `workos-mfa`                 | Multi-factor authentication     |
+| `workos-magic-link`          | Passwordless email auth         |
+| `workos-feature-flags`       | Feature flag management         |
+| `workos-domain-verification` | Domain ownership verification   |
+| `workos-custom-domains`      | Custom domain configuration     |
+| `workos-email`               | Email delivery configuration    |
+| `workos-pipes`               | Third-party service connections |
+| `workos-widgets`             | Embeddable UI components        |
 
 ### Routers
 
-| Skill | Description |
-|-------|-------------|
-| `workos-router` | Master dispatcher — load this first for any WorkOS task |
-| `workos-integrations` | Provider lookup table for 60+ IdP integrations |
+| Skill                 | Description                                             |
+| --------------------- | ------------------------------------------------------- |
+| `workos-router`       | Master dispatcher — load this first for any WorkOS task |
+| `workos-integrations` | Provider lookup table for 60+ IdP integrations          |
 
 ### Migrations
 
-| Skill | Description |
-|-------|-------------|
-| `workos-migrate-auth0` | Migrate from Auth0 |
-| `workos-migrate-firebase` | Migrate from Firebase Auth |
-| `workos-migrate-clerk` | Migrate from Clerk |
-| `workos-migrate-aws-cognito` | Migrate from AWS Cognito |
-| `workos-migrate-stytch` | Migrate from Stytch |
-| `workos-migrate-supabase-auth` | Migrate from Supabase Auth |
-| `workos-migrate-descope` | Migrate from Descope |
-| `workos-migrate-better-auth` | Migrate from Better Auth |
-| `workos-migrate-other-services` | Migrate from custom auth |
+| Skill                                   | Description                       |
+| --------------------------------------- | --------------------------------- |
+| `workos-migrate-auth0`                  | Migrate from Auth0                |
+| `workos-migrate-firebase`               | Migrate from Firebase Auth        |
+| `workos-migrate-clerk`                  | Migrate from Clerk                |
+| `workos-migrate-aws-cognito`            | Migrate from AWS Cognito          |
+| `workos-migrate-stytch`                 | Migrate from Stytch               |
+| `workos-migrate-supabase-auth`          | Migrate from Supabase Auth        |
+| `workos-migrate-descope`                | Migrate from Descope              |
+| `workos-migrate-better-auth`            | Migrate from Better Auth          |
+| `workos-migrate-other-services`         | Migrate from custom auth          |
 | `workos-migrate-the-standalone-sso-api` | Upgrade standalone SSO to AuthKit |
 
 ### API References
 
-| Skill | Description |
-|-------|-------------|
-| `workos-api-sso` | SSO API endpoints |
-| `workos-api-authkit` | AuthKit/User Management API endpoints |
-| `workos-api-directory-sync` | Directory Sync API endpoints |
-| `workos-api-audit-logs` | Audit Logs API endpoints |
-| `workos-api-organization` | Organizations API endpoints |
-| `workos-api-events` | Events/Webhooks API endpoints |
-| `workos-api-vault` | Vault API endpoints |
-| `workos-api-roles` | Roles & Permissions API endpoints |
-| `workos-api-widgets` | Widgets API endpoints |
-| `workos-api-admin-portal` | Admin Portal API endpoints |
+| Skill                       | Description                           |
+| --------------------------- | ------------------------------------- |
+| `workos-api-sso`            | SSO API endpoints                     |
+| `workos-api-authkit`        | AuthKit/User Management API endpoints |
+| `workos-api-directory-sync` | Directory Sync API endpoints          |
+| `workos-api-audit-logs`     | Audit Logs API endpoints              |
+| `workos-api-organization`   | Organizations API endpoints           |
+| `workos-api-events`         | Events/Webhooks API endpoints         |
+| `workos-api-vault`          | Vault API endpoints                   |
+| `workos-api-roles`          | Roles & Permissions API endpoints     |
+| `workos-api-widgets`        | Widgets API endpoints                 |
+| `workos-api-admin-portal`   | Admin Portal API endpoints            |
 
 ## Development
 

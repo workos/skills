@@ -38,7 +38,9 @@ export function renderDocFetchSection(docUrls: string[]): string {
   ];
 
   if (docUrls.length === 0) {
-    lines.push("No specific doc URLs available. Check https://workos.com/docs for current documentation.");
+    lines.push(
+      "No specific doc URLs available. Check https://workos.com/docs for current documentation.",
+    );
   } else {
     // Show up to 8 URLs to keep it focused
     const urls = docUrls.slice(0, 8);
@@ -46,7 +48,9 @@ export function renderDocFetchSection(docUrls: string[]): string {
       lines.push(`- ${url}`);
     }
     if (docUrls.length > 8) {
-      lines.push(`\n_${docUrls.length - 8} additional doc pages available at https://workos.com/docs_`);
+      lines.push(
+        `\n_${docUrls.length - 8} additional doc pages available at https://workos.com/docs_`,
+      );
     }
   }
 
@@ -63,7 +67,9 @@ export function renderWhenToUse(spec: SkillSpec): string {
   if (intro) {
     lines.push(intro);
   } else {
-    lines.push(`Use this skill when implementing ${spec.title.replace("WorkOS ", "")} in your application.`);
+    lines.push(
+      `Use this skill when implementing ${spec.title.replace("WorkOS ", "")} in your application.`,
+    );
   }
 
   lines.push("");
@@ -100,7 +106,9 @@ export function renderImplementationGuide(spec: SkillSpec): string {
       lines.push(step);
     }
   } else {
-    lines.push("Refer to the fetched documentation for step-by-step implementation details.");
+    lines.push(
+      "Refer to the fetched documentation for step-by-step implementation details.",
+    );
     lines.push("");
     lines.push("### General Flow");
     lines.push("");
@@ -116,10 +124,7 @@ export function renderImplementationGuide(spec: SkillSpec): string {
 
 /** Build verification checklist */
 export function renderVerificationChecklist(spec: SkillSpec): string {
-  const lines = [
-    "## Verification Checklist",
-    "",
-  ];
+  const lines = ["## Verification Checklist", ""];
 
   const checks = extractVerificationItems(spec.content);
   if (checks.length > 0) {
@@ -207,7 +212,11 @@ function extractPrerequisites(content: string): string[] {
   // Look for sections with "prerequisite", "before you", "requirements"
   let inPrereqSection = false;
   for (const line of lines) {
-    if (/^#{2,4}\s.*(prerequisit|before you|requirement|getting started)/i.test(line)) {
+    if (
+      /^#{2,4}\s.*(prerequisit|before you|requirement|getting started)/i.test(
+        line,
+      )
+    ) {
       inPrereqSection = true;
       continue;
     }
@@ -275,7 +284,9 @@ function extractVerificationItems(content: string): string[] {
       continue;
     }
     // Look for "verify", "confirm", "test" in list items
-    const verifyMatch = line.match(/^[-*]\s+((?:verify|confirm|test|check|ensure).+)/i);
+    const verifyMatch = line.match(
+      /^[-*]\s+((?:verify|confirm|test|check|ensure).+)/i,
+    );
     if (verifyMatch) {
       checks.push(verifyMatch[1]);
     }
@@ -340,21 +351,28 @@ function getRelatedSkills(
     Array<{ name: string; description: string }>
   > = {
     sso: [
-      { name: "workos-integrations", description: "Provider-specific SSO setup" },
+      {
+        name: "workos-integrations",
+        description: "Provider-specific SSO setup",
+      },
       { name: "workos-rbac", description: "Role-based access after SSO" },
-      { name: "workos-directory-sync", description: "Sync user directories from IdPs" },
+      {
+        name: "workos-directory-sync",
+        description: "Sync user directories from IdPs",
+      },
     ],
     "directory-sync": [
       { name: "workos-sso", description: "Single Sign-On configuration" },
-      { name: "workos-integrations", description: "Provider-specific directory setup" },
+      {
+        name: "workos-integrations",
+        description: "Provider-specific directory setup",
+      },
     ],
     rbac: [
       { name: "workos-fga", description: "Fine-grained authorization" },
       { name: "workos-sso", description: "SSO for authenticated access" },
     ],
-    fga: [
-      { name: "workos-rbac", description: "Role-based access control" },
-    ],
+    fga: [{ name: "workos-rbac", description: "Role-based access control" }],
     "audit-logs": [
       { name: "workos-events", description: "Webhook event handling" },
     ],
@@ -367,15 +385,19 @@ function getRelatedSkills(
     "magic-link": [
       { name: "workos-mfa", description: "Add MFA to passwordless flows" },
     ],
-    vault: [
-      { name: "workos-audit-logs", description: "Audit data access" },
-    ],
+    vault: [{ name: "workos-audit-logs", description: "Audit data access" }],
     widgets: [
-      { name: "workos-admin-portal", description: "Admin Portal for enterprise management" },
+      {
+        name: "workos-admin-portal",
+        description: "Admin Portal for enterprise management",
+      },
     ],
     "admin-portal": [
       { name: "workos-sso", description: "SSO configuration via portal" },
-      { name: "workos-directory-sync", description: "Directory setup via portal" },
+      {
+        name: "workos-directory-sync",
+        description: "Directory setup via portal",
+      },
       { name: "workos-widgets", description: "Embeddable UI components" },
     ],
     integrations: [
@@ -384,7 +406,10 @@ function getRelatedSkills(
     ],
     "domain-verification": [
       { name: "workos-sso", description: "SSO requires verified domains" },
-      { name: "workos-directory-sync", description: "Directory Sync requires verified domains" },
+      {
+        name: "workos-directory-sync",
+        description: "Directory Sync requires verified domains",
+      },
     ],
     "feature-flags": [],
     "custom-domains": [],

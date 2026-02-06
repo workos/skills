@@ -61,9 +61,7 @@ export function generateRouter(
   ];
 
   for (const s of authkitSkills) {
-    rows.push(
-      `| ${s.intent.padEnd(45)} | ${s.name.padEnd(35)} | ${s.doc} |`,
-    );
+    rows.push(`| ${s.intent.padEnd(45)} | ${s.name.padEnd(35)} | ${s.doc} |`);
   }
 
   // Add generated feature skills
@@ -71,11 +69,10 @@ export function generateRouter(
     // Skip migration sub-skills from the main table — group them
     if (spec.anchor === "migrate") continue;
     const doc =
-      spec.docUrls[0]?.replace("https://", "") ?? `workos.com/docs/${spec.anchor}`;
+      spec.docUrls[0]?.replace("https://", "") ??
+      `workos.com/docs/${spec.anchor}`;
     const intent = intentFromSpec(spec);
-    rows.push(
-      `| ${intent.padEnd(45)} | ${spec.name.padEnd(35)} | ${doc} |`,
-    );
+    rows.push(`| ${intent.padEnd(45)} | ${spec.name.padEnd(35)} | ${doc} |`);
   }
 
   // Add migration skills as a group
@@ -193,10 +190,7 @@ export function generateIntegrationRouter(
   providers.sort((a, b) => a.name.localeCompare(b.name));
 
   const providerRows = providers
-    .map(
-      (p) =>
-        `| ${p.name.padEnd(30)} | ${p.type.padEnd(12)} | ${p.url} |`,
-    )
+    .map((p) => `| ${p.name.padEnd(30)} | ${p.type.padEnd(12)} | ${p.url} |`)
     .join("\n");
 
   const content = `---
@@ -346,9 +340,9 @@ function parseProviderSlug(slug: string): { name: string; type: string } {
 function formatProviderName(slug: string): string {
   const nameMap: Record<string, string> = {
     "entra-id": "Entra ID (Azure AD)",
-    "google": "Google Workspace",
+    google: "Google Workspace",
     "microsoft-ad-fs": "Microsoft AD FS",
-    "auth0": "Auth0",
+    auth0: "Auth0",
     "aws-cognito": "AWS Cognito",
     "login-gov": "Login.gov",
     "simple-saml-php": "SimpleSAMLphp",
@@ -357,13 +351,13 @@ function formatProviderName(slug: string): string {
     "shibboleth-unsolicited": "Shibboleth Unsolicited",
     "access-people-hr": "Access People HR",
     "breathe-hr": "Breathe HR",
-    "cezanne": "Cezanne HR",
+    cezanne: "Cezanne HR",
     "react-native-expo": "React Native Expo",
     "next-auth": "NextAuth.js",
     "supabase-sso": "Supabase + WorkOS SSO",
     "supabase-authkit": "Supabase + AuthKit",
-    "cas": "CAS",
-    "adp": "ADP",
+    cas: "CAS",
+    adp: "ADP",
   };
 
   if (nameMap[slug]) return nameMap[slug];

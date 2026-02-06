@@ -33,7 +33,8 @@ function parseArgs(): {
   const args = process.argv.slice(2);
   return {
     refine: args.includes("--refine"),
-    refineOnly: args.find((a) => a.startsWith("--refine-only="))?.split("=")[1] ?? null,
+    refineOnly:
+      args.find((a) => a.startsWith("--refine-only="))?.split("=")[1] ?? null,
     model: args.find((a) => a.startsWith("--model="))?.split("=")[1] ?? null,
   };
 }
@@ -167,7 +168,9 @@ async function main() {
       "skills/workos-authkit-nextjs/SKILL.md",
     );
     const goldStandard = await Bun.file(goldStandardPath).text();
-    console.log(`  Gold standard: ${goldStandardPath} (${(goldStandard.length / 1024).toFixed(1)}KB)`);
+    console.log(
+      `  Gold standard: ${goldStandardPath} (${(goldStandard.length / 1024).toFixed(1)}KB)`,
+    );
 
     const apiKey = process.env.ANTHROPIC_API_KEY!;
     const refineOptions = {
@@ -191,9 +194,7 @@ async function main() {
     for (let i = 0; i < toRefine.length; i++) {
       const skill = toRefine[i];
       const idx = generatedSkills.indexOf(skill);
-      console.log(
-        `  [${i + 1}/${toRefine.length}] Refining ${skill.name}...`,
-      );
+      console.log(`  [${i + 1}/${toRefine.length}] Refining ${skill.name}...`);
 
       try {
         const refined = await refineSkill(skill, refineOptions);
@@ -264,8 +265,7 @@ async function main() {
 
   for (const r of qualityReport.results) {
     const status = r.pass ? "✓" : "✗";
-    const issueStr =
-      r.issues.length > 0 ? ` — ${r.issues[0]}` : "";
+    const issueStr = r.issues.length > 0 ? ` — ${r.issues[0]}` : "";
     console.log(
       `  ${status} ${r.skillName.padEnd(40)} ${r.score}/100${issueStr}`,
     );

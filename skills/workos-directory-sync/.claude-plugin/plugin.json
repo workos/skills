@@ -10,9 +10,5 @@
   "repository": "https://github.com/workos/skills",
   "license": "MIT",
   "category": "enterprise",
-  "keywords": [
-    "workos",
-    "directory",
-    "sync"
-  ]
+  "keywords": ["workos", "directory", "sync"]
 }

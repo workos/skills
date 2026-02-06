@@ -126,11 +126,36 @@ describe("splitSections", () => {
 
   it("applies per-subsection strategy for migrate — groups child subsections", () => {
     const subsections = [
-      { title: "Migrate from Auth0", level: 3, content: "Auth0 intro", sizeBytes: 11 },
-      { title: "Exporting Passwords", level: 3, content: "Export steps", sizeBytes: 12 },
-      { title: "Importing Passwords", level: 3, content: "Import steps", sizeBytes: 12 },
-      { title: "Migrate from Firebase", level: 3, content: "Firebase intro", sizeBytes: 14 },
-      { title: "Social Auth Providers", level: 3, content: "Social steps", sizeBytes: 12 },
+      {
+        title: "Migrate from Auth0",
+        level: 3,
+        content: "Auth0 intro",
+        sizeBytes: 11,
+      },
+      {
+        title: "Exporting Passwords",
+        level: 3,
+        content: "Export steps",
+        sizeBytes: 12,
+      },
+      {
+        title: "Importing Passwords",
+        level: 3,
+        content: "Import steps",
+        sizeBytes: 12,
+      },
+      {
+        title: "Migrate from Firebase",
+        level: 3,
+        content: "Firebase intro",
+        sizeBytes: 14,
+      },
+      {
+        title: "Social Auth Providers",
+        level: 3,
+        content: "Social steps",
+        sizeBytes: 12,
+      },
     ];
     const sections = [makeSection("migrate", "Migration docs", subsections)];
     const urls = new Map([

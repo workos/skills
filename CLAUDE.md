@@ -1,4 +1,4 @@
-# @workos-inc/skills
+# @workos/skills
 
 Claude Code plugin providing WorkOS integration skills (AuthKit, SSO, Directory Sync, RBAC, FGA, etc.).
 

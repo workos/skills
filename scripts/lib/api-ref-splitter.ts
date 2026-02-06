@@ -178,15 +178,13 @@ export function splitApiReference(
 function buildEndpointTable(endpoints: ApiEndpoint[]): string {
   if (endpoints.length === 0) return "";
 
-  const lines = [
-    "| Endpoint | Description |",
-    "| -------- | ----------- |",
-  ];
+  const lines = ["| Endpoint | Description |", "| -------- | ----------- |"];
 
   for (const ep of endpoints) {
-    const desc = ep.description.length > 80
-      ? ep.description.substring(0, 77) + "..."
-      : ep.description;
+    const desc =
+      ep.description.length > 80
+        ? ep.description.substring(0, 77) + "..."
+        : ep.description;
     lines.push(`| \`${ep.path}\` | ${desc} |`);
   }
 

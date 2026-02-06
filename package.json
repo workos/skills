@@ -1,5 +1,5 @@
 {
-  "name": "@workos-inc/skills",
+  "name": "@workos/skills",
   "version": "0.1.0",
   "type": "module",
   "description": "WorkOS Skills for AI coding agents — AuthKit, SSO, Directory Sync, RBAC, and more",

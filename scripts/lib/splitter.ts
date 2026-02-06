@@ -8,9 +8,7 @@ import { SECTION_CONFIG, HAND_CRAFTED_SKILLS } from "./config.ts";
  *   ## Section Name
  *   - [Title](https://workos.com/docs/slug/page): Description
  */
-export function parseLlmsTxtUrls(
-  llmsTxt: string,
-): Map<string, string[]> {
+export function parseLlmsTxtUrls(llmsTxt: string): Map<string, string[]> {
   const urlMap = new Map<string, string[]>();
   let currentSlug: string | null = null;
 
@@ -101,7 +99,8 @@ function slugToDescription(slug: string): string {
     "admin-portal":
       "Enable self-service admin portal for your enterprise customers.",
     "feature-flags": "Manage feature flags and rollouts with WorkOS.",
-    "domain-verification": "Verify organization domains for SSO and directory sync.",
+    "domain-verification":
+      "Verify organization domains for SSO and directory sync.",
     "custom-domains": "Configure custom domains for WorkOS-hosted pages.",
     events: "Subscribe to and handle WorkOS webhook events.",
     vault: "Encrypt, store, and manage sensitive data with WorkOS Vault.",
@@ -111,7 +110,10 @@ function slugToDescription(slug: string): string {
     integrations:
       "Set up identity provider integrations with WorkOS. Covers SSO, SCIM, and OAuth for 40+ providers.",
   };
-  return descriptions[slug] ?? `Implement WorkOS ${slugToTitle(slug)} in your application.`;
+  return (
+    descriptions[slug] ??
+    `Implement WorkOS ${slugToTitle(slug)} in your application.`
+  );
 }
 
 /**
@@ -184,7 +186,8 @@ function addSpec(
   const name = `workos-${section.anchor}`;
   if (handCrafted.has(name)) return;
 
-  const urls = urlMap.get(section.anchor) ?? constructFallbackUrls(section.anchor);
+  const urls =
+    urlMap.get(section.anchor) ?? constructFallbackUrls(section.anchor);
 
   specs.push({
     name,
@@ -226,7 +229,11 @@ function addPerSubsection(
     // Find URLs that match this subsection
     const matchingUrls = sectionUrls.filter((url) => {
       const urlSlug = url.split("/").pop() ?? "";
-      return urlSlug === subSlug || subSlug.includes(urlSlug) || urlSlug.includes(subSlug);
+      return (
+        urlSlug === subSlug ||
+        subSlug.includes(urlSlug) ||
+        urlSlug.includes(subSlug)
+      );
     });
 
     const docUrls =
