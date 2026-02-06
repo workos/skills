@@ -7,420 +7,403 @@ description: Implement fine-grained authorization with WorkOS FGA.
 
 # WorkOS Fine-Grained Authorization
 
-## Step 1: Fetch SDK Documentation (BLOCKING)
+## Step 1: Fetch Documentation (BLOCKING)
 
 **STOP. Do not proceed until complete.**
 
 WebFetch: `https://workos.com/docs/fga/index`
 
-The docs are the source of truth. If this skill conflicts with docs, follow docs.
+The documentation is the source of truth. If this skill conflicts with docs, follow docs.
 
-**CRITICAL NOTICE:** FGA is coming Q1 2026. The endpoints described here are not yet available. The previous FGA version was deprecated November 15, 2025. This skill prepares for the new architecture.
+**CRITICAL PRE-RELEASE NOTE:** FGA is scheduled for Q1 2026 release. Check docs for current availability status. If endpoints return 404 or "not available", this feature is not yet released.
 
 ## Step 2: Pre-Flight Validation
 
-### Project Structure
+### Check FGA Availability
 
-- Confirm SDK already installed (see `workos-sdk-setup` skill if needed)
-- Confirm `package.json` contains `@workos-inc/node` dependency
+```bash
+# Test if FGA endpoints are live
+curl -f -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  https://api.workos.com/authorization/resources 2>/dev/null && echo "FGA Available" || echo "FGA Not Yet Released"
+```
+
+If command fails: FGA is not available yet. Stop here.
 
 ### Environment Variables
 
-Check `.env` or `.env.local` for:
+Check environment for:
 
 - `WORKOS_API_KEY` - starts with `sk_`
 - `WORKOS_CLIENT_ID` - starts with `client_`
 
-**Verify:** Run these before continuing:
+```bash
+# Verify keys exist and have correct prefixes
+[[ $WORKOS_API_KEY == sk_* ]] && echo "API key valid" || echo "FAIL: Invalid API key"
+[[ $WORKOS_CLIENT_ID == client_* ]] && echo "Client ID valid" || echo "FAIL: Invalid client ID"
+```
+
+### SDK Verification
 
 ```bash
-# Check env vars exist
-grep -E "WORKOS_API_KEY|WORKOS_CLIENT_ID" .env* || echo "FAIL: Missing WorkOS credentials"
-
-# Check SDK installed
-ls node_modules/@workos-inc/node/package.json 2>/dev/null || echo "FAIL: SDK not installed"
+# Confirm WorkOS SDK is installed
+npm list @workos-inc/node 2>/dev/null || echo "FAIL: SDK not installed"
 ```
 
-## Step 3: Dashboard Configuration (BLOCKING)
+If SDK missing: Install with `npm install @workos-inc/node` before continuing.
 
-**STOP. Manual step required.**
+## Step 3: Resource Type Design (CRITICAL PLANNING PHASE)
 
-Navigate to WorkOS Dashboard → Authorization → Fine-Grained Authorization.
+**STOP. Design your resource hierarchy before writing code.**
 
-Define resource types that match your app's hierarchy:
+FGA extends RBAC with resource instances. You must define:
 
-```
-Example hierarchy:
-  Org (root)
-  └─ Workspace
-     └─ Project
-        └─ App
-```
+1. **Resource types** - categories of objects (workspace, project, app)
+2. **Hierarchy** - parent-child relationships
+3. **Permissions** - which roles can do what on each type
 
-For each resource type:
-1. Create type with unique slug (e.g., `workspace`, `project`, `app`)
-2. Set parent type (e.g., `project` parent is `workspace`)
-3. Note the slug — you'll use it in API calls
-
-**Verify:** Screenshot or note the resource type slugs. You cannot proceed without them.
-
-## Step 4: Resource Type Decision Tree
-
-Determine if your app needs FGA:
+### Example Hierarchy
 
 ```
-Authorization needs?
+Organization (always root)
   |
-  +-- Org-level roles only (Admin/Member)
-  |     --> Use RBAC skill instead (workos-rbac)
+  +-- Workspace
+       |
+       +-- Project
+            |
+            +-- App
+```
+
+### Configure in Dashboard
+
+1. Navigate to WorkOS Dashboard → Authorization → Resource Types
+2. Create each resource type with:
+   - `slug` - machine name (workspace, project, app)
+   - `name` - human-readable label
+   - `parent_type` - optional, for inheritance
+3. Add permissions for each type
+
+**Verify dashboard config complete before Step 4.**
+
+## Step 4: Resource Instance Registration
+
+When users create resources in your app, register them with FGA.
+
+### Decision Tree: When to Register
+
+```
+User creates object in your app?
   |
-  +-- Per-resource permissions (workspace editor, project viewer)
-  |     --> Continue with FGA
+  +-- Is it authorization-relevant? (workspace, project, NOT log entry)
+  |     |
+  |     +-- YES --> Register resource instance
+  |     |
+  |     +-- NO  --> Do not register
   |
-  +-- Nested hierarchies (workspace → project → app)
-        --> Continue with FGA
+  +-- Is parent resource known?
+        |
+        +-- YES --> Include parent_resource_id in registration
+        |
+        +-- NO  --> Register at org level (parent_resource_id = org_id)
 ```
 
-**If RBAC is sufficient:** Stop here. Use `workos-rbac` skill for simpler implementation.
-
-## Step 5: Initialize SDK Client
-
-Create an authorization service wrapper:
+### Registration Pattern
 
 ```typescript
-// lib/fga.ts
-import { WorkOS } from '@workos-inc/node';
-
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
-
-export { workos };
-```
-
-**Verify:**
-
-```bash
-# Check file exists with WorkOS import
-grep "WorkOS" lib/fga.ts || echo "FAIL: SDK not imported"
-```
-
-## Step 6: Resource Instance Management
-
-### Pattern: Create resource when user creates entity
-
-When user creates a workspace/project/app in your app:
-
-```typescript
-import { workos } from '@/lib/fga';
-
-// User created "Finance Workspace" in your app
-const resource = await workos.fga.createResource({
-  resourceType: 'workspace', // slug from Dashboard
-  externalId: workspaceId, // your app's ID
-  parentResourceId: orgResourceId, // if nested
-  metadata: {
-    name: 'Finance Workspace',
-    createdBy: userId,
-  },
+// After creating resource in your database
+const resource = await workos.fga.resources.create({
+  resource_type: 'workspace', // matches dashboard slug
+  external_id: dbWorkspace.id, // YOUR database ID
+  name: dbWorkspace.name,
+  parent_resource_id: orgId, // or parent workspace ID
 });
 
-// Store resource.id in your database alongside workspace record
+// Store resource.id in your database alongside dbWorkspace.id
+// You'll need both IDs for future operations
 ```
 
-**Critical:** Store the returned `resource.id` in your database. You need it for assignments and checks.
+**CRITICAL:** Store both `external_id` (your ID) and `resource.id` (WorkOS ID) in your database. You need WorkOS ID for assignments.
 
-### Pattern: Retrieve resource by your app's ID
+### Bulk Registration Pattern
 
-When you have your internal ID but need WorkOS resource:
+If migrating existing resources:
 
 ```typescript
-// Lookup by your app's workspaceId
-const resource = await workos.fga.getResourceByExternalId({
-  organizationId: orgId,
-  resourceType: 'workspace',
-  externalId: workspaceId,
-});
+// Fetch existing resources from your DB
+const workspaces = await db.workspace.findMany();
+
+// Register each with FGA
+for (const ws of workspaces) {
+  const resource = await workos.fga.resources.create({
+    resource_type: 'workspace',
+    external_id: ws.id,
+    name: ws.name,
+    parent_resource_id: ws.orgId,
+  });
+
+  // Update your DB with WorkOS resource ID
+  await db.workspace.update({
+    where: { id: ws.id },
+    data: { workosResourceId: resource.id },
+  });
+}
 ```
 
-### Pattern: Delete resource when entity deleted
+## Step 5: Role Assignments
+
+Assign roles to users for specific resources.
+
+### Assignment Pattern
 
 ```typescript
-await workos.fga.deleteResource(resourceId);
-```
-
-**Verify:** After implementing resource creation:
-
-```bash
-# Check createResource is called in entity creation logic
-grep -r "createResource" app/ src/ || echo "FAIL: Resource creation not implemented"
-
-# Check resource ID is stored in database schema
-grep -r "resource_id\|resourceId" prisma/schema.prisma migrations/ || echo "FAIL: Resource ID not in schema"
-```
-
-## Step 7: Role Assignment
-
-### Pattern: Assign role when granting access
-
-When user grants another user access to a resource:
-
-```typescript
-// Grant "editor" role on "Finance Workspace" to user
-await workos.fga.createAssignment({
-  organizationMembershipId: membershipId, // WorkOS membership ID
-  roleSlug: 'editor', // from RBAC configuration
-  resourceId: workspaceResourceId, // from Step 6
+// When adding user to workspace with role
+await workos.fga.assignments.create({
+  organization_membership_id: membership.id, // from AuthKit
+  role_slug: 'workspace-admin', // role defined in dashboard
+  resource_id: workspace.workosResourceId, // from Step 4
 });
 ```
 
-**Important:** `roleSlug` must exist in your RBAC configuration. FGA extends RBAC roles.
+### Inheritance Behavior
 
-### Pattern: Remove access
+**IMPORTANT:** If role has child-type permissions, FGA automatically propagates to children.
+
+Example:
+- User assigned `workspace-admin` on `Workspace:finance`
+- Role includes permission `project:edit`
+- User automatically gets `project:edit` on ALL projects under `Workspace:finance`
+
+**Do not manually assign roles to child resources if parent assignment covers it.**
+
+### Remove Assignment
 
 ```typescript
-await workos.fga.deleteAssignment({
-  organizationMembershipId: membershipId,
-  roleSlug: 'editor',
-  resourceId: workspaceResourceId,
+// When removing user from workspace
+await workos.fga.assignments.delete({
+  organization_membership_id: membership.id,
+  role_slug: 'workspace-admin',
+  resource_id: workspace.workosResourceId,
 });
 ```
 
-**Verify:**
+## Step 6: Access Checks
 
-```bash
-# Check assignment creation in access grant logic
-grep -r "createAssignment" app/ src/ || echo "FAIL: Assignment creation not implemented"
-```
+Check if user has permission before allowing action.
 
-## Step 8: Authorization Checks
-
-### Pattern: Check user can perform action
-
-In API routes, middleware, or server actions:
+### Single Permission Check
 
 ```typescript
-// Can this user edit this project?
-const canEdit = await workos.fga.checkAuthorization({
-  organizationMembershipId: membershipId,
-  permission: 'projects:edit', // from role definition
-  resourceId: projectResourceId,
+// Before allowing project edit
+const canEdit = await workos.fga.check({
+  organization_membership_id: membership.id,
+  permission: 'project:edit',
+  resource_id: project.workosResourceId,
 });
 
 if (!canEdit.authorized) {
-  throw new Error('Unauthorized');
+  return res.status(403).json({ error: 'Insufficient permissions' });
 }
 
-// Proceed with action
+// Proceed with edit
 ```
 
-**Critical:** Always check authorization before sensitive operations. Do not rely on UI hiding alone.
-
-### Pattern: List resources user can access
-
-For listing pages (e.g., "Show all projects I can view"):
+### Batch Check Pattern
 
 ```typescript
-// Get all projects this user can view
-const resources = await workos.fga.listResourcesForMembership({
-  organizationMembershipId: membershipId,
-  resourceType: 'project',
-  permission: 'projects:view', // optional filter
-});
-
-// resources contains WorkOS resource objects
-// Match resource.externalId to your app's project IDs
-const projectIds = resources.map((r) => r.externalId);
+// Check multiple permissions at once
+const [canEdit, canDelete, canShare] = await Promise.all([
+  workos.fga.check({
+    organization_membership_id: membership.id,
+    permission: 'project:edit',
+    resource_id: project.workosResourceId,
+  }),
+  workos.fga.check({
+    organization_membership_id: membership.id,
+    permission: 'project:delete',
+    resource_id: project.workosResourceId,
+  }),
+  workos.fga.check({
+    organization_membership_id: membership.id,
+    permission: 'project:share',
+    resource_id: project.workosResourceId,
+  }),
+]);
 ```
 
-### Pattern: List users with access to resource
+## Step 7: Resource Discovery
 
-For "Share" dialogs showing who has access:
+Query which resources user can access.
+
+### Pattern: List User's Resources
 
 ```typescript
-// Who can access this workspace?
-const memberships = await workos.fga.listMembershipsForResource({
-  resourceId: workspaceResourceId,
-  permission: 'workspaces:view', // optional filter
+// "Show all projects this user can edit"
+const editableProjects = await workos.fga.organizationMemberships.resources({
+  organization_membership_id: membership.id,
+  resource_type: 'project',
+  permission: 'project:edit',
 });
 
-// memberships contains WorkOS membership objects
+// Returns array of resource objects user can edit
 ```
 
-**Verify:**
-
-```bash
-# Check authorization checks exist in protected routes
-grep -r "checkAuthorization\|checkAccess" app/api/ app/actions/ || echo "FAIL: No authorization checks found"
-```
-
-## Step 9: Inheritance Validation
-
-FGA automatically propagates permissions down hierarchies. Test this works:
-
-```
-Given:
-  - User has "editor" role on Workspace A
-  - Role "editor" includes permission "projects:edit"
-  - Project X is child of Workspace A
-
-Expected:
-  - checkAuthorization for "projects:edit" on Project X returns true
-  - User did NOT receive explicit assignment on Project X
-```
-
-**Test script:**
+### Pattern: List Resource Members
 
 ```typescript
-// test/fga-inheritance.test.ts
-const workspaceResource = await workos.fga.createResource({
-  resourceType: 'workspace',
-  externalId: 'test-workspace',
-  parentResourceId: orgResourceId,
-});
+// "Who has access to this workspace?"
+const members =
+  await workos.fga.resources.organizationMemberships({
+    resource_id: workspace.workosResourceId,
+  });
 
-const projectResource = await workos.fga.createResource({
-  resourceType: 'project',
-  externalId: 'test-project',
-  parentResourceId: workspaceResource.id, // child of workspace
-});
-
-await workos.fga.createAssignment({
-  organizationMembershipId: testMembershipId,
-  roleSlug: 'editor',
-  resourceId: workspaceResource.id, // assigned on workspace
-});
-
-// Check permission on child project (not directly assigned)
-const result = await workos.fga.checkAuthorization({
-  organizationMembershipId: testMembershipId,
-  permission: 'projects:edit',
-  resourceId: projectResource.id, // checking child
-});
-
-expect(result.authorized).toBe(true); // should inherit from parent
+// Returns array of memberships with access (direct or inherited)
 ```
+
+### Pattern: List User's Roles
+
+```typescript
+// "What roles does this user have?"
+const roles = await workos.fga.organizationMemberships.roles({
+  organization_membership_id: membership.id,
+});
+
+// Returns array of role assignments across all resources
+```
+
+## Step 8: External ID Lookups
+
+Use your database IDs directly without storing WorkOS IDs.
+
+### Pattern: Fetch by External ID
+
+```typescript
+// If you only stored external_id, not workos resource_id
+const resource = await workos.fga.organizations.resources.getByExternalId({
+  organization_id: orgId,
+  resource_type: 'workspace',
+  external_id: dbWorkspace.id, // YOUR database ID
+});
+
+// Now you have resource.id for assignments/checks
+```
+
+**Trade-off:** This adds extra API call. Storing both IDs (Step 4) is more efficient.
 
 ## Verification Checklist (ALL MUST PASS)
 
-Run these commands to confirm integration:
-
 ```bash
-# 1. Environment variables set
-grep -E "WORKOS_API_KEY|WORKOS_CLIENT_ID" .env* || echo "FAIL: Missing env vars"
+# 1. Check FGA is available (not pre-release)
+curl -f -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  https://api.workos.com/authorization/resources >/dev/null 2>&1 && echo "PASS" || echo "FAIL: FGA not available"
 
-# 2. SDK imported
-grep -r "from '@workos-inc/node'" lib/ src/ || echo "FAIL: SDK not imported"
+# 2. Check resource types configured in dashboard (manual verification required)
+echo "MANUAL: Verify resource types exist in WorkOS Dashboard → Authorization"
 
-# 3. Resource creation implemented
-grep -r "createResource" app/ src/ || echo "FAIL: Resource creation missing"
+# 3. Check resource registration code exists
+grep -r "fga.resources.create" . --include="*.ts" --include="*.js" && echo "PASS" || echo "FAIL: No resource registration"
 
-# 4. Authorization checks exist
-grep -r "checkAuthorization\|checkAccess" app/ src/ || echo "FAIL: No auth checks"
+# 4. Check access control implemented
+grep -r "fga.check" . --include="*.ts" --include="*.js" && echo "PASS" || echo "FAIL: No access checks"
 
-# 5. Resource IDs stored in database
-grep -r "resource_id\|resourceId" prisma/schema.prisma migrations/ || echo "FAIL: Schema missing resource_id"
-
-# 6. Application builds
-npm run build || echo "FAIL: Build errors"
-
-# 7. TypeScript types resolve (if using TS)
-npx tsc --noEmit || echo "FAIL: Type errors"
+# 5. Application builds
+npm run build && echo "PASS" || echo "FAIL: Build error"
 ```
 
-**All checks must pass before marking integration complete.**
+**If check #1 fails:** FGA is not released yet. Stop implementation until Q1 2026.
+
+**If check #2 fails:** Configure resource types in Dashboard before writing code. This is a blocking requirement.
 
 ## Error Recovery
 
+### "FGA endpoints return 404"
+
+**Root cause:** Feature not released yet (scheduled Q1 2026).
+
+Fix: Check docs for release status. Do not implement until available.
+
 ### "Resource type not found"
 
-**Root cause:** Resource type slug does not exist in Dashboard configuration.
+**Root cause:** Resource type slug in code doesn't match Dashboard config.
 
-**Fix:**
-1. Open WorkOS Dashboard → Authorization → Fine-Grained Authorization
-2. Verify resource type exists with exact slug you're using
-3. Slugs are case-sensitive — `workspace` ≠ `Workspace`
+Fix:
 
-### "Parent resource not found"
+1. Check exact slug in Dashboard → Authorization → Resource Types
+2. Match slug exactly in `resource_type` parameter (case-sensitive)
 
-**Root cause:** Trying to create child resource with invalid `parentResourceId`.
+### "Assignment failed: invalid organization_membership_id"
 
-**Fix:**
-1. Verify parent resource exists: `workos.fga.getResource(parentResourceId)`
-2. Check resource type hierarchy in Dashboard — child type must have parent type configured
-3. If migrating data, create parents before children
+**Root cause:** Using user ID instead of organization membership ID.
 
-### "Permission denied" on authorization check
+Fix: Get membership ID from AuthKit:
 
-**Root cause (Decision Tree):**
+```typescript
+// WRONG
+await workos.fga.assignments.create({
+  organization_membership_id: user.id, // user ID
+});
 
-```
-Permission denied?
-  |
-  +-- No assignment exists
-  |     --> Check assignments: listMembershipsForResource()
-  |     --> Verify createAssignment() was called
-  |
-  +-- Permission not in role
-  |     --> Check role definition in Dashboard
-  |     --> Verify permission slug matches exactly
-  |
-  +-- Inheritance broken
-        --> Verify resource hierarchy (parent set correctly)
-        --> Check role includes child-type permissions
+// CORRECT
+const membership = await workos.organizations.memberships.list({
+  organization_id: orgId,
+  user_id: user.id,
+});
+await workos.fga.assignments.create({
+  organization_membership_id: membership.data[0].id, // membership ID
+});
 ```
 
-**Debug script:**
+### "Permission check always returns false"
+
+**Root cause 1:** Role doesn't include permission in Dashboard config.
+
+Fix: Add permission to role in Dashboard → RBAC → Roles.
+
+**Root cause 2:** No assignment exists for user on resource or ancestor.
+
+Fix: Check assignments exist:
 
 ```bash
-# List all assignments for a resource
-curl -X GET "https://api.workos.com/authorization/resources/{resource_id}/organization_memberships" \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
-
-# Check user's roles
-curl -X GET "https://api.workos.com/authorization/organization_memberships/{membership_id}/roles" \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+# List user's roles to verify assignment
+curl -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  "https://api.workos.com/authorization/organization_memberships/${MEMBERSHIP_ID}/roles"
 ```
 
-### "External ID conflict"
+**Root cause 3:** Using wrong resource ID (your DB ID instead of WorkOS ID).
 
-**Root cause:** Creating resource with `externalId` that already exists for that org + resource type.
+Fix: Use `resource.id` from registration response, not `external_id`.
 
-**Fix:**
-1. External IDs must be unique within (organizationId, resourceType) scope
-2. Use `getResourceByExternalId()` to check if exists before creating
-3. If entity was deleted and recreated, delete old WorkOS resource first
+### "Cannot delete resource: has children"
 
-### "Cannot delete resource with children"
+**Root cause:** Attempting to delete parent resource while children still exist.
 
-**Root cause:** Trying to delete parent resource before deleting children.
+Fix: Delete children first, then parent:
 
-**Fix:**
-1. Delete child resources first (bottom-up)
-2. Or use cascade delete if supported (check docs)
-
-### SDK import errors (TypeScript)
-
-**Root cause:** Incorrect import path or missing types.
-
-**Fix:**
 ```typescript
-// Correct import
-import { WorkOS } from '@workos-inc/node';
+// Delete all projects under workspace first
+for (const project of projects) {
+  await workos.fga.resources.delete(project.workosResourceId);
+}
 
-// NOT this (common mistake)
-import WorkOS from '@workos-inc/node'; // missing named export
+// Then delete workspace
+await workos.fga.resources.delete(workspace.workosResourceId);
 ```
 
-### Rate limiting (429 errors)
+### "SDK method not found"
 
-**Root cause:** Too many authorization checks per second.
+**Root cause:** SDK version too old or FGA not yet released.
 
-**Fix:**
-1. Cache authorization results at app layer (30-60 seconds)
-2. Batch resource discovery calls instead of N+1 checks
-3. Contact WorkOS support for rate limit increase if needed
+Fix:
+
+```bash
+# Update SDK to latest
+npm install @workos-inc/node@latest
+
+# Verify version supports FGA
+npm list @workos-inc/node
+```
+
+Check SDK changelog for FGA support version.
 
 ## Related Skills
 
-- **workos-rbac**: Set up base roles and permissions (prerequisite)
-- **workos-authkit-nextjs**: Get organization membership IDs for FGA
-- **workos-organizations**: Manage organizations that own resources
+- **workos-rbac**: Organization-level role-based access control (prerequisite for FGA)
+- **workos-authkit-nextjs**: User authentication and organization management (provides membership IDs)

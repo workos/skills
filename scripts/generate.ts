@@ -5,16 +5,25 @@ import { parseSections } from "./lib/parser.ts";
 import { validateSections } from "./lib/validator.ts";
 import { parseLlmsTxtUrls, splitSections } from "./lib/splitter.ts";
 import {
+  parseApiReferenceUrls,
+  splitApiReference,
+} from "./lib/api-ref-splitter.ts";
+import {
   generateSkill,
   generateRouter,
   generateIntegrationRouter,
 } from "./lib/generator.ts";
 import { refineSkill, rateLimitDelay } from "./lib/refiner.ts";
+import { runQualityGate } from "./lib/quality-gate.ts";
 import { HAND_CRAFTED_SKILLS, VALIDATION } from "./lib/config.ts";
 import type { GeneratedSkill } from "./lib/types.ts";
 
-/** Skills that should NOT be refined (they're already well-structured) */
-const SKIP_REFINE = new Set(["workos-router", "workos-integrations"]);
+/** Skills that should NOT be refined (already well-structured or endpoint tables) */
+const SKIP_REFINE = new Set([
+  "workos-router",
+  "workos-integrations",
+  // API ref skills are endpoint tables — refining them would lose the table format
+]);
 
 function parseArgs(): {
   refine: boolean;
@@ -123,7 +132,25 @@ async function main() {
     );
   }
 
-  // Generate master router
+  // Generate API reference skills
+  const referenceSection = sections.find((s) => s.anchor === "reference");
+  if (referenceSection) {
+    console.log("\nGenerating API reference skills...");
+    const apiRefUrls = parseApiReferenceUrls(llmsTxtResult.content);
+    const apiRefSpecs = splitApiReference(referenceSection, apiRefUrls);
+    console.log(`  ${apiRefSpecs.length} API reference specs produced`);
+
+    for (const spec of apiRefSpecs) {
+      const skill = generateSkill(spec);
+      generatedSkills.push(skill);
+      specs.push(spec); // Add to specs so router includes them
+      console.log(
+        `  ${skill.name.padEnd(35)} ${(skill.sizeBytes / 1024).toFixed(1).padStart(5)}KB  (api-ref)`,
+      );
+    }
+  }
+
+  // Generate master router (after all specs are collected)
   const router = generateRouter(specs, llmsTxtResult.content);
   generatedSkills.push(router);
   console.log(
@@ -151,7 +178,9 @@ async function main() {
 
     const toRefine = flags.refineOnly
       ? generatedSkills.filter((s) => s.name === flags.refineOnly)
-      : generatedSkills.filter((s) => !SKIP_REFINE.has(s.name));
+      : generatedSkills.filter(
+          (s) => !SKIP_REFINE.has(s.name) && !s.name.startsWith("workos-api-"),
+        );
 
     if (toRefine.length === 0) {
       console.warn("  No skills matched for refinement");
@@ -227,6 +256,35 @@ async function main() {
   console.log(
     `\n✓ Generated ${generatedSkills.length} skills. Hand-crafted skills untouched: ${HAND_CRAFTED_SKILLS.length}`,
   );
+
+  // --- Phase 4: Quality Gate ---
+
+  console.log("\n--- Quality Gate ---");
+  const qualityReport = runQualityGate(generatedSkills);
+
+  for (const r of qualityReport.results) {
+    const status = r.pass ? "✓" : "✗";
+    const issueStr =
+      r.issues.length > 0 ? ` — ${r.issues[0]}` : "";
+    console.log(
+      `  ${status} ${r.skillName.padEnd(40)} ${r.score}/100${issueStr}`,
+    );
+  }
+
+  // Write quality report
+  const reportPath = join(process.cwd(), "scripts/output/quality-report.json");
+  await mkdir(dirname(reportPath), { recursive: true });
+  await Bun.write(reportPath, JSON.stringify(qualityReport, null, 2));
+  console.log(`\n  Report: ${reportPath}`);
+  console.log(
+    `  ${qualityReport.passed} passed, ${qualityReport.failed} failed out of ${qualityReport.total}`,
+  );
+
+  if (qualityReport.failed > 0) {
+    console.warn(
+      `\n⚠ ${qualityReport.failed} skill(s) below quality threshold. Review quality-report.json for details.`,
+    );
+  }
 }
 
 main().catch((err) => {

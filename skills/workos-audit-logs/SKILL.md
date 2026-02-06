@@ -11,133 +11,103 @@ description: Implement audit logging for compliance and security.
 
 **STOP. Do not proceed until complete.**
 
-WebFetch these URLs in order — they are the source of truth:
+WebFetch these URLs for latest implementation details:
 
-1. `https://workos.com/docs/audit-logs/index`
-2. `https://workos.com/docs/audit-logs/metadata-schema`
-3. `https://workos.com/docs/audit-logs/log-streams`
-4. `https://workos.com/docs/audit-logs/exporting-events`
-5. `https://workos.com/docs/audit-logs/editing-events`
-6. `https://workos.com/docs/audit-logs/admin-portal`
+- https://workos.com/docs/audit-logs/index
+- https://workos.com/docs/audit-logs/metadata-schema
+- https://workos.com/docs/audit-logs/log-streams
+- https://workos.com/docs/audit-logs/exporting-events
+- https://workos.com/docs/audit-logs/editing-events
+- https://workos.com/docs/audit-logs/admin-portal
 
-If this skill conflicts with docs, follow docs.
+The documentation is the source of truth. If this skill conflicts with docs, follow docs.
 
 ## Step 2: Pre-Flight Validation
 
-### API Credentials
+### Environment Variables
 
-Check environment variables exist:
+Check `.env` or `.env.local` for:
 
 - `WORKOS_API_KEY` - starts with `sk_`
-- `WORKOS_CLIENT_ID` - starts with `client_` (if using Organizations)
-
-**Verify:**
-
-```bash
-grep -q "WORKOS_API_KEY=sk_" .env* && echo "PASS: API key found" || echo "FAIL: Missing API key"
-```
+- `WORKOS_CLIENT_ID` - starts with `client_` (if using SSO/Directory Sync)
 
 ### SDK Installation
 
-Check SDK is installed:
+Detect existing WorkOS SDK:
 
 ```bash
-# Node.js
-npm list @workos-inc/node || yarn list @workos-inc/node || pnpm list @workos-inc/node
-
-# Python
-pip show workos || poetry show workos
-
-# Ruby
-bundle show workos
-
-# Go
-go list -m github.com/workos/workos-go
+# Check if SDK is installed
+npm list @workos-inc/node 2>/dev/null || yarn list @workos-inc/node 2>/dev/null
 ```
 
-**If SDK missing:** Install according to language package manager before continuing.
+If SDK not found, install it:
 
-## Step 3: Implementation Path (Decision Tree)
-
-Choose ONE path based on your use case:
-
-```
-What are you building?
-  |
-  +-- Emitting events from backend
-  |   --> Step 4: Backend Event Emission
-  |
-  +-- Configuring customer log streams (SIEM integration)
-  |   --> Step 5: Log Stream Configuration
-  |
-  +-- Setting up Admin Portal for customer self-service
-  |   --> Step 6: Admin Portal Integration
-  |
-  +-- Exporting events to CSV/JSON
-      --> Step 7: Event Export
+```bash
+# Detect package manager and install
+npm install @workos-inc/node
+# OR
+yarn add @workos-inc/node
 ```
 
-## Step 4: Backend Event Emission
+**Verify:** SDK package exists in node_modules before continuing.
 
-### Event Schema Design
+## Step 3: Audit Log Event Schema Design (Decision Tree)
 
-Before writing code, define your event structure in WorkOS Dashboard:
+```
+Need metadata validation?
+  |
+  +-- YES --> Define JSON Schema in WorkOS Dashboard (Step 3a)
+  |           Then proceed to Step 4
+  |
+  +-- NO  --> Use free-form metadata
+              Proceed to Step 4
+```
 
-1. Navigate to Dashboard → Audit Logs → Events
-2. Click "Create Event"
-3. Define event name (format: `noun.past_tense_verb`, e.g., `user.signed_in`)
-4. **If using metadata schemas:** Check "Require metadata schema validation"
+### Step 3a: Define Metadata Schema (If Required)
 
-### Metadata Schema (Optional but Recommended)
+Navigate to WorkOS Dashboard → Audit Logs → Events → Create/Edit Event.
 
-If you checked validation in Dashboard:
+**Schema design rules (from docs):**
 
-1. Define JSON Schema for root `metadata`, `actor.metadata`, and `targets[].metadata`
-2. **Limits to enforce in code:**
-   - Max 50 keys per metadata object
-   - Max 40 characters per key name
-   - Max 500 characters per value
+- Maximum 50 keys per metadata object
+- Key names: up to 40 characters
+- Values: up to 500 characters
+- Three metadata locations: root event, actor, targets
 
-Example schema structure:
+**Example schema structure:**
 
 ```json
 {
   "type": "object",
   "properties": {
-    "ip_address": { "type": "string", "format": "ipv4" },
-    "user_agent": { "type": "string", "maxLength": 500 }
+    "ip_address": { "type": "string" },
+    "user_agent": { "type": "string" }
   },
-  "required": ["ip_address"],
-  "additionalProperties": false
+  "required": ["ip_address"]
 }
 ```
 
-**Critical:** If schema validation is enabled, events that don't match will return 400 errors.
+Enable "Require metadata schema validation" checkbox in Dashboard before emitting events.
 
-### Code Integration
+## Step 4: Implement Event Emission
 
-Detect language from project files:
+### Basic Event Structure
 
-```
-Language indicators?
-  |
-  +-- package.json + TypeScript --> Node.js/TypeScript pattern
-  |
-  +-- requirements.txt / pyproject.toml --> Python pattern
-  |
-  +-- Gemfile --> Ruby pattern
-  |
-  +-- go.mod --> Go pattern
-```
+All Audit Log events must include:
 
-**Node.js/TypeScript pattern:**
+1. `organization_id` - WorkOS org identifier
+2. `action` - Event type (e.g., `user.signed_in`)
+3. `occurred_at` - ISO 8601 timestamp
+4. `actor` - Who performed the action
+5. `targets` - What was affected (optional)
+
+### Code Pattern
 
 ```typescript
 import { WorkOS } from '@workos-inc/node';
 
 const workos = new WorkOS(process.env.WORKOS_API_KEY);
 
-// Basic event
 await workos.auditLogs.createEvent({
   organization_id: 'org_123',
   event: {
@@ -146,85 +116,138 @@ await workos.auditLogs.createEvent({
     actor: {
       type: 'user',
       id: 'user_123',
-      name: 'Alice Smith',
-      metadata: { ip_address: '192.0.2.1' }, // Must match schema if enabled
+      name: 'Jane Doe',
+      metadata: {
+        // Optional: custom metadata (must match schema if validation enabled)
+      }
     },
     targets: [
       {
-        type: 'user',
-        id: 'user_123',
-        name: 'Alice Smith',
-      },
+        type: 'team',
+        id: 'team_456',
+        name: 'Engineering'
+      }
     ],
     context: {
       location: '192.0.2.1',
-      user_agent: 'Mozilla/5.0...',
-    },
-  },
+      user_agent: 'Mozilla/5.0...'
+    }
+  }
 });
 ```
 
-**Python pattern:**
+**Critical:** If schema validation is enabled, metadata MUST conform to JSON Schema or API returns 400 error.
 
-```python
-from workos import WorkOSClient
-import os
+## Step 5: Log Streams Setup (Optional)
 
-workos = WorkOSClient(api_key=os.getenv('WORKOS_API_KEY'))
+Only proceed if customer needs to stream events to external SIEM.
 
-workos.audit_logs.create_event(
-    organization_id='org_123',
-    event={
-        'action': 'user.signed_in',
-        'occurred_at': datetime.utcnow().isoformat() + 'Z',
-        'actor': {
-            'type': 'user',
-            'id': 'user_123',
-            'name': 'Alice Smith',
-            'metadata': {'ip_address': '192.0.2.1'}
-        },
-        'targets': [{'type': 'user', 'id': 'user_123'}],
-        'context': {'location': '192.0.2.1'}
-    }
-)
+### Decision Tree: Stream Destination
+
+```
+Customer SIEM provider?
+  |
+  +-- Datadog     --> Configure Datadog stream (Step 5a)
+  |
+  +-- Splunk      --> Configure Splunk HEC (Step 5b)
+  |
+  +-- AWS S3      --> Configure S3 bucket (Step 5c)
+  |
+  +-- Custom HTTP --> Configure webhook endpoint (Step 5d)
 ```
 
-**Verify emission:**
+### Step 5a: Datadog Stream
+
+**Dashboard setup:**
+
+1. WorkOS Dashboard → Log Streams → Create Stream
+2. Select "Datadog"
+3. Enter Datadog API key
+4. Select region (US1, US3, US5, EU1, AP1, US1-FED)
+
+**Verify stream:**
 
 ```bash
-# Check SDK import exists in codebase
-grep -r "auditLogs\|audit_logs" . --include="*.ts" --include="*.js" --include="*.py" --include="*.rb" --include="*.go"
-
-# Test event creation (requires valid org_id)
-curl https://api.workos.com/audit_logs/events \
-  -H "Authorization: Bearer $WORKOS_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "organization_id": "org_YOUR_ORG_ID",
-    "event": {
-      "action": "user.test_event",
-      "occurred_at": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
-      "actor": {"type": "user", "id": "test_123"}
-    }
-  }'
+# Check Datadog logs for events with source:workos
+# Events appear with this structure:
+# { "message": { "id": "...", "action": "...", ... } }
 ```
 
-Expected: 201 Created with event ID in response.
+### Step 5b: Splunk Stream
 
-## Step 5: Log Stream Configuration
+**Prerequisites:**
 
-### Dashboard Configuration (Manual Setup)
+- Splunk HEC token
+- HEC endpoint URL
 
-If configuring streams via Dashboard:
+**Dashboard setup:**
 
-1. Navigate to Dashboard → Audit Logs → Log Streams
-2. Click "Create Log Stream"
-3. Select provider (Datadog, Splunk, AWS S3, GCS, or HTTP)
-4. **Note organization_id** — streams are org-specific
+1. WorkOS Dashboard → Log Streams → Create Stream
+2. Select "Splunk"
+3. Enter HEC endpoint and token
 
-### IP Allowlist Setup
+**Verify stream:**
 
-If streaming to restricted hosts, allowlist these WorkOS IPs:
+```bash
+# Check Splunk for events with sourcetype=workos
+# Events appear with this structure:
+# { "event": { "id": "...", "action": "...", ... } }
+```
+
+### Step 5c: AWS S3 Stream
+
+**Prerequisites (CRITICAL):**
+
+- S3 bucket created
+- IAM role with cross-account access
+- External ID for role assumption
+
+**Required IAM policy:**
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:PutObjectAcl"
+      ],
+      "Resource": "arn:aws:s3:::YOUR_BUCKET_NAME/*"
+    }
+  ]
+}
+```
+
+**Dashboard setup:**
+
+1. Create IAM role with trust relationship to WorkOS account
+2. WorkOS Dashboard → Log Streams → Create Stream
+3. Select "AWS S3"
+4. Enter bucket name, region, IAM role ARN, external ID
+
+**Note:** Events stored as individual JSON files with ContentMD5 header (supports Object Lock).
+
+### Step 5d: Generic HTTP Stream
+
+For custom endpoints or unsupported SIEMs.
+
+**Endpoint requirements:**
+
+- Must accept POST requests
+- Must return 2xx status for success
+- Should implement authentication (bearer token, API key header)
+
+**Dashboard setup:**
+
+1. WorkOS Dashboard → Log Streams → Create Stream
+2. Select "HTTP POST"
+3. Enter endpoint URL and headers
+
+### IP Allowlist (If Required)
+
+If destination requires IP allowlisting, whitelist these WorkOS IPs:
 
 ```
 3.217.146.166
@@ -235,262 +258,177 @@ If streaming to restricted hosts, allowlist these WorkOS IPs:
 50.16.203.9
 ```
 
-**Verify allowlist in target system before enabling stream.**
+## Step 6: Export Events (Optional)
 
-### Provider-Specific Configuration
+For bulk export or compliance needs.
 
-**Datadog:**
+### Export via Dashboard
 
-- Get API Key from Datadog dashboard
-- Select region (US1, US3, US5, EU1, AP1, US1-FED)
-- Events sent to `https://http-intake.logs.datadoghq.com/api/v2/logs` (or regional equivalent)
-
-**Splunk:**
-
-- Get HEC token from Splunk Settings → Data Inputs → HTTP Event Collector
-- Provide HEC endpoint URL (e.g., `https://splunk.example.com:8088`)
-- **Critical:** HEC endpoint must be publicly accessible or VPN-connected
-
-**AWS S3:**
-
-- Create IAM role with `s3:PutObject` permission
-- Add WorkOS as trusted entity with external ID from Dashboard
-- Provide bucket name and optional prefix
-- **Critical:** If Object Lock enabled, WorkOS sends `ContentMD5` header
-
-Cross-account role policy example:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::WORKOS_ACCOUNT_ID:root"
-      },
-      "Action": "sts:AssumeRole",
-      "Condition": {
-        "StringEquals": {
-          "sts:ExternalId": "YOUR_EXTERNAL_ID_FROM_DASHBOARD"
-        }
-      }
-    }
-  ]
-}
-```
-
-**Google Cloud Storage:**
-
-- Create service account with Storage Object Creator role
-- Download JSON key
-- Provide bucket name and optional prefix
-
-**HTTP Endpoint:**
-
-- Provide publicly accessible HTTPS URL
-- Optional: Add headers for authentication
-- Events sent as JSON array via POST
-
-### Admin Portal Self-Service (Recommended)
-
-To allow customers to configure their own streams:
-
-1. Generate Admin Portal link with `audit_logs` intent:
-
-```typescript
-// Node.js
-const link = await workos.portal.generateLink({
-  organization: 'org_123',
-  intent: 'audit_logs',
-  return_url: 'https://yourapp.com/settings',
-});
-```
-
-2. Redirect customer admin to `link.url`
-3. They configure stream without your involvement
-
-**Verify Admin Portal access:**
-
-```bash
-curl https://api.workos.com/portal/generate_link \
-  -X POST \
-  -H "Authorization: Bearer $WORKOS_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "organization": "org_YOUR_ORG_ID",
-    "intent": "audit_logs",
-    "return_url": "https://yourapp.com/settings"
-  }'
-```
-
-Expected: 200 OK with `link` field containing portal URL.
-
-## Step 6: Admin Portal Integration
-
-If customers need self-service configuration:
-
-### Generate Portal Link
-
-Create link generation endpoint in your backend:
-
-```typescript
-// Example Express.js route
-app.post('/api/admin-portal', async (req, res) => {
-  const { organizationId } = req.body; // From authenticated session
-
-  const link = await workos.portal.generateLink({
-    organization: organizationId,
-    intent: 'audit_logs', // Shows log stream, export, event configuration
-    return_url: `${process.env.APP_URL}/settings/audit-logs`,
-  });
-
-  res.json({ url: link.url });
-});
-```
-
-**Frontend integration:**
-
-```typescript
-// Fetch link from backend, redirect customer
-const response = await fetch('/api/admin-portal', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ organizationId: currentOrg.id }),
-});
-
-const { url } = await response.json();
-window.location.href = url; // Redirect to WorkOS portal
-```
-
-### Return URL Handling
-
-When customer completes setup, WorkOS redirects to `return_url`:
-
-```typescript
-// Your /settings/audit-logs page
-app.get('/settings/audit-logs', (req, res) => {
-  // No special query params — just reload settings
-  // Poll WorkOS API if you need to show updated config immediately
-});
-```
-
-**Verify portal flow:**
-
-1. Generate link via API
-2. Open link in browser
-3. Complete setup in portal
-4. Confirm redirect to return_url works
-5. Check Dashboard shows new configuration
-
-## Step 7: Event Export
-
-For manual or scheduled exports:
+1. WorkOS Dashboard → Audit Logs → Events
+2. Apply filters (date range, action type, organization)
+3. Click "Export" → Select format (CSV/JSON)
 
 ### Export via API
 
-```bash
-# Export events for date range
-curl "https://api.workos.com/audit_logs/exports?organization_id=org_123&range_start=2024-01-01T00:00:00Z&range_end=2024-01-31T23:59:59Z" \
-  -H "Authorization: Bearer $WORKOS_API_KEY" \
-  -H "Accept: text/csv"  # or application/json
+```typescript
+// Fetch events with pagination
+const events = await workos.auditLogs.getEvents({
+  organization_id: 'org_123',
+  range_start: '2024-01-01T00:00:00Z',
+  range_end: '2024-01-31T23:59:59Z',
+  limit: 100
+});
 
-# Save to file
-curl "https://api.workos.com/audit_logs/exports?organization_id=org_123&range_start=2024-01-01T00:00:00Z&range_end=2024-01-31T23:59:59Z" \
-  -H "Authorization: Bearer $WORKOS_API_KEY" \
-  -H "Accept: text/csv" \
-  -o events_jan2024.csv
+// events.data contains event array
+// events.list_metadata contains pagination info
 ```
 
-**Parameters:**
-
-- `organization_id` (required) — organization to export
-- `range_start` (required) — ISO 8601 timestamp
-- `range_end` (required) — ISO 8601 timestamp
-- `actor_name[]` (optional) — filter by actor names (repeatable)
-- `action[]` (optional) — filter by event actions (repeatable)
-
-**Format options:**
-
-- `Accept: text/csv` — CSV format
-- `Accept: application/json` — JSON array format
-
-### Scheduled Exports
-
-If building automated exports:
-
-1. Store last export timestamp
-2. Run cron job or scheduled task
-3. Export events since last timestamp
-4. Update stored timestamp
-5. Store/process exported file
-
-Example scheduled job (Node.js):
+**Pagination pattern:**
 
 ```typescript
-// cron.ts
-import { WorkOS } from '@workos-inc/node';
-import fs from 'fs';
+let after = undefined;
+const allEvents = [];
 
-const workos = new WorkOS(process.env.WORKOS_API_KEY!);
-
-async function exportRecentEvents() {
-  const lastExport = await getLastExportTime(); // Your storage
-  const now = new Date().toISOString();
-
-  const events = await workos.auditLogs.exportEvents({
-    organizationId: 'org_123',
-    rangeStart: lastExport,
-    rangeEnd: now,
+do {
+  const response = await workos.auditLogs.getEvents({
+    organization_id: 'org_123',
+    limit: 100,
+    after
   });
-
-  // Save or process events
-  fs.writeFileSync(`exports/events_${Date.now()}.json`, JSON.stringify(events, null, 2));
-
-  await saveLastExportTime(now); // Update timestamp
-}
+  
+  allEvents.push(...response.data);
+  after = response.list_metadata.after;
+} while (after);
 ```
 
 ## Verification Checklist (ALL MUST PASS)
 
-Run these commands to confirm implementation:
+Run these commands to confirm integration:
 
 ```bash
-# 1. Check API key configured
-printenv | grep -q "WORKOS_API_KEY=sk_" && echo "PASS: API key set" || echo "FAIL: No API key"
+# 1. Check SDK installed
+npm list @workos-inc/node || echo "FAIL: SDK not installed"
 
-# 2. Check SDK installed
-npm list @workos-inc/node 2>/dev/null || pip show workos 2>/dev/null || bundle show workos 2>/dev/null || echo "FAIL: SDK not installed"
+# 2. Check environment variables
+grep -E "WORKOS_API_KEY=sk_" .env* || echo "FAIL: API key not configured"
 
-# 3. Check audit log code exists
-grep -r "auditLogs\|audit_logs\|createEvent\|create_event" . --include="*.ts" --include="*.js" --include="*.py" --include="*.rb" --include="*.go" | head -1 || echo "FAIL: No audit log code found"
+# 3. Test event creation (requires working API key)
+node -e "
+const { WorkOS } = require('@workos-inc/node');
+const workos = new WorkOS(process.env.WORKOS_API_KEY);
+workos.auditLogs.createEvent({
+  organization_id: 'org_01EHQMYV6MBK39QC5PZXHY59C3',
+  event: {
+    action: 'test.event',
+    occurred_at: new Date().toISOString(),
+    actor: { type: 'user', id: 'test_user' }
+  }
+}).then(() => console.log('PASS')).catch(e => console.log('FAIL:', e.message));
+" 2>&1 | grep -q "PASS" && echo "Event creation works" || echo "Event creation failed"
 
-# 4. Test event creation (replace org_id)
-curl -s https://api.workos.com/audit_logs/events \
-  -H "Authorization: Bearer $WORKOS_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"organization_id\": \"org_REPLACE_ME\",
-    \"event\": {
-      \"action\": \"test.verification\",
-      \"occurred_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
-      \"actor\": {\"type\": \"user\", \"id\": \"test_user\"}
-    }
-  }" | grep -q "id" && echo "PASS: Event created" || echo "FAIL: Event creation failed"
+# 4. If using Log Streams, check stream status in Dashboard
+# Navigate to WorkOS Dashboard → Log Streams → Check "Active" status
 
-# 5. If using Admin Portal, test link generation
-curl -s https://api.workos.com/portal/generate_link \
-  -X POST \
-  -H "Authorization: Bearer $WORKOS_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"organization\": \"org_REPLACE_ME\",
-    \"intent\": \"audit_logs\",
-    \"return_url\": \"https://example.com/test\"
-  }" | grep -q "link" && echo "PASS: Portal link generated" || echo "FAIL: Portal link failed"
+# 5. If using metadata schema, test schema validation
+# Emit event with invalid metadata - should return 400 error
 ```
 
-**Manual checks:**
+**All checks must pass before marking implementation complete.**
 
-- [ ] Event appears in WorkOS Dashboard → Audit Logs
-- [ ] If log stream configured: Event reaches SIEM/S3 within
+## Error Recovery
+
+### "Invalid API key" or "Unauthorized"
+
+**Root cause:** API key incorrect, missing, or lacks permissions.
+
+**Fix:**
+
+1. Verify key starts with `sk_` prefix
+2. Check WorkOS Dashboard → API Keys → Key status
+3. Regenerate key if compromised
+4. Ensure key is for correct environment (test vs. production)
+
+### "Metadata validation failed" (400 error)
+
+**Root cause:** Emitted metadata doesn't match JSON Schema.
+
+**Fix:**
+
+1. Check exact error message - shows which field failed validation
+2. Verify metadata object structure matches schema
+3. Check data types (string vs. number, required fields)
+4. Test schema with sample data in Dashboard schema editor
+
+**Common issues:**
+
+- Missing required fields
+- Wrong data type (string when number expected)
+- Value exceeds 500 character limit
+- More than 50 keys in metadata object
+
+### "Organization not found"
+
+**Root cause:** Invalid `organization_id` or org doesn't exist.
+
+**Fix:**
+
+1. Verify org ID format: `org_` prefix + 26 characters
+2. Check WorkOS Dashboard → Organizations for valid org IDs
+3. Ensure org was created via Directory Sync or SSO before emitting events
+
+### Log Stream not receiving events
+
+**Root causes:**
+
+- Stream configuration error
+- Network/firewall blocking WorkOS IPs
+- Destination endpoint rejecting requests
+- Invalid credentials (API key, HEC token, IAM role)
+
+**Fix:**
+
+1. Check stream status in WorkOS Dashboard (Active vs. Inactive)
+2. Verify destination credentials are correct
+3. For S3: Check IAM role trust relationship and permissions
+4. For HTTP: Test endpoint with curl to verify it accepts POST
+5. Check destination logs for rejected requests
+6. Verify IP allowlist includes all WorkOS IPs (if applicable)
+
+**Datadog-specific:**
+
+- Wrong region selected (logs sent to wrong intake endpoint)
+- API key lacks "Logs Write" permission
+
+**Splunk-specific:**
+
+- HEC not enabled on Splunk instance
+- HEC token expired or deleted
+- SSL certificate verification failing
+
+### "Rate limit exceeded"
+
+**Root cause:** Too many events emitted in short time window.
+
+**Fix:**
+
+1. Implement batching for bulk operations
+2. Add exponential backoff retry logic
+3. Contact WorkOS support to discuss rate limit increase
+
+### Events not appearing in Dashboard
+
+**Root cause:** Event emission succeeded but Dashboard filters hiding events.
+
+**Fix:**
+
+1. Clear all filters (date range, action, organization)
+2. Verify `organization_id` matches filter
+3. Check `occurred_at` timestamp is within selected date range
+4. Wait 30-60 seconds for eventual consistency
+
+## Related Skills
+
+- **workos-sso**: Single Sign-On for organization authentication
+- **workos-directory-sync**: Sync users/groups to get organization IDs
+- **workos-events**: Webhook events for real-time Audit Log notifications
+- **workos-admin-portal**: Self-service portal for customers to manage Log Streams

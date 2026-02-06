@@ -11,493 +11,475 @@ description: Sync user directories from identity providers like Okta, Azure AD, 
 
 **STOP. Do not proceed until complete.**
 
-WebFetch these URLs in order:
+WebFetch these URLs in order — they are the source of truth:
 
 1. `https://workos.com/docs/directory-sync/quick-start`
 2. `https://workos.com/docs/directory-sync/index`
 3. `https://workos.com/docs/directory-sync/understanding-events`
-4. `https://workos.com/docs/directory-sync/attributes`
-5. `https://workos.com/docs/directory-sync/handle-inactive-users`
+4. `https://workos.com/docs/directory-sync/handle-inactive-users`
+5. `https://workos.com/docs/directory-sync/attributes`
+6. `https://workos.com/docs/directory-sync/identity-provider-role-assignment`
+7. `https://workos.com/docs/directory-sync/example-apps`
 
-The quick-start is the source of truth for implementation. If this skill conflicts with quick-start, follow quick-start.
+If this skill conflicts with fetched docs, follow the docs.
 
 ## Step 2: Pre-Flight Validation
-
-### WorkOS Account
-
-- Confirm WorkOS account exists at https://dashboard.workos.com/
-- Confirm test directory connection exists in dashboard
 
 ### Environment Variables
 
 Check `.env` or `.env.local` for:
 
-- `WORKOS_API_KEY` - starts with `sk_` (secret key)
-- `WORKOS_CLIENT_ID` - starts with `client_` (optional for some integrations)
-- `WORKOS_WEBHOOK_SECRET` - starts with `wh_` (for webhook verification)
+- `WORKOS_API_KEY` - starts with `sk_`
+- `WORKOS_CLIENT_ID` - starts with `client_`
+- `WORKOS_WEBHOOK_SECRET` - provided by WorkOS Dashboard (required for event verification)
 
-**Verify webhook secret exists:** Directory Sync relies on webhooks for real-time updates.
+### WorkOS Dashboard Setup
 
-### Project Structure
+Confirm in WorkOS Dashboard before coding:
 
-Confirm framework detection:
+1. Directory connection exists for test organization
+2. Webhook endpoint is registered (you'll create this in Step 5)
+3. Directory events are enabled in webhook settings
+
+### Project Detection
+
+```bash
+# Detect project type
+ls package.json 2>/dev/null && echo "Node.js project" || echo "Check for other runtime"
+
+# Check SDK installation
+grep -E "@workos-inc/node|workos" package.json || echo "SDK not found"
+```
+
+## Step 3: Install SDK (If Missing)
+
+Detect package manager from lockfile:
 
 ```
-Framework?
+Lockfile present?
   |
-  +-- Next.js --> Check for app/ or pages/ directory
+  +-- package-lock.json  --> npm install @workos-inc/node
   |
-  +-- Express/Node --> Check for server.js or app.js
+  +-- yarn.lock          --> yarn add @workos-inc/node
   |
-  +-- Other --> Confirm HTTP server capability for webhook endpoint
+  +-- pnpm-lock.yaml     --> pnpm add @workos-inc/node
+  |
+  +-- bun.lockb          --> bun add @workos-inc/node
 ```
 
-## Step 3: Install SDK
+**Verify:** Run `ls node_modules/@workos-inc/node` before continuing.
 
-Detect package manager, install WorkOS SDK from quick-start guide.
+## Step 4: Initialize SDK Client
 
-**Verify:** Run `npm ls @workos-inc/node` (or yarn/pnpm equivalent) shows installed version.
-
-## Step 4: Create Webhook Endpoint (REQUIRED)
-
-Directory Sync is **event-driven**. You MUST implement webhook handling. Do NOT poll the API.
-
-### Endpoint Requirements
-
-Create POST endpoint at `/webhooks/workos` (or path specified in dashboard).
-
-**Framework-specific locations:**
-
-```
-Framework            --> File location
-Next.js App Router   --> app/api/webhooks/workos/route.ts
-Next.js Pages        --> pages/api/webhooks/workos.ts
-Express              --> routes/webhooks.js or app.js
-```
-
-### Webhook Handler Pattern
+Create SDK client module (e.g., `lib/workos.ts` or `utils/workos.ts`):
 
 ```typescript
 import { WorkOS } from '@workos-inc/node';
 
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
+export const workos = new WorkOS(process.env.WORKOS_API_KEY);
+```
+
+**Critical:** Never hardcode API key. Always use environment variable.
+
+**Verify:** Import this module in another file without errors.
+
+## Step 5: Create Webhook Endpoint
+
+Webhooks are **mandatory** for Directory Sync — you cannot poll for events.
+
+### Framework Detection
+
+```
+Framework?
+  |
+  +-- Next.js (app/) --> Create app/api/webhooks/workos/route.ts
+  |
+  +-- Next.js (pages/) --> Create pages/api/webhooks/workos.ts
+  |
+  +-- Express --> Add POST /webhooks/workos route
+  |
+  +-- Fastify --> Add POST /webhooks/workos route
+  |
+  +-- Other --> Create POST endpoint at /webhooks/workos
+```
+
+### Webhook Implementation Pattern
+
+**Critical security steps:**
+
+1. **Verify signature** using `WORKOS_WEBHOOK_SECRET` — reject unsigned requests
+2. **Parse event payload** from request body
+3. **Handle idempotently** — same event may arrive multiple times
+4. **Return 200 immediately** — process async if needed
+
+Example structure (adapt to your framework):
+
+```typescript
+import { workos } from '@/lib/workos';
 
 export async function POST(request: Request) {
-  // 1. Get raw body and signature
-  const body = await request.text();
+  const payload = await request.text();
   const signature = request.headers.get('workos-signature');
-  const webhookSecret = process.env.WORKOS_WEBHOOK_SECRET;
 
-  // 2. CRITICAL: Verify webhook signature
+  // 1. CRITICAL: Verify webhook signature
   let event;
   try {
     event = workos.webhooks.constructEvent({
-      payload: body,
-      sigHeader: signature!,
-      secret: webhookSecret!,
+      payload,
+      signature,
+      secret: process.env.WORKOS_WEBHOOK_SECRET!,
     });
   } catch (err) {
-    return new Response('Webhook signature verification failed', { status: 400 });
+    return new Response('Invalid signature', { status: 401 });
   }
 
-  // 3. Handle event (see Step 5)
+  // 2. Route event to handler
   await handleDirectorySyncEvent(event);
 
+  // 3. Return 200 immediately
   return new Response('OK', { status: 200 });
 }
 ```
 
-**CRITICAL:** Always verify webhook signature before processing. Unverified webhooks are a security vulnerability.
+**If signature verification fails:** WorkOS will retry. Check `WORKOS_WEBHOOK_SECRET` matches Dashboard value.
 
-## Step 5: Implement Event Handlers (Decision Tree)
+### Register Webhook in Dashboard
 
-Directory Sync sends 8 event types. Route based on `event.event`:
+1. Go to WorkOS Dashboard → Webhooks
+2. Add endpoint URL: `https://your-domain.com/api/webhooks/workos`
+3. Enable these event types:
+   - `dsync.activated`
+   - `dsync.deleted`
+   - `dsync.user.created`
+   - `dsync.user.updated`
+   - `dsync.user.deleted`
+   - `dsync.group.created`
+   - `dsync.group.updated`
+   - `dsync.group.deleted`
+   - `dsync.group.user_added`
+   - `dsync.group.user_removed`
+4. Copy webhook secret → set as `WORKOS_WEBHOOK_SECRET`
+
+**Test webhook:** Use Dashboard "Send test event" feature before deploying.
+
+## Step 6: Implement Event Handlers (Decision Tree)
+
+Create event routing logic:
 
 ```
-event.event
+event.event (type)?
   |
-  +-- dsync.activated       --> Link directory_id to organization
+  +-- dsync.activated
+  |     |
+  |     +-> Save directory_id → Link to organization_id in your DB
+  |     +-> Mark directory as "active" state
   |
-  +-- dsync.deleted         --> Unlink directory, soft-delete all users/groups
+  +-- dsync.deleted
+  |     |
+  |     +-> Find organization by directory_id
+  |     +-> Mark all users from this directory as deleted OR hard delete
+  |     +-> Remove directory association
+  |     +-> DO NOT wait for individual dsync.user.deleted events
   |
-  +-- dsync.user.created    --> INSERT user record
+  +-- dsync.user.created
+  |     |
+  |     +-> event.data: Extract user attributes (email, first_name, last_name, etc.)
+  |     +-> Create user in your DB, link to organization via directory_id
+  |     +-> Check event.data.state: "active" vs "inactive"
+  |     +-> Optional: Send welcome email if state = "active"
   |
-  +-- dsync.user.updated    --> UPDATE user record (check state field)
+  +-- dsync.user.updated
+  |     |
+  |     +-> event.data: New user state
+  |     +-> event.data.previous_attributes: What changed
+  |     +-> Update user record in your DB
+  |     +-> CRITICAL: Check if state changed to "inactive" (soft deletion)
+  |     +-> If state = "inactive" → Revoke access, suspend user, or delete per your policy
   |
-  +-- dsync.user.deleted    --> DELETE user record (rare - see Note)
+  +-- dsync.user.deleted
+  |     |
+  |     +-> Hard delete user from directory
+  |     +-> Remove from your DB OR mark as permanently deleted
+  |     +-> Rare: Most providers use dsync.user.updated with state="inactive" instead
   |
-  +-- dsync.group.created   --> INSERT group record
+  +-- dsync.group.created
+  |     |
+  |     +-> Save group (id, name, directory_id) to your DB
+  |     +-> DO NOT assign users yet — wait for dsync.group.user_added events
   |
-  +-- dsync.group.updated   --> UPDATE group record
+  +-- dsync.group.updated
+  |     |
+  |     +-> Update group name or attributes
   |
-  +-- dsync.group.deleted   --> DELETE group record
+  +-- dsync.group.deleted
+  |     |
+  |     +-> Remove group from your DB
+  |     +-> DO NOT remove user-group memberships manually
+  |     +-> WorkOS sends dsync.group.user_removed events first
+  |
+  +-- dsync.group.user_added
+  |     |
+  |     +-> event.data.user.id: User to add
+  |     +-> event.data.group.id: Group to add them to
+  |     +-> Create membership record in your DB
+  |     +-> Apply group-based permissions/roles
+  |
+  +-- dsync.group.user_removed
+        |
+        +-> Remove user from group membership
+        +-> Revoke group-based permissions/roles
 ```
 
-### Critical Event Patterns
+### Handling Inactive Users (CRITICAL)
 
-**dsync.activated (Setup)**
+**Policy decision required:**
+
+```
+When user state becomes "inactive"?
+  |
+  +-- Option A: Soft delete (recommended for compliance)
+  |     |
+  |     +-> Mark user.deleted_at = now()
+  |     +-> Revoke all active sessions
+  |     +-> Keep user data for audit trail
+  |
+  +-- Option B: Hard delete (WorkOS default for new environments after Oct 2023)
+  |     |
+  |     +-> Delete user record entirely
+  |     +-> WorkOS may auto-delete inactive users
+  |     +-> Contact WorkOS support to change this behavior
+```
+
+**Check your WorkOS environment settings** — newer environments delete inactive users automatically.
+
+### Event Ordering Guarantees
+
+**WorkOS guarantees:**
+
+- Events arrive in causal order per resource (per user, per group)
+- No guarantee of global ordering across resources
+
+**Example initial sync flow:**
+
+1. `dsync.activated` (directory connected)
+2. Multiple `dsync.user.created` (all existing users, any order)
+3. Multiple `dsync.group.created` (all existing groups, any order)
+4. Multiple `dsync.group.user_added` (memberships, any order)
+
+**Handle idempotently:** Same event may arrive twice if webhook retry occurs.
+
+## Step 7: Store Directory Data (Schema Guide)
+
+Recommended database schema:
+
+### Directories Table
+
+```sql
+CREATE TABLE directories (
+  id UUID PRIMARY KEY,
+  workos_directory_id TEXT UNIQUE NOT NULL,  -- from event.data.id
+  organization_id UUID REFERENCES organizations(id),
+  state TEXT NOT NULL,  -- 'active', 'deleting', 'invalid_credentials'
+  provider TEXT,  -- 'okta', 'azure', 'google', etc.
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
+);
+```
+
+### Users Table (Add Directory Columns)
+
+```sql
+ALTER TABLE users ADD COLUMN workos_user_id TEXT UNIQUE;
+ALTER TABLE users ADD COLUMN directory_id UUID REFERENCES directories(id);
+ALTER TABLE users ADD COLUMN directory_state TEXT;  -- 'active', 'inactive'
+ALTER TABLE users ADD COLUMN directory_raw_attributes JSONB;  -- custom attributes
+```
+
+### Groups Table
+
+```sql
+CREATE TABLE directory_groups (
+  id UUID PRIMARY KEY,
+  workos_group_id TEXT UNIQUE NOT NULL,
+  directory_id UUID REFERENCES directories(id),
+  name TEXT NOT NULL,
+  raw_attributes JSONB,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
+);
+```
+
+### Group Memberships Table
+
+```sql
+CREATE TABLE directory_group_memberships (
+  user_id UUID REFERENCES users(id),
+  group_id UUID REFERENCES directory_groups(id),
+  created_at TIMESTAMP,
+  PRIMARY KEY (user_id, group_id)
+);
+```
+
+**Index requirements:**
+
+- `workos_user_id` (unique, for lookups)
+- `workos_group_id` (unique, for lookups)
+- `directory_id` (for org-scoped queries)
+
+## Step 8: Fetch Directory Data (On-Demand API Calls)
+
+Webhooks are primary data source, but SDK provides query APIs for:
+
+- Initial data loading (if not using webhook backfill)
+- Manual sync triggers
+- Displaying directory status in admin UI
+
+### List Directories
 
 ```typescript
-// Save directory connection
-await db.organizations.update({
-  where: { id: event.data.organization_id },
-  data: { directory_id: event.data.id },
+import { workos } from '@/lib/workos';
+
+const { data: directories } = await workos.directorySync.listDirectories({
+  organization: 'org_123',  // Optional: filter by organization
 });
 ```
 
-**dsync.user.created (Provisioning)**
+### List Users in Directory
 
 ```typescript
-// Create user in your system
-await db.users.create({
-  data: {
-    id: event.data.id, // Directory user ID
-    email: event.data.emails[0].value,
-    first_name: event.data.first_name,
-    last_name: event.data.last_name,
-    directory_id: event.data.directory_id,
-    state: event.data.state, // active/inactive
-    raw_attributes: event.data.raw_attributes, // Custom attrs
-  },
+const { data: users } = await workos.directorySync.listUsers({
+  directory: 'directory_123',
+  limit: 100,  // Paginate if >100 users
 });
-```
 
-**dsync.user.updated (Critical State Handling)**
-
-```typescript
-// Check for state changes (active -> inactive is soft delete)
-if (event.data.state === 'inactive') {
-  // Soft delete: disable access but retain data
-  await db.users.update({
-    where: { id: event.data.id },
-    data: { 
-      active: false, 
-      deactivated_at: new Date() 
-    },
-  });
-} else {
-  // Regular update
-  await db.users.update({
-    where: { id: event.data.id },
-    data: {
-      email: event.data.emails[0].value,
-      first_name: event.data.first_name,
-      last_name: event.data.last_name,
-      custom_attributes: event.data.custom_attributes,
-    },
-  });
+// Check for pagination
+if (users.list_metadata.after) {
+  // Fetch next page with after: users.list_metadata.after
 }
 ```
 
-**Important:** Most providers use `state: inactive` for deprovisioning, NOT `dsync.user.deleted`. Always check `state` in update events.
-
-**dsync.deleted (Teardown)**
+### List Groups in Directory
 
 ```typescript
-// Directory deleted - clean up all associated data
-await db.users.updateMany({
-  where: { directory_id: event.data.id },
-  data: { active: false, directory_id: null },
-});
-
-await db.organizations.update({
-  where: { directory_id: event.data.id },
-  data: { directory_id: null },
+const { data: groups } = await workos.directorySync.listGroups({
+  directory: 'directory_123',
 });
 ```
 
-**Do NOT delete user records immediately** - soft delete for audit trail.
-
-### Event Payload Access
-
-Event data is in `event.data` object:
-
-- `event.data.id` - Resource ID (user/group/directory)
-- `event.data.directory_id` - Parent directory ID
-- `event.data.organization_id` - Your organization mapping
-- `event.data.state` - `active` or `inactive` (users only)
-- `event.data.previous_attributes` - Changed fields (update events)
-
-Check WebFetch docs for complete attribute schemas.
-
-## Step 6: Database Schema Setup
-
-You need tables for users, groups, and group memberships.
-
-### Minimum Required Tables
-
-```sql
--- Directory users
-CREATE TABLE directory_users (
-  id VARCHAR(255) PRIMARY KEY,           -- WorkOS user ID
-  directory_id VARCHAR(255) NOT NULL,     -- WorkOS directory ID
-  organization_id VARCHAR(255) NOT NULL,  -- Your org ID
-  email VARCHAR(255) NOT NULL,
-  first_name VARCHAR(255),
-  last_name VARCHAR(255),
-  state VARCHAR(50) NOT NULL,             -- active/inactive
-  raw_attributes JSONB,                   -- Full directory data
-  custom_attributes JSONB,                -- Mapped custom fields
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
--- Directory groups
-CREATE TABLE directory_groups (
-  id VARCHAR(255) PRIMARY KEY,           -- WorkOS group ID
-  directory_id VARCHAR(255) NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  raw_attributes JSONB,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
--- Group memberships (for dsync.group.user_added events)
-CREATE TABLE directory_group_members (
-  group_id VARCHAR(255) NOT NULL,
-  user_id VARCHAR(255) NOT NULL,
-  PRIMARY KEY (group_id, user_id)
-);
-```
-
-**ORM users:** Translate to Prisma/TypeORM/Drizzle schemas. Keep `id` as string, not auto-increment.
-
-## Step 7: Register Webhook URL
-
-1. Go to https://dashboard.workos.com/webhooks
-2. Click "Add Endpoint"
-3. Enter your webhook URL: `https://yourdomain.com/webhooks/workos`
-4. Select events (select all `dsync.*` events)
-5. Copy webhook secret to `WORKOS_WEBHOOK_SECRET` env var
-
-**For local development:**
-
-Use ngrok or similar tunnel:
-
-```bash
-ngrok http 3000
-# Copy https://xyz.ngrok.io URL
-# Register https://xyz.ngrok.io/webhooks/workos in dashboard
-```
-
-## Step 8: Handle Group Membership Events (Optional)
-
-If using groups for role/permission management, handle these events:
+### Get User Details
 
 ```typescript
-// dsync.group.user_added
-await db.directory_group_members.create({
-  data: {
-    group_id: event.data.id,
-    user_id: event.data.user.id,
-  },
+const user = await workos.directorySync.getUser({
+  user: 'directory_user_123',
 });
 
-// dsync.group.user_removed  
-await db.directory_group_members.delete({
-  where: {
-    group_id_user_id: {
-      group_id: event.data.id,
-      user_id: event.data.user.id,
-    },
-  },
-});
+console.log(user.emails[0].value);  // Primary email
+console.log(user.state);  // 'active' or 'inactive'
+console.log(user.custom_attributes);  // Provider-specific attributes
 ```
 
-Check WebFetch docs for group event payloads.
+**When to use API calls vs webhooks:**
 
-## Step 9: Test with Directory Provider
-
-### Setup Test Directory
-
-1. In WorkOS dashboard, go to "Directory Sync"
-2. Click "Add Directory"
-3. Choose provider (Okta, Azure AD, Google Workspace, etc.)
-4. Follow provider-specific setup (requires admin access)
-5. Complete connection setup
-
-### Trigger Test Events
-
-In your directory provider:
-
-1. **Create user** → Should trigger `dsync.user.created`
-2. **Update user email** → Should trigger `dsync.user.updated`
-3. **Disable user** → Should trigger `dsync.user.updated` with `state: inactive`
-4. **Create group** → Should trigger `dsync.group.created`
-5. **Add user to group** → Should trigger `dsync.group.user_added`
-
-### Monitor Webhook Logs
-
-Check WorkOS dashboard → Webhooks → Endpoint → Recent Deliveries
-
-Look for:
-- 200 responses (success)
-- 4xx/5xx responses (failures to fix)
-- Payload data matches your expectations
+- **Webhooks:** Real-time updates (required)
+- **API calls:** Initial sync, status checks, admin UI display
 
 ## Verification Checklist (ALL MUST PASS)
 
-Run these commands to confirm implementation:
+Run these commands in your project directory:
 
 ```bash
-# 1. Check webhook endpoint exists
-grep -r "workos.webhooks.constructEvent" . || echo "FAIL: No webhook verification found"
+# 1. Check environment variables
+grep -E "WORKOS_API_KEY|WORKOS_CLIENT_ID|WORKOS_WEBHOOK_SECRET" .env* || echo "FAIL: Missing env vars"
 
-# 2. Check environment variables are set
-env | grep -E "WORKOS_(API_KEY|WEBHOOK_SECRET)" || echo "FAIL: Missing env vars"
+# 2. Check webhook endpoint exists
+find . -path "*/api/webhooks/workos*" -o -path "*/webhooks/workos*" | head -1 || echo "FAIL: No webhook endpoint"
 
-# 3. Check database schema exists (example for PostgreSQL)
-psql -U user -d dbname -c "\d directory_users" || echo "FAIL: Missing directory_users table"
+# 3. Check SDK is installed
+ls node_modules/@workos-inc/node/package.json 2>/dev/null || echo "FAIL: SDK not installed"
 
-# 4. Test webhook endpoint responds (local dev server must be running)
-curl -X POST http://localhost:3000/webhooks/workos \
-  -H "Content-Type: application/json" \
-  -d '{"test": true}' \
-  && echo "Endpoint accessible" || echo "FAIL: Endpoint not found"
+# 4. Check signature verification in webhook
+grep -r "constructEvent\|verifySignature" . --include="*.ts" --include="*.js" || echo "WARN: No signature verification found"
 
-# 5. Verify SDK installed
-npm ls @workos-inc/node || echo "FAIL: WorkOS SDK not installed"
+# 5. Check event handlers exist
+grep -r "dsync\.user\.created\|dsync\.user\.updated" . --include="*.ts" --include="*.js" || echo "FAIL: No event handlers"
 
-# 6. Check webhook registered in dashboard
-echo "MANUAL: Verify webhook endpoint exists at dashboard.workos.com/webhooks"
+# 6. Build succeeds
+npm run build || yarn build || pnpm build
 ```
 
-**All checks must pass before marking integration complete.**
+**Manual verification:**
+
+1. Go to WorkOS Dashboard → Directories
+2. Send test `dsync.user.created` event
+3. Check webhook endpoint logs — should receive and process event
+4. Check database — test user should appear
+
+**Production readiness:**
+
+- [ ] Webhook endpoint is publicly accessible (not localhost)
+- [ ] HTTPS enabled on webhook endpoint
+- [ ] Signature verification is NOT commented out
+- [ ] Event handlers are idempotent (safe to run twice)
+- [ ] Database has indexes on `workos_user_id` and `workos_group_id`
 
 ## Error Recovery
 
-### "Webhook signature verification failed"
+### "Invalid signature" (401 from webhook)
 
-**Root cause:** Signature mismatch between WorkOS and your handler.
+**Root cause:** Signature verification failing.
 
-Fixes:
-1. Verify `WORKOS_WEBHOOK_SECRET` matches dashboard value exactly
-2. Ensure you're using RAW body (string), not parsed JSON
-3. Check signature header name is exactly `workos-signature` (lowercase)
-4. Confirm no proxy/middleware is modifying request body or headers
+**Fixes:**
 
-**Framework-specific issues:**
+1. Check `WORKOS_WEBHOOK_SECRET` exactly matches Dashboard value (no extra spaces)
+2. Check you're passing raw request body to `constructEvent` (not parsed JSON)
+3. For Next.js: Ensure `export const config = { api: { bodyParser: false } }` in pages/api
+4. For Express: Use `express.raw({ type: 'application/json' })` middleware
 
-- Next.js: Add `export const config = { api: { bodyParser: false } }` to pages API route
-- Express: Use `express.raw()` middleware, not `express.json()`
+### "User already exists" on dsync.user.created
 
-### "dsync.user.updated not deactivating users"
+**Root cause:** Event arrived twice (webhook retry) or initial sync collision.
 
-**Root cause:** Not checking `state` field in update events.
-
-Fix:
-1. Add conditional: `if (event.data.state === 'inactive')`
-2. Implement soft delete logic (disable access, don't delete record)
-3. After Oct 2023, inactive users auto-delete in WorkOS - handle `dsync.user.deleted` too
-
-### "Database constraint violation on user insert"
-
-**Root cause:** Duplicate `dsync.user.created` events during initial sync.
-
-Fix:
-1. Use UPSERT pattern: `INSERT ... ON CONFLICT (id) DO UPDATE`
-2. Or check if user exists before insert
-3. Initial directory sync sends create events for ALL existing users
-
-### "Missing custom attributes"
-
-**Root cause:** Custom attributes not configured in WorkOS directory mapping.
-
-Fix:
-1. Go to WorkOS dashboard → Directory → Attributes tab
-2. Map provider attributes to custom fields (e.g., `department`, `title`)
-3. Access via `event.data.custom_attributes` or `event.data.raw_attributes`
-4. Auto-mapped vs custom-mapped: see WebFetch docs on attributes
-
-### "Webhook endpoint returns 200 but database not updating"
-
-**Root cause:** Silent error in event handler.
-
-Debug:
-1. Add logging: `console.log('Processing event:', event.event, event.data.id)`
-2. Wrap handler in try/catch, log errors
-3. Check database connection is established
-4. Verify event handler is actually called (not just signature verification)
-
-### "Group membership out of sync"
-
-**Root cause:** Missing `dsync.group.user_added/removed` handlers.
-
-Fix:
-1. Implement handlers for both events (see Step 8)
-2. Handle initial sync: `dsync.group.created` includes members in payload
-3. Create junction table records for each member during group creation
-
-### "Too many webhook retries in dashboard"
-
-**Root cause:** Handler returning non-200 response.
-
-Fix:
-1. Always return 200 OK, even if processing fails (idempotency)
-2. Log errors internally, don't expose to WorkOS
-3. Implement queue for processing if operations are slow
-4. Handle duplicate events gracefully (use event.id for deduplication)
-
-## Advanced Patterns
-
-### Idempotent Event Processing
-
-Webhooks may be delivered multiple times. Use event ID for deduplication:
+**Fix:**
 
 ```typescript
-// Check if event already processed
-const processed = await db.webhook_events.findUnique({
-  where: { id: event.id },
-});
-
-if (processed) {
-  return new Response('Already processed', { status: 200 });
-}
-
-// Process event...
-
-// Mark as processed
-await db.webhook_events.create({
-  data: { id: event.id, processed_at: new Date() },
+// Use upsert pattern
+await db.users.upsert({
+  where: { workos_user_id: event.data.id },
+  update: { /* updated fields */ },
+  create: { /* new user fields */ },
 });
 ```
 
-### Async Processing with Queue
+### "Directory not found" in event handler
 
-For high-volume directories, process events asynchronously:
+**Root cause:** `dsync.activated` event not processed yet, or directory deleted.
 
-```typescript
-export async function POST(request: Request) {
-  // Verify signature
-  const event = workos.webhooks.constructEvent({...});
+**Fix:**
 
-  // Queue for processing
-  await queue.add('directory-sync', { event });
+1. Check directory exists in your DB before processing user/group events
+2. If missing, fetch from WorkOS API: `workos.directorySync.getDirectory()`
+3. Handle race condition: queue event for retry if directory not yet synced
 
-  // Return 200 immediately
-  return new Response('Queued', { status: 200 });
-}
-```
+### Events arrive out of order
 
-Worker processes event from queue, allowing webhook to respond quickly.
+**Example:** `dsync.group.user_added` before `dsync.group.created`.
 
-### Handling Previous Attributes
+**Root cause:** Network timing, not WorkOS ordering issue.
 
-`dsync.user.updated` includes `previous_attributes` for change tracking:
+**Fix:**
 
 ```typescript
-if (event.data.previous_attributes?.email) {
-  // Email changed - send notification
-  await sendEmailChangeNotification({
-    old: event.data.previous_attributes.email,
-    new: event.data.emails[0].value,
+// Check if group exists before adding user
+const group = await db.groups.findUnique({ 
+  where: { workos_group_id: event.data.group.id } 
+});
+
+if (!group) {
+  // Fetch group from API and create
+  const groupData = await workos.directorySync.getGroup({ 
+    group: event.data.group.id 
   });
+  await db.groups.create({ data: groupData });
 }
-```
 
-Only changed fields appear in `previous_attributes`.
-
-## Related Skills
-
-- **workos-sso**: Single Sign-On integration (often paired with Directory Sync)
-- **workos-admin-portal**: Self-service directory
+//

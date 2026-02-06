@@ -38,6 +38,16 @@ When a user needs help with WorkOS, consult this table to load the right skill.
 | Set up Custom Domains                         | workos-custom-domains               | workos.com/docs/custom-domains/index |
 | Set up Audit Logs                             | workos-audit-logs                   | workos.com/docs/audit-logs/metadata-schema |
 | Enable Admin Portal                           | workos-admin-portal                 | workos.com/docs/admin-portal/index |
+| Implement Admin Portal API Reference          | workos-api-admin-portal             | workos.com/docs/reference/admin-portal |
+| Implement Audit Logs API Reference            | workos-api-audit-logs               | workos.com/docs/reference/audit-logs |
+| Implement AuthKit API Reference               | workos-api-authkit                  | workos.com/docs/reference/authkit |
+| Implement Directory Sync API Reference        | workos-api-directory-sync           | workos.com/docs/reference/directory-sync |
+| Implement Events API Reference                | workos-api-events                   | workos.com/docs/reference/events |
+| Implement Organizations API Reference         | workos-api-organization             | workos.com/docs/reference/organization |
+| Implement Roles & Permissions API Reference   | workos-api-roles                    | workos.com/docs/reference/roles |
+| Implement SSO API Reference                   | workos-api-sso                      | workos.com/docs/reference/sso |
+| Implement Vault API Reference                 | workos-api-vault                    | workos.com/docs/reference/vault |
+| Implement Widgets API Reference               | workos-api-widgets                  | workos.com/docs/reference/widgets |
 | Migrate from Supabase Auth                   | workos-migrate-supabase-auth        | workos.com/docs/migrate/supabase |
 | Migrate from Stytch                          | workos-migrate-stytch               | workos.com/docs/migrate/stytch |
 | Migrate from the standalone SSO API          | workos-migrate-the-standalone-sso-api | workos.com/docs/migrate/standalone-sso |
