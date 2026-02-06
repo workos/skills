@@ -1,0 +1,24 @@
+{
+  "name": "workos-migrate-the-standalone-sso-api",
+  "description": "Migrate to WorkOS from the standalone SSO API.",
+  "version": "0.1.0",
+  "author": {
+    "name": "WorkOS",
+    "email": "support@workos.com"
+  },
+  "homepage": "https://workos.com/docs",
+  "repository": "https://github.com/workos/skills",
+  "license": "MIT",
+  "category": "authentication",
+  "keywords": [
+    "workos",
+    "migrate",
+    "the",
+    "standalone",
+    "sso",
+    "api",
+    "saml",
+    "oidc",
+    "migration"
+  ]
+}

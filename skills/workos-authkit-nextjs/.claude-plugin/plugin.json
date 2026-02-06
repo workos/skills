@@ -1,0 +1,19 @@
+{
+  "name": "workos-authkit-nextjs",
+  "description": "Integrate WorkOS AuthKit with Next.js App Router (13+). Server-side rendering required.",
+  "version": "0.1.0",
+  "author": {
+    "name": "WorkOS",
+    "email": "support@workos.com"
+  },
+  "homepage": "https://workos.com/docs",
+  "repository": "https://github.com/workos/skills",
+  "license": "MIT",
+  "category": "authentication",
+  "keywords": [
+    "workos",
+    "authkit",
+    "nextjs",
+    "authentication"
+  ]
+}

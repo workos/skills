@@ -1,0 +1,19 @@
+{
+  "name": "workos-api-widgets",
+  "description": "WorkOS Widgets API endpoints — generate widget tokens and manage widget configuration.",
+  "version": "0.1.0",
+  "author": {
+    "name": "WorkOS",
+    "email": "support@workos.com"
+  },
+  "homepage": "https://workos.com/docs",
+  "repository": "https://github.com/workos/skills",
+  "license": "MIT",
+  "category": "api-reference",
+  "keywords": [
+    "workos",
+    "api",
+    "widgets",
+    "api-reference"
+  ]
+}

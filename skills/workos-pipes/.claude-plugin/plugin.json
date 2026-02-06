@@ -1,0 +1,17 @@
+{
+  "name": "workos-pipes",
+  "description": "Connect external services and data sources with WorkOS Pipes.",
+  "version": "0.1.0",
+  "author": {
+    "name": "WorkOS",
+    "email": "support@workos.com"
+  },
+  "homepage": "https://workos.com/docs",
+  "repository": "https://github.com/workos/skills",
+  "license": "MIT",
+  "category": "enterprise",
+  "keywords": [
+    "workos",
+    "pipes"
+  ]
+}

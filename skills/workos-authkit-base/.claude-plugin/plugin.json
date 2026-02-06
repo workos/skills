@@ -1,0 +1,19 @@
+{
+  "name": "workos-authkit-base",
+  "description": "Architectural reference for WorkOS AuthKit integrations. Fetch README first for implementation details.",
+  "version": "0.1.0",
+  "author": {
+    "name": "WorkOS",
+    "email": "support@workos.com"
+  },
+  "homepage": "https://workos.com/docs",
+  "repository": "https://github.com/workos/skills",
+  "license": "MIT",
+  "category": "authentication",
+  "keywords": [
+    "workos",
+    "authkit",
+    "base",
+    "authentication"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "name": "workos-api-directory-sync",
+  "description": "WorkOS Directory Sync API endpoints — directories, users, groups, and sync events.",
+  "version": "0.1.0",
+  "author": {
+    "name": "WorkOS",
+    "email": "support@workos.com"
+  },
+  "homepage": "https://workos.com/docs",
+  "repository": "https://github.com/workos/skills",
+  "license": "MIT",
+  "category": "api-reference",
+  "keywords": [
+    "workos",
+    "api",
+    "directory",
+    "sync",
+    "api-reference"
+  ]
+}

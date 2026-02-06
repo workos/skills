@@ -1,0 +1,20 @@
+{
+  "name": "workos-authkit-react-router",
+  "description": "Integrate WorkOS AuthKit with React Router applications. Supports v6 and v7 (Framework, Data, Declarative modes). Use when project uses react-router, react-router-dom, or mentions React Router authentication.",
+  "version": "0.1.0",
+  "author": {
+    "name": "WorkOS",
+    "email": "support@workos.com"
+  },
+  "homepage": "https://workos.com/docs",
+  "repository": "https://github.com/workos/skills",
+  "license": "MIT",
+  "category": "authentication",
+  "keywords": [
+    "workos",
+    "authkit",
+    "react",
+    "router",
+    "authentication"
+  ]
+}

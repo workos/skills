@@ -1,0 +1,20 @@
+{
+  "name": "workos-migrate-better-auth",
+  "description": "Migrate to WorkOS from Better Auth.",
+  "version": "0.1.0",
+  "author": {
+    "name": "WorkOS",
+    "email": "support@workos.com"
+  },
+  "homepage": "https://workos.com/docs",
+  "repository": "https://github.com/workos/skills",
+  "license": "MIT",
+  "category": "migration",
+  "keywords": [
+    "workos",
+    "migrate",
+    "better",
+    "auth",
+    "migration"
+  ]
+}

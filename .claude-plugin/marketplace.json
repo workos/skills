@@ -1,34 +1,885 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "workos-skills",
+  "description": "Official WorkOS skills for AI coding agents — AuthKit, SSO, Directory Sync, RBAC, Vault, Migrations, and API references",
   "owner": {
     "name": "WorkOS",
     "email": "support@workos.com"
   },
   "metadata": {
     "version": "0.1.0",
-    "description": "WorkOS Skills for AI coding agents — AuthKit, SSO, Directory Sync, RBAC, and more"
+    "description": "Complete WorkOS toolkit with 44 skills for authentication, enterprise features, migrations, and API integration"
   },
   "plugins": [
     {
-      "name": "workos",
-      "source": ".",
-      "description": "WorkOS authentication and enterprise feature integration skills",
+      "name": "workos-admin-portal",
+      "description": "Enable self-service admin portal for your enterprise customers.",
       "version": "0.1.0",
       "author": {
-        "name": "Nick Nisi",
-        "email": "nick@nisi.org"
+        "name": "WorkOS",
+        "email": "support@workos.com"
       },
+      "source": "./skills/workos-admin-portal",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "enterprise",
       "keywords": [
         "workos",
-        "authentication",
+        "admin",
+        "portal"
+      ]
+    },
+    {
+      "name": "workos-api-admin-portal",
+      "description": "WorkOS Admin Portal API endpoints — generate portal links for customer self-service.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-api-admin-portal",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "api-reference",
+      "keywords": [
+        "workos",
+        "api",
+        "admin",
+        "portal",
+        "api-reference"
+      ]
+    },
+    {
+      "name": "workos-api-audit-logs",
+      "description": "WorkOS Audit Logs API endpoints — create events, manage schemas, exports, and retention.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-api-audit-logs",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "api-reference",
+      "keywords": [
+        "workos",
+        "api",
+        "audit",
+        "logs",
+        "api-reference"
+      ]
+    },
+    {
+      "name": "workos-api-authkit",
+      "description": "WorkOS AuthKit API endpoints — users, sessions, authentication, MFA, and organization memberships.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-api-authkit",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "authentication",
+      "keywords": [
+        "workos",
+        "api",
         "authkit",
+        "authentication",
+        "api-reference"
+      ]
+    },
+    {
+      "name": "workos-api-directory-sync",
+      "description": "WorkOS Directory Sync API endpoints — directories, users, groups, and sync events.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-api-directory-sync",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "api-reference",
+      "keywords": [
+        "workos",
+        "api",
+        "directory",
+        "sync",
+        "api-reference"
+      ]
+    },
+    {
+      "name": "workos-api-events",
+      "description": "WorkOS Events/Webhooks API endpoints — list events, manage webhook endpoints.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-api-events",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "api-reference",
+      "keywords": [
+        "workos",
+        "api",
+        "events",
+        "api-reference"
+      ]
+    },
+    {
+      "name": "workos-api-organization",
+      "description": "WorkOS Organizations API endpoints — create, update, list, and manage organizations.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-api-organization",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "api-reference",
+      "keywords": [
+        "workos",
+        "api",
+        "organization",
+        "api-reference"
+      ]
+    },
+    {
+      "name": "workos-api-roles",
+      "description": "WorkOS RBAC API endpoints — roles, permissions, and role assignments.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-api-roles",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "api-reference",
+      "keywords": [
+        "workos",
+        "api",
+        "roles",
+        "api-reference"
+      ]
+    },
+    {
+      "name": "workos-api-sso",
+      "description": "WorkOS SSO API endpoints — connections, profiles, authorization URLs, and logout.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-api-sso",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "authentication",
+      "keywords": [
+        "workos",
+        "api",
         "sso",
         "saml",
         "oidc",
-        "enterprise",
-        "directory-sync",
+        "api-reference"
+      ]
+    },
+    {
+      "name": "workos-api-vault",
+      "description": "WorkOS Vault API endpoints — create, read, update, delete encrypted objects.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-api-vault",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "api-reference",
+      "keywords": [
+        "workos",
+        "api",
+        "vault",
+        "api-reference"
+      ]
+    },
+    {
+      "name": "workos-api-widgets",
+      "description": "WorkOS Widgets API endpoints — generate widget tokens and manage widget configuration.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-api-widgets",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "api-reference",
+      "keywords": [
+        "workos",
+        "api",
+        "widgets",
+        "api-reference"
+      ]
+    },
+    {
+      "name": "workos-audit-logs",
+      "description": "Implement audit logging for compliance and security.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-audit-logs",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "enterprise",
+      "keywords": [
+        "workos",
+        "audit",
+        "logs"
+      ]
+    },
+    {
+      "name": "workos-authkit-base",
+      "description": "Architectural reference for WorkOS AuthKit integrations. Fetch README first for implementation details.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-authkit-base",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "authentication",
+      "keywords": [
+        "workos",
+        "authkit",
+        "base",
+        "authentication"
+      ]
+    },
+    {
+      "name": "workos-authkit-nextjs",
+      "description": "Integrate WorkOS AuthKit with Next.js App Router (13+). Server-side rendering required.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-authkit-nextjs",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "authentication",
+      "keywords": [
+        "workos",
+        "authkit",
+        "nextjs",
+        "authentication"
+      ]
+    },
+    {
+      "name": "workos-authkit-react",
+      "description": "Integrate WorkOS AuthKit with React single-page applications. Client-side only authentication. Use when the project is a React SPA without Next.js or React Router.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-authkit-react",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "authentication",
+      "keywords": [
+        "workos",
+        "authkit",
+        "react",
+        "authentication"
+      ]
+    },
+    {
+      "name": "workos-authkit-react-router",
+      "description": "Integrate WorkOS AuthKit with React Router applications. Supports v6 and v7 (Framework, Data, Declarative modes). Use when project uses react-router, react-router-dom, or mentions React Router authentication.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-authkit-react-router",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "authentication",
+      "keywords": [
+        "workos",
+        "authkit",
+        "react",
+        "router",
+        "authentication"
+      ]
+    },
+    {
+      "name": "workos-authkit-tanstack-start",
+      "description": "Integrate WorkOS AuthKit with TanStack Start applications. Full-stack TypeScript with server functions. Use when project uses TanStack Start, @tanstack/start, or vinxi.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-authkit-tanstack-start",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "authentication",
+      "keywords": [
+        "workos",
+        "authkit",
+        "tanstack",
+        "start",
+        "authentication"
+      ]
+    },
+    {
+      "name": "workos-authkit-vanilla-js",
+      "description": "Integrate WorkOS AuthKit with vanilla JavaScript applications. No framework required, browser-only. Use when project is plain HTML/JS, doesn't use React/Vue/etc, or mentions vanilla JavaScript authentication.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-authkit-vanilla-js",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "authentication",
+      "keywords": [
+        "workos",
+        "authkit",
+        "vanilla",
+        "js",
+        "authentication"
+      ]
+    },
+    {
+      "name": "workos-custom-domains",
+      "description": "Configure custom domains for WorkOS-hosted pages.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-custom-domains",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "enterprise",
+      "keywords": [
+        "workos",
+        "custom",
+        "domains"
+      ]
+    },
+    {
+      "name": "workos-directory-sync",
+      "description": "Sync user directories from identity providers like Okta, Azure AD, and Google.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-directory-sync",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "enterprise",
+      "keywords": [
+        "workos",
+        "directory",
+        "sync"
+      ]
+    },
+    {
+      "name": "workos-domain-verification",
+      "description": "Verify organization domains for SSO and directory sync.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-domain-verification",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "enterprise",
+      "keywords": [
+        "workos",
+        "domain",
+        "verification"
+      ]
+    },
+    {
+      "name": "workos-email",
+      "description": "Configure email delivery for WorkOS authentication flows.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-email",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "enterprise",
+      "keywords": [
+        "workos",
+        "email"
+      ]
+    },
+    {
+      "name": "workos-events",
+      "description": "Subscribe to and handle WorkOS webhook events.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-events",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "enterprise",
+      "keywords": [
+        "workos",
+        "events"
+      ]
+    },
+    {
+      "name": "workos-feature-flags",
+      "description": "Manage feature flags and rollouts with WorkOS.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-feature-flags",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "enterprise",
+      "keywords": [
+        "workos",
+        "feature",
+        "flags"
+      ]
+    },
+    {
+      "name": "workos-fga",
+      "description": "Implement fine-grained authorization with WorkOS FGA.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-fga",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "enterprise",
+      "keywords": [
+        "workos",
+        "fga"
+      ]
+    },
+    {
+      "name": "workos-integrations",
+      "description": "Set up identity provider integrations with WorkOS. Covers SSO, SCIM, and OAuth for 40+ providers.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-integrations",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "enterprise",
+      "keywords": [
+        "workos",
+        "integrations"
+      ]
+    },
+    {
+      "name": "workos-magic-link",
+      "description": "Implement passwordless authentication via Magic Link.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-magic-link",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "authentication",
+      "keywords": [
+        "workos",
+        "magic",
+        "link"
+      ]
+    },
+    {
+      "name": "workos-mfa",
+      "description": "Add multi-factor authentication to your application.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-mfa",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "authentication",
+      "keywords": [
+        "workos",
+        "mfa"
+      ]
+    },
+    {
+      "name": "workos-migrate-auth0",
+      "description": "Migrate to WorkOS from Auth0.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-migrate-auth0",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "migration",
+      "keywords": [
+        "workos",
+        "migrate",
+        "auth0",
+        "migration"
+      ]
+    },
+    {
+      "name": "workos-migrate-aws-cognito",
+      "description": "Migrate to WorkOS from AWS Cognito.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-migrate-aws-cognito",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "migration",
+      "keywords": [
+        "workos",
+        "migrate",
+        "aws",
+        "cognito",
+        "migration"
+      ]
+    },
+    {
+      "name": "workos-migrate-better-auth",
+      "description": "Migrate to WorkOS from Better Auth.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-migrate-better-auth",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "migration",
+      "keywords": [
+        "workos",
+        "migrate",
+        "better",
+        "auth",
+        "migration"
+      ]
+    },
+    {
+      "name": "workos-migrate-clerk",
+      "description": "Migrate to WorkOS from Clerk.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-migrate-clerk",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "migration",
+      "keywords": [
+        "workos",
+        "migrate",
+        "clerk",
+        "migration"
+      ]
+    },
+    {
+      "name": "workos-migrate-descope",
+      "description": "Migrate to WorkOS from Descope.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-migrate-descope",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "migration",
+      "keywords": [
+        "workos",
+        "migrate",
+        "descope",
+        "migration"
+      ]
+    },
+    {
+      "name": "workos-migrate-firebase",
+      "description": "Migrate to WorkOS from Firebase.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-migrate-firebase",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "migration",
+      "keywords": [
+        "workos",
+        "migrate",
+        "firebase",
+        "migration"
+      ]
+    },
+    {
+      "name": "workos-migrate-other-services",
+      "description": "Migrate to WorkOS from other services.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-migrate-other-services",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "migration",
+      "keywords": [
+        "workos",
+        "migrate",
+        "other",
+        "services",
+        "migration"
+      ]
+    },
+    {
+      "name": "workos-migrate-stytch",
+      "description": "Migrate to WorkOS from Stytch.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-migrate-stytch",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "migration",
+      "keywords": [
+        "workos",
+        "migrate",
+        "stytch",
+        "migration"
+      ]
+    },
+    {
+      "name": "workos-migrate-supabase-auth",
+      "description": "Migrate to WorkOS from Supabase Auth.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-migrate-supabase-auth",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "migration",
+      "keywords": [
+        "workos",
+        "migrate",
+        "supabase",
+        "auth",
+        "migration"
+      ]
+    },
+    {
+      "name": "workos-migrate-the-standalone-sso-api",
+      "description": "Migrate to WorkOS from the standalone SSO API.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-migrate-the-standalone-sso-api",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "authentication",
+      "keywords": [
+        "workos",
+        "migrate",
+        "the",
+        "standalone",
+        "sso",
+        "api",
+        "saml",
+        "oidc",
+        "migration"
+      ]
+    },
+    {
+      "name": "workos-pipes",
+      "description": "Connect external services and data sources with WorkOS Pipes.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-pipes",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "enterprise",
+      "keywords": [
+        "workos",
+        "pipes"
+      ]
+    },
+    {
+      "name": "workos-rbac",
+      "description": "Set up role-based access control for your application.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-rbac",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "enterprise",
+      "keywords": [
+        "workos",
         "rbac"
+      ]
+    },
+    {
+      "name": "workos-router",
+      "description": "Route WorkOS requests to the right skill. Load this first for any WorkOS task.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-router",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "enterprise",
+      "keywords": [
+        "workos",
+        "router"
+      ]
+    },
+    {
+      "name": "workos-sso",
+      "description": "Configure Single Sign-On with SAML and OIDC identity providers.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-sso",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "authentication",
+      "keywords": [
+        "workos",
+        "sso",
+        "saml",
+        "oidc"
+      ]
+    },
+    {
+      "name": "workos-vault",
+      "description": "Encrypt, store, and manage sensitive data with WorkOS Vault.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-vault",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "enterprise",
+      "keywords": [
+        "workos",
+        "vault"
+      ]
+    },
+    {
+      "name": "workos-widgets",
+      "description": "Embed WorkOS UI widgets in your application.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos-widgets",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "enterprise",
+      "keywords": [
+        "workos",
+        "widgets"
       ]
     }
   ]
