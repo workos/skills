@@ -1,0 +1,28 @@
+## WorkOS Skills
+
+This repository contains 44 AI agent skills for implementing WorkOS features.
+
+### Getting Started
+
+For any WorkOS task, start with the router skill at `skills/workos-router/SKILL.md`. It maps user intent to the right skill file.
+
+### Skill Categories
+
+- **AuthKit** (6 skills): Framework-specific auth integration — Next.js, React, React Router, TanStack Start, vanilla JS
+- **Features** (16 skills): SSO, Directory Sync, RBAC, FGA, Vault, Events, Audit Logs, Admin Portal, MFA, Magic Link, Feature Flags, Domain Verification, Custom Domains, Email, Pipes, Widgets
+- **Migrations** (10 skills): Auth0, Firebase, Clerk, AWS Cognito, Stytch, Supabase, Descope, Better Auth, standalone SSO, other services
+- **API References** (10 skills): Per-domain API endpoint guides
+- **Routers** (2 skills): Master dispatcher + integrations provider lookup
+
+### How Skills Work
+
+Each skill is a `SKILL.md` file with YAML frontmatter (`name`, `description`) and structured markdown. Skills encode procedural knowledge — numbered steps, decision trees, verification commands, error recovery. They reference WorkOS doc URLs for runtime fetching rather than embedding documentation.
+
+### Development
+
+```bash
+bun run scripts/generate.ts          # generate skill scaffolds
+bun run scripts/refine-batch.ts      # AI-refine skills (needs ANTHROPIC_API_KEY)
+bun run scripts/build-plugin-manifests.ts  # regenerate plugin.json files
+bun test                              # run tests
+```
