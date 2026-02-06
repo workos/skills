@@ -1,0 +1,35 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "workos-skills",
+  "owner": {
+    "name": "WorkOS",
+    "email": "support@workos.com"
+  },
+  "metadata": {
+    "version": "0.1.0",
+    "description": "WorkOS Skills for AI coding agents — AuthKit, SSO, Directory Sync, RBAC, and more"
+  },
+  "plugins": [
+    {
+      "name": "workos",
+      "source": ".",
+      "description": "WorkOS authentication and enterprise feature integration skills",
+      "version": "0.1.0",
+      "author": {
+        "name": "Nick Nisi",
+        "email": "nick@nisi.org"
+      },
+      "keywords": [
+        "workos",
+        "authentication",
+        "authkit",
+        "sso",
+        "saml",
+        "oidc",
+        "enterprise",
+        "directory-sync",
+        "rbac"
+      ]
+    }
+  ]
+}
