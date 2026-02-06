@@ -14,9 +14,10 @@ import type { GeneratedSkill } from "./lib/types.ts";
  *   bun run scripts/refine-batch.ts --model=claude-opus-4-6  # use opus
  */
 
-const SKIP = new Set(["workos-router", "workos-integrations"]);
+const SKIP = new Set(["workos-integrations"]);
 
 const GENERATED_SKILLS = [
+  "workos-router",
   "workos-email",
   "workos-widgets",
   "workos-vault",

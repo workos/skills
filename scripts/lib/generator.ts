@@ -93,7 +93,7 @@ export function generateRouter(
 
   const content = `---
 name: workos-router
-description: Route WorkOS requests to the right skill. Load this first for any WorkOS task.
+description: Identify which WorkOS skill to load based on the user's task — covers AuthKit, SSO, RBAC, FGA, migrations, and all API references.
 ---
 
 <!-- generated -->
@@ -103,6 +103,12 @@ description: Route WorkOS requests to the right skill. Load this first for any W
 ## How to Use
 
 When a user needs help with WorkOS, consult this table to load the right skill.
+
+## Disambiguation Rules
+
+- **Feature skill vs API reference**: Prefer feature skills (e.g., \`workos-sso\`) unless the user explicitly asks about API endpoints, request/response formats, or references "API docs."
+- **AuthKit vs feature**: If the user mentions authentication, login, or sign-up, route to AuthKit (detect framework below). If they mention a specific feature like SSO or MFA by name, route to that feature skill instead.
+- **Multiple features**: Load the most specific skill first. The user can ask for additional skills later.
 
 ## Topic → Skill Map
 
@@ -117,15 +123,17 @@ Then WebFetch the specific section URL for the user's topic.
 
 ## AuthKit Installation Detection
 
-If the user wants to install AuthKit, detect their framework:
+If the user wants to install AuthKit, detect their framework. Check in this order (first match wins):
 
 \`\`\`
-next.config.* → workos-authkit-nextjs
-vite.config.* + react → workos-authkit-react
-react-router in deps → workos-authkit-react-router
-@tanstack/start in deps → workos-authkit-tanstack-start
-No framework detected → workos-authkit-vanilla-js
+1. @tanstack/start in deps     → workos-authkit-tanstack-start
+2. react-router in deps         → workos-authkit-react-router
+3. next.config.*                 → workos-authkit-nextjs
+4. vite.config.* + react in deps → workos-authkit-react
+5. No framework detected         → workos-authkit-vanilla-js
 \`\`\`
+
+Note: Check framework-specific deps (TanStack, React Router) BEFORE generic ones (Next.js, Vite+React) to avoid misrouting projects that use both.
 
 ## General Decision Flow
 
@@ -135,6 +143,8 @@ User request about WorkOS?
   +-- Mentions specific feature? → Load that feature skill
   |
   +-- Wants AuthKit/auth setup? → Detect framework → Load AuthKit skill
+  |
+  +-- Wants API reference? → Load workos-api-* skill for that domain
   |
   +-- Wants integration setup? → Load workos-integrations
   |

@@ -29,13 +29,10 @@ export async function refineSkill(
   const docUrls = extractDocUrls(body);
   const skillName = skill.name;
 
-  const prompt = buildRefinePrompt(
-    skillName,
-    frontmatter,
-    body,
-    docUrls,
-    options.goldStandard,
-  );
+  const isRouter = skillName === "workos-router";
+  const prompt = isRouter
+    ? buildRouterRefinePrompt(skillName, frontmatter, body)
+    : buildRefinePrompt(skillName, frontmatter, body, docUrls, options.goldStandard);
 
   const refined = await callAnthropic(prompt, options);
   const content = ensureMarkers(frontmatter, refined);
@@ -45,6 +42,46 @@ export async function refineSkill(
     content,
     sizeBytes: Buffer.byteLength(content, "utf8"),
   };
+}
+
+/** Build the system + user prompt for router skill refinement */
+function buildRouterRefinePrompt(
+  skillName: string,
+  frontmatter: string,
+  body: string,
+): { system: string; user: string } {
+  const system = `You are a skill refinement agent specializing in ROUTING skills. A router skill is NOT an implementation guide — it is a decision-tree dispatcher that maps user intent to the correct specialized skill.
+
+## What makes a great router skill
+
+1. **Precise disambiguation** — when two skills could match, explicit rules say which one wins
+2. **Priority-ordered detection** — framework/technology detection checks most-specific first
+3. **Clear fallback chain** — what to do when no skill matches, step by step
+4. **Imperative voice** — "Load workos-sso" not "The workos-sso skill can be loaded"
+5. **No implementation details** — the router dispatches, it does NOT teach how to implement features
+6. **Compact lookup table** — easy to scan, consistent formatting
+7. **Edge case coverage** — what if the user mentions multiple features? What if their framework can't be detected?
+
+## Rules for router refinement
+
+1. Output ONLY the skill body (everything after frontmatter). Do NOT include frontmatter or the \`<!-- generated -->\` marker.
+2. PRESERVE the full Topic → Skill Map table exactly as-is (skill names and doc references must not change).
+3. IMPROVE disambiguation rules — add clarity on overlapping intents and priority ordering.
+4. IMPROVE the framework detection section — ensure priority order is explicit and handles ambiguous cases.
+5. IMPROVE the decision flow — make it a clear, unambiguous dispatch tree.
+6. ADD edge case handling (multiple features, unknown framework, vague requests).
+7. KEEP the "If No Skill Matches" fallback with llms.txt.
+8. Do NOT add implementation steps, verification commands, or code examples — this is a router, not a tutorial.`;
+
+  const user = `Refine this router skill "${skillName}". Improve its disambiguation, detection priority, and decision flow while preserving the skill lookup table exactly.
+
+<scaffold>
+${body}
+</scaffold>
+
+Output ONLY the refined skill body markdown. No frontmatter, no \`<!-- generated -->\` marker, no wrapping code fences.`;
+
+  return { system, user };
 }
 
 /** Build the system + user prompt for refinement */
