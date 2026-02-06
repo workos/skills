@@ -12,7 +12,7 @@ Works with Claude Code, Cursor, Codex, Goose, and any agent that supports the sk
 
 ## Skills
 
-### AuthKit (hand-crafted)
+### AuthKit
 
 | Skill | Description |
 |-------|-------------|
@@ -23,7 +23,7 @@ Works with Claude Code, Cursor, Codex, Goose, and any agent that supports the sk
 | `workos-authkit-vanilla-js` | Vanilla JS integration |
 | `workos-authkit-base` | Architecture reference |
 
-### Features (generated)
+### Features
 
 | Skill | Description |
 |-------|-------------|
