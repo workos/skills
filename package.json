@@ -1,0 +1,33 @@
+{
+  "name": "@workos-inc/skills",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "WorkOS Skills for AI coding agents — AuthKit, SSO, Directory Sync, RBAC, and more",
+  "files": [
+    "skills"
+  ],
+  "scripts": {
+    "generate": "bun run scripts/generate.ts",
+    "test": "bun test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "keywords": [
+    "workos",
+    "skills",
+    "authkit",
+    "sso",
+    "claude-code",
+    "ai-agents"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/workos/skills"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "prettier": "^3.8.1",
+    "typescript": "^5.7.0"
+  }
+}
