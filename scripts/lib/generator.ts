@@ -1,0 +1,365 @@
+import type { Section, SkillSpec, GeneratedSkill } from "./types.ts";
+import { HAND_CRAFTED_SKILLS } from "./config.ts";
+import { renderSkill } from "./skill-template.ts";
+
+/**
+ * Generate a SKILL.md for a single feature SkillSpec.
+ */
+export function generateSkill(spec: SkillSpec): GeneratedSkill {
+  const content = renderSkill(spec);
+  return {
+    name: spec.name,
+    path: `skills/${spec.name}/SKILL.md`,
+    content,
+    sizeBytes: Buffer.byteLength(content, "utf8"),
+    generated: true,
+  };
+}
+
+/**
+ * Generate the master router skill.
+ * Maps all available skills (generated + hand-crafted) to their topics.
+ */
+export function generateRouter(
+  specs: SkillSpec[],
+  llmsTxtContent: string,
+): GeneratedSkill {
+  const rows: string[] = [];
+
+  // Add hand-crafted AuthKit skills
+  const authkitSkills = [
+    {
+      intent: "Install AuthKit in Next.js",
+      name: "workos-authkit-nextjs",
+      doc: "workos.com/docs/sdks/authkit-nextjs",
+    },
+    {
+      intent: "Install AuthKit in React SPA",
+      name: "workos-authkit-react",
+      doc: "workos.com/docs/sdks/authkit-react",
+    },
+    {
+      intent: "Install AuthKit with React Router",
+      name: "workos-authkit-react-router",
+      doc: "workos.com/docs/sdks/authkit-react-router",
+    },
+    {
+      intent: "Install AuthKit with TanStack Start",
+      name: "workos-authkit-tanstack-start",
+      doc: "workos.com/docs/sdks/authkit-tanstack-start",
+    },
+    {
+      intent: "Install AuthKit in vanilla JS",
+      name: "workos-authkit-vanilla-js",
+      doc: "workos.com/docs/sdks/authkit-js",
+    },
+    {
+      intent: "AuthKit architecture reference",
+      name: "workos-authkit-base",
+      doc: "workos.com/docs/authkit",
+    },
+  ];
+
+  for (const s of authkitSkills) {
+    rows.push(
+      `| ${s.intent.padEnd(45)} | ${s.name.padEnd(35)} | ${s.doc} |`,
+    );
+  }
+
+  // Add generated feature skills
+  for (const spec of specs) {
+    // Skip migration sub-skills from the main table — group them
+    if (spec.anchor === "migrate") continue;
+    const doc =
+      spec.docUrls[0]?.replace("https://", "") ?? `workos.com/docs/${spec.anchor}`;
+    const intent = intentFromSpec(spec);
+    rows.push(
+      `| ${intent.padEnd(45)} | ${spec.name.padEnd(35)} | ${doc} |`,
+    );
+  }
+
+  // Add migration skills as a group
+  const migrateSpecs = specs.filter((s) => s.anchor === "migrate");
+  if (migrateSpecs.length > 0) {
+    for (const ms of migrateSpecs) {
+      const provider = ms.title.replace("WorkOS Migration: ", "");
+      const doc =
+        ms.docUrls[0]?.replace("https://", "") ?? `workos.com/docs/migrate`;
+      rows.push(
+        `| Migrate from ${provider.padEnd(31)} | ${ms.name.padEnd(35)} | ${doc} |`,
+      );
+    }
+  }
+
+  const content = `---
+name: workos-router
+description: Route WorkOS requests to the right skill. Load this first for any WorkOS task.
+---
+
+<!-- generated -->
+
+# WorkOS Skill Router
+
+## How to Use
+
+When a user needs help with WorkOS, consult this table to load the right skill.
+
+## Topic → Skill Map
+
+| User wants to...                              | Load skill                          | Doc reference |
+| --------------------------------------------- | ----------------------------------- | ------------- |
+${rows.join("\n")}
+
+## If No Skill Matches
+
+WebFetch the full docs index: https://workos.com/docs/llms.txt
+Then WebFetch the specific section URL for the user's topic.
+
+## AuthKit Installation Detection
+
+If the user wants to install AuthKit, detect their framework:
+
+\`\`\`
+next.config.* → workos-authkit-nextjs
+vite.config.* + react → workos-authkit-react
+react-router in deps → workos-authkit-react-router
+@tanstack/start in deps → workos-authkit-tanstack-start
+No framework detected → workos-authkit-vanilla-js
+\`\`\`
+
+## General Decision Flow
+
+\`\`\`
+User request about WorkOS?
+  |
+  +-- Mentions specific feature? → Load that feature skill
+  |
+  +-- Wants AuthKit/auth setup? → Detect framework → Load AuthKit skill
+  |
+  +-- Wants integration setup? → Load workos-integrations
+  |
+  +-- Wants to migrate? → Identify source → Load migration skill
+  |
+  +-- Not sure? → WebFetch llms.txt → Find matching section
+\`\`\`
+`;
+
+  return {
+    name: "workos-router",
+    path: "skills/workos-router/SKILL.md",
+    content,
+    sizeBytes: Buffer.byteLength(content, "utf8"),
+    generated: true,
+  };
+}
+
+/**
+ * Generate the integration router skill with provider lookup table.
+ */
+export function generateIntegrationRouter(
+  integrationsSection: Section,
+  llmsTxtUrls: Map<string, string[]>,
+): GeneratedSkill {
+  const integrationUrls = llmsTxtUrls.get("integrations") ?? [];
+
+  // Parse provider entries from URLs
+  interface ProviderEntry {
+    name: string;
+    type: string;
+    url: string;
+  }
+
+  const providers: ProviderEntry[] = [];
+
+  for (const url of integrationUrls) {
+    const slug = url.split("/").pop() ?? "";
+    if (!slug) continue;
+
+    const { name, type } = parseProviderSlug(slug);
+    providers.push({ name, type, url: url.replace("https://", "") });
+  }
+
+  // Sort by provider name
+  providers.sort((a, b) => a.name.localeCompare(b.name));
+
+  const providerRows = providers
+    .map(
+      (p) =>
+        `| ${p.name.padEnd(30)} | ${p.type.padEnd(12)} | ${p.url} |`,
+    )
+    .join("\n");
+
+  const content = `---
+name: workos-integrations
+description: Set up identity provider integrations with WorkOS. Covers SSO, SCIM, and OAuth for 40+ providers.
+---
+
+<!-- generated -->
+
+# WorkOS Integrations
+
+## Step 1: Identify the Provider
+
+Ask the user which identity provider they need to integrate. Then find it in the table below.
+
+## Provider Lookup
+
+| Provider                       | Type         | Doc URL |
+| ------------------------------ | ------------ | ------- |
+${providerRows}
+
+## General Integration Flow
+
+1. **WebFetch** the provider-specific doc URL from the table above
+2. Follow the setup steps in the fetched documentation
+3. Configure the connection in the WorkOS Dashboard
+4. Test the integration with a test user
+
+## Integration Type Decision Tree
+
+\`\`\`
+What type of integration?
+  |
+  +-- SSO (user login)
+  |     |
+  |     +-- Provider supports SAML? → Use SAML connection
+  |     +-- Provider supports OIDC? → Use OIDC connection
+  |     +-- Provider supports both? → Prefer SAML (more enterprise-ready)
+  |
+  +-- Directory Sync (user provisioning)
+  |     |
+  |     +-- Provider supports SCIM? → Use SCIM connection
+  |     +-- No SCIM? → Check for custom directory sync option
+  |
+  +-- OAuth (social login)
+        |
+        +-- Find provider in OAuth section of table
+        +-- Configure OAuth app in provider's developer console
+        +-- Add credentials to WorkOS Dashboard
+\`\`\`
+
+## Common Setup Patterns
+
+### SAML Configuration
+
+Most SAML providers require:
+1. An ACS URL (from WorkOS Dashboard)
+2. An SP Entity ID (from WorkOS Dashboard)
+3. IdP metadata URL or certificate upload
+
+### SCIM Directory Setup
+
+Most SCIM providers require:
+1. A SCIM endpoint URL (from WorkOS Dashboard)
+2. A Bearer token for authentication
+3. User attribute mapping configuration
+
+### OAuth Setup
+
+Most OAuth providers require:
+1. Create an OAuth app in the provider's developer console
+2. Set the redirect URI from WorkOS Dashboard
+3. Copy Client ID and Secret to WorkOS
+
+## Verification
+
+- [ ] Connection appears in WorkOS Dashboard
+- [ ] Test SSO login succeeds with a test user
+- [ ] User profile attributes map correctly
+- [ ] (If SCIM) Directory sync shows users from provider
+
+## Related Skills
+
+- **workos-sso**: General SSO implementation and configuration
+- **workos-directory-sync**: Directory Sync setup and management
+- **workos-domain-verification**: Domain verification required for SSO
+`;
+
+  return {
+    name: "workos-integrations",
+    path: "skills/workos-integrations/SKILL.md",
+    content,
+    sizeBytes: Buffer.byteLength(content, "utf8"),
+    generated: true,
+  };
+}
+
+// --- Helpers ---
+
+/** Derive a user intent phrase from a SkillSpec */
+function intentFromSpec(spec: SkillSpec): string {
+  const intents: Record<string, string> = {
+    "workos-sso": "Configure Single Sign-On",
+    "workos-directory-sync": "Set up Directory Sync",
+    "workos-rbac": "Implement RBAC / roles",
+    "workos-fga": "Set up Fine-Grained Authorization",
+    "workos-vault": "Encrypt data with Vault",
+    "workos-widgets": "Add WorkOS Widgets",
+    "workos-events": "Handle WorkOS Events / webhooks",
+    "workos-audit-logs": "Set up Audit Logs",
+    "workos-admin-portal": "Enable Admin Portal",
+    "workos-mfa": "Add Multi-Factor Auth",
+    "workos-magic-link": "Implement Magic Link auth",
+    "workos-feature-flags": "Configure Feature Flags",
+    "workos-domain-verification": "Verify a domain",
+    "workos-custom-domains": "Set up Custom Domains",
+    "workos-email": "Configure email delivery",
+    "workos-pipes": "Set up Pipes connections",
+    "workos-integrations": "Set up IdP integration",
+  };
+  return intents[spec.name] ?? `Implement ${spec.title.replace("WorkOS ", "")}`;
+}
+
+/** Parse a provider slug like "okta-saml" into { name: "Okta", type: "SAML" } */
+function parseProviderSlug(slug: string): { name: string; type: string } {
+  const typePatterns: Array<{ suffix: string; type: string }> = [
+    { suffix: "-saml", type: "SAML" },
+    { suffix: "-scim", type: "SCIM" },
+    { suffix: "-oidc", type: "OIDC" },
+    { suffix: "-oauth", type: "OAuth" },
+    { suffix: "-directory-sync", type: "Directory" },
+    { suffix: "-enterprise-connection", type: "Enterprise" },
+  ];
+
+  for (const { suffix, type } of typePatterns) {
+    if (slug.endsWith(suffix)) {
+      const nameSlug = slug.slice(0, -suffix.length);
+      return { name: formatProviderName(nameSlug), type };
+    }
+  }
+
+  // No type suffix — general integration
+  return { name: formatProviderName(slug), type: "General" };
+}
+
+/** Format a slug into a readable provider name */
+function formatProviderName(slug: string): string {
+  const nameMap: Record<string, string> = {
+    "entra-id": "Entra ID (Azure AD)",
+    "google": "Google Workspace",
+    "microsoft-ad-fs": "Microsoft AD FS",
+    "auth0": "Auth0",
+    "aws-cognito": "AWS Cognito",
+    "login-gov": "Login.gov",
+    "simple-saml-php": "SimpleSAMLphp",
+    "net-iq": "NetIQ",
+    "shibboleth-generic": "Shibboleth Generic",
+    "shibboleth-unsolicited": "Shibboleth Unsolicited",
+    "access-people-hr": "Access People HR",
+    "breathe-hr": "Breathe HR",
+    "cezanne": "Cezanne HR",
+    "react-native-expo": "React Native Expo",
+    "next-auth": "NextAuth.js",
+    "supabase-sso": "Supabase + WorkOS SSO",
+    "supabase-authkit": "Supabase + AuthKit",
+    "cas": "CAS",
+    "adp": "ADP",
+  };
+
+  if (nameMap[slug]) return nameMap[slug];
+
+  return slug
+    .split("-")
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(" ");
+}
