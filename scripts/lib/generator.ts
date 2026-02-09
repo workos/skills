@@ -1,18 +1,21 @@
 import type { Section, SkillSpec, GeneratedSkill } from "./types.ts";
 import { HAND_CRAFTED_SKILLS } from "./config.ts";
 import { renderSkill } from "./skill-template.ts";
+import { computeSourceHash } from "./hasher.ts";
 
 /**
  * Generate a SKILL.md for a single feature SkillSpec.
  */
 export function generateSkill(spec: SkillSpec): GeneratedSkill {
-  const content = renderSkill(spec);
+  const sourceHash = computeSourceHash(spec.content);
+  const content = renderSkill(spec, sourceHash);
   return {
     name: spec.name,
     path: `skills/${spec.name}/SKILL.md`,
     content,
     sizeBytes: Buffer.byteLength(content, "utf8"),
     generated: true,
+    sourceHash,
   };
 }
 
@@ -88,12 +91,15 @@ export function generateRouter(
     }
   }
 
+  const sourceContent = rows.join("\n") + llmsTxtContent;
+  const sourceHash = computeSourceHash(sourceContent);
+
   const content = `---
 name: workos-router
 description: Identify which WorkOS skill to load based on the user's task — covers AuthKit, SSO, RBAC, migrations, and all API references.
 ---
 
-<!-- generated -->
+<!-- generated:sha256:${sourceHash} -->
 
 # WorkOS Skill Router
 
@@ -157,6 +163,7 @@ User request about WorkOS?
     content,
     sizeBytes: Buffer.byteLength(content, "utf8"),
     generated: true,
+    sourceHash,
   };
 }
 
@@ -193,12 +200,16 @@ export function generateIntegrationRouter(
     .map((p) => `| ${p.name.padEnd(30)} | ${p.type.padEnd(12)} | ${p.url} |`)
     .join("\n");
 
+  const sourceHash = computeSourceHash(
+    integrationsSection.content + providerRows,
+  );
+
   const content = `---
 name: workos-integrations
 description: Set up identity provider integrations with WorkOS. Covers SSO, SCIM, and OAuth for 40+ providers.
 ---
 
-<!-- generated -->
+<!-- generated:sha256:${sourceHash} -->
 
 # WorkOS Integrations
 
@@ -311,6 +322,7 @@ Checklist:
     content,
     sizeBytes: Buffer.byteLength(content, "utf8"),
     generated: true,
+    sourceHash,
   };
 }
 

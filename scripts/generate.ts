@@ -15,6 +15,7 @@ import {
 } from "./lib/generator.ts";
 import { refineSkill, rateLimitDelay } from "./lib/refiner.ts";
 import { runQualityGate } from "./lib/quality-gate.ts";
+import { shouldRegenerate } from "./lib/hasher.ts";
 import { HAND_CRAFTED_SKILLS, VALIDATION } from "./lib/config.ts";
 import type { GeneratedSkill } from "./lib/types.ts";
 
@@ -28,6 +29,7 @@ function parseArgs(): {
   refine: boolean;
   refineOnly: string | null;
   model: string | null;
+  force: boolean;
 } {
   const args = process.argv.slice(2);
   return {
@@ -35,6 +37,7 @@ function parseArgs(): {
     refineOnly:
       args.find((a) => a.startsWith("--refine-only="))?.split("=")[1] ?? null,
     model: args.find((a) => a.startsWith("--model="))?.split("=")[1] ?? null,
+    force: args.includes("--force"),
   };
 }
 
@@ -244,15 +247,34 @@ async function main() {
   }
 
   console.log("\nWriting skills to disk...");
+  let written = 0;
+  let skipped = 0;
   for (const skill of generatedSkills) {
     const fullPath = join(process.cwd(), skill.path);
     await mkdir(dirname(fullPath), { recursive: true });
+
+    // Content-addressed locking: skip if source hash unchanged
+    if (skill.sourceHash) {
+      try {
+        const existing = await Bun.file(fullPath).text();
+        const check = shouldRegenerate(existing, skill.sourceHash, flags.force);
+        if (check.skip) {
+          console.log(`  ⊘ ${skill.path}  (${check.reason})`);
+          skipped++;
+          continue;
+        }
+      } catch {
+        // File doesn't exist yet — write it
+      }
+    }
+
     await Bun.write(fullPath, skill.content);
     console.log(`  ✓ ${skill.path}`);
+    written++;
   }
 
   console.log(
-    `\n✓ Generated ${generatedSkills.length} skills. Hand-crafted skills untouched: ${HAND_CRAFTED_SKILLS.length}`,
+    `\n✓ ${written} written, ${skipped} skipped. Hand-crafted untouched: ${HAND_CRAFTED_SKILLS.length}`,
   );
 
   // --- Phase 4: Quality Gate ---

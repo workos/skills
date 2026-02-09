@@ -34,9 +34,14 @@ describe("generateSkill", () => {
     expect(frontmatterEnd).toBeGreaterThan(0);
   });
 
-  it("includes <!-- generated --> marker", () => {
+  it("includes generated marker with source hash", () => {
     const result = generateSkill(makeSpec());
-    expect(result.content).toContain("<!-- generated -->");
+    expect(result.content).toMatch(/<!-- generated:sha256:[a-f0-9]{12} -->/);
+  });
+
+  it("includes sourceHash on result", () => {
+    const result = generateSkill(makeSpec());
+    expect(result.sourceHash).toMatch(/^[a-f0-9]{12}$/);
   });
 
   it("includes doc URL references", () => {
@@ -112,9 +117,9 @@ describe("generateRouter", () => {
     expect(result.path).toBe("skills/workos-router/SKILL.md");
   });
 
-  it("includes <!-- generated --> marker", () => {
+  it("includes generated marker with source hash", () => {
     const result = generateRouter([], "");
-    expect(result.content).toContain("<!-- generated -->");
+    expect(result.content).toMatch(/<!-- generated:sha256:[a-f0-9]{12} -->/);
   });
 
   it("includes fallback instructions", () => {
@@ -171,10 +176,10 @@ describe("generateIntegrationRouter", () => {
     expect(result.path).toBe("skills/workos-integrations/SKILL.md");
   });
 
-  it("includes <!-- generated --> marker", () => {
+  it("includes generated marker with source hash", () => {
     const urls = new Map<string, string[]>();
     const result = generateIntegrationRouter(integrationsSection, urls);
-    expect(result.content).toContain("<!-- generated -->");
+    expect(result.content).toMatch(/<!-- generated:sha256:[a-f0-9]{12} -->/);
   });
 
   it("includes decision tree for integration types", () => {

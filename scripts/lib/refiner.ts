@@ -1,4 +1,5 @@
 import type { GeneratedSkill } from "./types.ts";
+import { parseMarker } from "./hasher.ts";
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 const DEFAULT_MODEL = "claude-sonnet-4-5-20250929";
@@ -29,6 +30,10 @@ export async function refineSkill(
   const docUrls = extractDocUrls(body);
   const skillName = skill.name;
 
+  // Extract source hash from existing marker (preserves through refinement)
+  const existingMarker = parseMarker(skill.content);
+  const sourceHash = skill.sourceHash ?? existingMarker.hash;
+
   const isRouter = skillName === "workos-router";
   const isApiRef = skillName.startsWith("workos-api-");
   const prompt = isRouter
@@ -44,7 +49,7 @@ export async function refineSkill(
         );
 
   const refined = await callAnthropic(prompt, options);
-  const content = ensureMarkers(frontmatter, refined);
+  const content = ensureMarkers(frontmatter, refined, sourceHash);
 
   return {
     ...skill,
@@ -260,7 +265,11 @@ function extractDocUrls(body: string): string[] {
 }
 
 /** Reassemble frontmatter + marker + refined body */
-function ensureMarkers(frontmatter: string, body: string): string {
+function ensureMarkers(
+  frontmatter: string,
+  body: string,
+  sourceHash: string | null,
+): string {
   // Strip any frontmatter the LLM may have included
   let cleanBody = body;
   if (cleanBody.startsWith("---")) {
@@ -270,10 +279,16 @@ function ensureMarkers(frontmatter: string, body: string): string {
     }
   }
 
-  // Strip generated marker if LLM included it
-  cleanBody = cleanBody.replace(/<!--\s*generated\s*-->\s*\n?/, "").trim();
+  // Strip any marker the LLM included (generated or refined, with or without hash)
+  cleanBody = cleanBody
+    .replace(/<!--\s*(?:generated|refined)(?::sha256:[a-f0-9]+)?\s*-->\s*\n?/, "")
+    .trim();
 
-  return `${frontmatter}\n\n<!-- generated -->\n\n${cleanBody}\n`;
+  const marker = sourceHash
+    ? `<!-- refined:sha256:${sourceHash} -->`
+    : "<!-- generated -->";
+
+  return `${frontmatter}\n\n${marker}\n\n${cleanBody}\n`;
 }
 
 /** Sleep for rate limiting between API calls */

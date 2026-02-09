@@ -59,11 +59,11 @@ function scoreSkill(skill: GeneratedSkill): QualityResult {
     issues.push("No valid frontmatter found");
   }
 
-  // 2. Generated marker (5 pts)
-  if (content.includes("<!-- generated -->")) {
+  // 2. Generated/refined marker (5 pts)
+  if (/<!--\s*(?:generated|refined)(?::sha256:[a-f0-9]+)?\s*-->/.test(content)) {
     score += 5;
   } else {
-    issues.push("Missing <!-- generated --> marker");
+    issues.push("Missing generated/refined marker");
   }
 
   // 3. WebFetch doc references (20 pts)
