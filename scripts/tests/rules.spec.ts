@@ -12,8 +12,8 @@ describe("loadRules", () => {
     const rules = loadRules("workos-directory-sync");
     expect(rules.length).toBeGreaterThan(0);
     expect(rules[0].id).toBe("dsync-webhooks-mandatory");
-    expect(rules[0].severity).toBe("warn");
-    expect(rules[0].promoted).toBe(false);
+    expect(rules[0].severity).toBe("error");
+    expect(rules[0].promoted).toBe(true);
     expect(rules[0].must_contain).toBeDefined();
     expect(rules[0].must_not_contain).toBeDefined();
   });

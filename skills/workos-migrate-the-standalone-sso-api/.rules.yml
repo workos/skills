@@ -1,0 +1,15 @@
+rules:
+  - id: standalone-sso-clear-framing
+    description: "Must clearly explain this is migrating FROM old WorkOS SSO API TO new AuthKit"
+    severity: warn
+    promoted: false
+    must_contain:
+      - pattern: "standalone SSO|legacy SSO|old SSO"
+        context: "Must use clear terminology distinguishing old API from new"
+  - id: standalone-sso-no-undefined-env-vars
+    description: "Should not reference WORKOS_COOKIE_PASSWORD without context"
+    severity: warn
+    promoted: false
+    must_not_contain:
+      - pattern: "WORKOS_COOKIE_PASSWORD"
+        context: "This is AuthKit-Next.js specific, not universal"

@@ -3,121 +3,170 @@ name: workos-authkit-base
 description: Architectural reference for WorkOS AuthKit integrations. Fetch README first for implementation details.
 ---
 
-# WorkOS AuthKit Base Template
+# WorkOS AuthKit Integration
 
-## First Action: Fetch README
+## Step 1: Fetch AuthKit Documentation (BLOCKING)
 
-Before any implementation, fetch the framework-specific README:
+**STOP. Do not proceed until complete.**
 
-```
-WebFetch: {sdk-package-name} README from npmjs.com or GitHub
-```
+WebFetch: `https://workos.com/docs/user-management/authkit`
 
-README is the source of truth for: install commands, imports, API usage, code patterns.
+This page is the source of truth for AuthKit concepts, supported frameworks, and setup requirements. If this skill conflicts with the docs, follow the docs.
 
-## Task Structure (Required)
+## Step 2: Detect User's Framework
 
-| Phase | Task      | Blocked By         | Purpose                           |
-| ----- | --------- | ------------------ | --------------------------------- |
-| 1     | preflight | -                  | Verify env vars, detect framework |
-| 2     | install   | preflight          | Install SDK package               |
-| 3     | callback  | install            | Create OAuth callback route       |
-| 4     | provider  | install            | Setup auth context/middleware     |
-| 5     | ui        | callback, provider | Add sign-in/out UI                |
-| 6     | verify    | ui                 | Build confirmation                |
+Run these commands to identify the project's framework. Check each in order; use the first match.
 
-## Decision Trees
+```bash
+# Next.js
+grep -q '"next"' package.json 2>/dev/null && echo "DETECTED: nextjs"
 
-### Package Manager Detection
+# React Router / Remix
+grep -qE '"react-router"|"@remix-run"' package.json 2>/dev/null && echo "DETECTED: react-router"
 
-```
-pnpm-lock.yaml? → pnpm
-yarn.lock? → yarn
-bun.lockb? → bun
-else → npm
+# TanStack Start
+grep -q '"@tanstack/start"' package.json 2>/dev/null && echo "DETECTED: tanstack-start"
+
+# React (standalone SPA — check AFTER framework-specific entries)
+grep -q '"react"' package.json 2>/dev/null && echo "DETECTED: react"
 ```
 
-### Provider vs Middleware
+If none match, check for a plain HTML/JS project:
+
+```bash
+# Vanilla JS — no package.json or no framework dependency
+[ ! -f package.json ] && echo "DETECTED: vanilla-js"
+ls index.html 2>/dev/null && echo "DETECTED: vanilla-js"
+```
+
+## Step 3: Route to Framework-Specific Skill
+
+Use the detection result from Step 2 to select the correct skill. **Do not continue past this step if a framework matched — switch to the matching skill immediately.**
 
 ```
-Client-side framework? → AuthKitProvider wraps app
-Server-side framework? → Middleware handles sessions
-Hybrid (Next.js)? → Both may be needed
+Detection result         -->  Skill to invoke
+─────────────────────────────────────────────
+nextjs                   -->  workos-authkit-nextjs
+react-router             -->  workos-authkit-react-router
+tanstack-start           -->  workos-authkit-tanstack-start
+react                    -->  workos-authkit-react
+vanilla-js               -->  workos-authkit-vanilla-js
 ```
 
-### Callback Route Location
+**If a framework is detected:** Stop here. The framework-specific skill handles everything from install through verification.
 
-Extract path from `WORKOS_REDIRECT_URI` → create route at that exact path.
+**If no framework is detected:** Continue to Step 4 for universal fallback setup.
 
-## Environment Variables
+## Step 4: Universal AuthKit Setup (Fallback)
 
-| Variable                 | Purpose                        | When Required |
-| ------------------------ | ------------------------------ | ------------- |
-| `WORKOS_API_KEY`         | Server authentication          | Server SDKs   |
-| `WORKOS_CLIENT_ID`       | Client identification          | All SDKs      |
-| `WORKOS_REDIRECT_URI`    | OAuth callback URL             | Server SDKs   |
-| `WORKOS_COOKIE_PASSWORD` | Session encryption (32+ chars) | Server SDKs   |
+Use this only when no framework-specific skill applies (custom server, edge runtime, non-standard stack).
 
-Note: Some frameworks use prefixed variants (e.g., `NEXT_PUBLIC_*`). Check README.
+### 4a. Environment Variables
 
-## Verification Checklists
+Create or update `.env` with these values. All four are required for server-side AuthKit.
 
-### After Install
+```
+WORKOS_API_KEY=sk_...          # From WorkOS Dashboard > API Keys
+WORKOS_CLIENT_ID=client_...    # From WorkOS Dashboard > API Keys
+WORKOS_REDIRECT_URI=           # Must match Dashboard redirect URI exactly
+WORKOS_COOKIE_PASSWORD=        # 32+ character random string
+```
 
-- [ ] SDK package installed in node_modules
-- [ ] No install errors in output
+Generate a cookie password:
 
-### After Callback Route
+```bash
+openssl rand -base64 32
+```
 
-- [ ] Route file exists at path matching `WORKOS_REDIRECT_URI`
-- [ ] Imports SDK callback handler (not custom OAuth)
+### 4b. Install the WorkOS SDK
 
-### After Provider/Middleware
+Detect the package manager and install:
 
-- [ ] Provider wraps entire app (client-side)
-- [ ] Middleware configured in correct location (server-side)
+```bash
+# Detect package manager
+if [ -f pnpm-lock.yaml ]; then PM="pnpm add"
+elif [ -f yarn.lock ]; then PM="yarn add"
+elif [ -f bun.lockb ] || [ -f bun.lock ]; then PM="bun add"
+else PM="npm install"; fi
 
-### After UI
+$PM @workos-inc/node
+```
 
-- [ ] Home page shows conditional auth state
-- [ ] Uses SDK functions for sign-in/out URLs
+Verify install succeeded:
 
-### Final Verification
+```bash
+ls node_modules/@workos-inc/node/package.json && echo "OK" || echo "FAIL: SDK not installed"
+```
 
-- [ ] Build completes with exit code 0
-- [ ] No import resolution errors
+### 4c. Initialize the WorkOS Client
+
+```typescript
+import { WorkOS } from '@workos-inc/node';
+
+const workos = new WorkOS(process.env.WORKOS_API_KEY);
+```
+
+### 4d. Create the Auth Redirect
+
+Build the authorization URL using the SDK. Do not construct OAuth URLs manually.
+
+```typescript
+const authorizationUrl = workos.userManagement.getAuthorizationUrl({
+  provider: 'authkit',
+  redirectUri: process.env.WORKOS_REDIRECT_URI,
+  clientId: process.env.WORKOS_CLIENT_ID,
+});
+// Redirect the user to authorizationUrl
+```
+
+### 4e. Handle the Callback
+
+At the route matching `WORKOS_REDIRECT_URI`, exchange the authorization code:
+
+```typescript
+const { user, accessToken, refreshToken } = await workos.userManagement.authenticateWithCode({
+  code: requestCode,       // from query param ?code=...
+  clientId: process.env.WORKOS_CLIENT_ID,
+});
+// Store tokens securely (httpOnly cookie, session store, etc.)
+```
+
+## Verification
+
+Run all checks. **Do not mark complete until every check passes.**
+
+```bash
+# 1. All four env vars present
+for var in WORKOS_API_KEY WORKOS_CLIENT_ID WORKOS_REDIRECT_URI WORKOS_COOKIE_PASSWORD; do
+  grep -q "$var" .env .env.local 2>/dev/null && echo "OK: $var" || echo "FAIL: $var not found"
+done
+
+# 2. SDK installed
+ls node_modules/@workos-inc/*/package.json 2>/dev/null && echo "OK: SDK installed" || echo "FAIL: No WorkOS SDK"
+
+# 3. WorkOS imports exist in source
+grep -rl "@workos-inc" --include="*.ts" --include="*.tsx" --include="*.js" . 2>/dev/null | head -3 || echo "FAIL: No WorkOS imports"
+
+# 4. Build succeeds
+npm run build 2>&1 | tail -3
+```
 
 ## Error Recovery
 
-### Module not found
+| Error | Cause | Fix |
+|---|---|---|
+| `Module not found: @workos-inc/*` | SDK not installed | Re-run install from Step 4b; verify `node_modules/@workos-inc` exists |
+| `WORKOS_API_KEY is required` | Missing env var | Add `WORKOS_API_KEY=sk_...` to `.env` / `.env.local` |
+| `Invalid API key` | Wrong key or environment mismatch | Confirm key from Dashboard matches environment (staging vs production) |
+| `Redirect URI mismatch` | Callback URL differs between code and Dashboard | Compare `WORKOS_REDIRECT_URI` in `.env` to Dashboard > Redirects exactly |
+| `Cookie password must be 32+ characters` | Password too short | Run `openssl rand -base64 32` and update `WORKOS_COOKIE_PASSWORD` |
+| `invalid_grant` or `code expired` | Authorization code used twice or callback too slow | Check callback handler runs only once per code; remove duplicate route handlers |
+| `Cannot read properties of undefined (reading 'user')` | Auth response not awaited | Add `await` to `authenticateWithCode()` call |
 
-- [ ] Verify install completed successfully
-- [ ] Verify SDK exists in node_modules
-- [ ] Re-run install if missing
+## Related Skills
 
-### Build import errors
-
-- [ ] Delete `node_modules`, reinstall
-- [ ] Verify package.json has SDK dependency
-
-### Invalid redirect URI
-
-- [ ] Compare route path to `WORKOS_REDIRECT_URI`
-- [ ] Paths must match exactly
-
-### Cookie password error
-
-- [ ] Verify `WORKOS_COOKIE_PASSWORD` is 32+ characters
-- [ ] Generate new: `openssl rand -base64 32`
-
-### Auth state not persisting
-
-- [ ] Verify provider wraps entire app
-- [ ] Check middleware is in correct location
-
-## Critical Rules
-
-1. **Install SDK before writing imports** - never create import statements for uninstalled packages
-2. **Use SDK functions** - never construct OAuth URLs manually
-3. **Follow README patterns** - SDK APIs change between versions
-4. **Extract callback path from env** - don't hardcode `/auth/callback`
+- **workos-authkit-nextjs** — Next.js App Router (13+), server-side rendering
+- **workos-authkit-react** — React SPA with client-side AuthKit
+- **workos-authkit-react-router** — React Router / Remix integration
+- **workos-authkit-tanstack-start** — TanStack Start framework
+- **workos-authkit-vanilla-js** — Plain HTML/JS without a framework

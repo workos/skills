@@ -1,0 +1,15 @@
+rules:
+  - id: cognito-no-excessive-check-docs
+    description: "Should not defer to 'check docs' more than 3 times"
+    severity: warn
+    promoted: false
+    must_not_contain:
+      - pattern: "check.*(docs|documentation) for (exact|current|specific)"
+        context: "Excessive deferral to docs instead of providing concrete guidance"
+  - id: cognito-no-undefined-env-vars
+    description: "Should not reference WORKOS_COOKIE_PASSWORD without context"
+    severity: warn
+    promoted: false
+    must_not_contain:
+      - pattern: "WORKOS_COOKIE_PASSWORD"
+        context: "This is AuthKit-Next.js specific, not universal for Cognito migration"

@@ -193,6 +193,6 @@ describe("generateIntegrationRouter", () => {
   it("includes verification checklist", () => {
     const urls = new Map<string, string[]>();
     const result = generateIntegrationRouter(integrationsSection, urls);
-    expect(result.content).toContain("Verification");
+    expect(result.content).toContain("Verify the Integration");
   });
 });
