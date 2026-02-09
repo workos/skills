@@ -3,7 +3,7 @@ name: workos-pipes
 description: Connect external services and data sources with WorkOS Pipes.
 ---
 
-<!-- generated -->
+<!-- refined:sha256:1bd2ec7cff00 -->
 
 # WorkOS Pipes
 
@@ -11,286 +11,239 @@ description: Connect external services and data sources with WorkOS Pipes.
 
 **STOP. Do not proceed until complete.**
 
-WebFetch these URLs — they are the source of truth:
+WebFetch these docs before implementing:
 - https://workos.com/docs/pipes/providers
 - https://workos.com/docs/pipes/index
 
-If this skill conflicts with official docs, follow the docs.
+The documentation is the source of truth. If this skill conflicts with the docs, follow the docs.
 
 ## Step 2: Pre-Flight Validation
 
 ### Project Structure
 
-- Confirm WorkOS SDK is installed
-- Check package manager: npm, yarn, pnpm, or bun
+- Confirm WorkOS SDK is installed (`@workos-inc/node` or language-specific SDK)
+- Confirm project has environment variable support (`.env`, `.env.local`, or runtime config)
 
 ### Environment Variables
 
-Check `.env` or `.env.local` for:
+Check for required WorkOS credentials:
 
 - `WORKOS_API_KEY` - starts with `sk_`
-- `WORKOS_CLIENT_ID` - starts with `client_`
+- `WORKOS_CLIENT_ID` - starts with `client_` (for OAuth flows)
 
-**Critical:** API key must have Pipes permissions enabled in WorkOS Dashboard.
+**Verify:** Run `echo $WORKOS_API_KEY` or equivalent — should output masked value starting with `sk_`.
 
 ## Step 3: Provider Configuration (Dashboard)
 
+**This is a manual dashboard step — guide the user through it.**
+
 Navigate to: https://dashboard.workos.com/environment/pipes
 
-### Credential Mode (Decision Tree)
+### Credential Type Decision Tree
 
 ```
-Environment?
+Production deployment?
   |
-  +-- Sandbox/Development
-  |   |
-  |   +-- Use Shared Credentials (WorkOS-managed)
-  |       - Select provider
-  |       - Set required scopes
-  |       - Add optional description
-  |       - Save configuration
+  +-- YES --> Use Custom Credentials (Step 3a)
   |
-  +-- Production
-      |
-      +-- Use Custom Credentials (Your OAuth app)
-          1. Create OAuth app in provider dashboard
-          2. Copy WorkOS redirect URI from setup modal
-          3. Add redirect URI to provider OAuth app config
-          4. Copy client ID + secret from provider
-          5. Paste into WorkOS dashboard
-          6. Set required scopes (check provider docs)
-          7. Add optional description
-          8. Save configuration
+  +-- NO  --> Use Shared Credentials (Step 3b)
 ```
 
-**STOP:** Do not proceed to Step 4 until at least one provider shows "Configured" status in dashboard.
+### Step 3a: Custom Credentials (Production)
+
+For each provider you need (GitHub, Slack, Google, Salesforce, etc.):
+
+1. **Create OAuth app in provider's dashboard**
+   - Follow provider-specific instructions in WorkOS dashboard setup modal
+   - Note: Each provider has different OAuth setup UIs
+
+2. **Copy redirect URI from WorkOS dashboard**
+   - Format: `https://api.workos.com/sso/callback/{provider}`
+   - Paste this EXACT URI into provider's OAuth app settings
+
+3. **Configure in WorkOS dashboard:**
+   - Client ID (from provider's OAuth app)
+   - Client Secret (from provider's OAuth app)
+   - Scopes (e.g., `repo`, `user:email` for GitHub)
+   - Optional: Description for user consent screen
+
+4. **Verify scopes in both locations:**
+   - WorkOS dashboard scope field
+   - Provider's OAuth app settings (some providers require scopes set there too)
+
+**Critical:** Redirect URI mismatch is the #1 cause of OAuth failures. Copy-paste, don't type.
+
+### Step 3b: Shared Credentials (Sandbox Only)
+
+**Only available in sandbox environments — NOT for production.**
+
+For each provider:
+
+1. Select "Use WorkOS Shared Credentials"
+2. Specify required scopes (e.g., `repo`, `user:email`)
+3. Optional: Add description for consent screen
+
+**Limitation:** Shared credentials are WorkOS-managed test apps. Users may see "WorkOS Test App" branding in OAuth consent.
 
 ## Step 4: SDK Integration
 
-### Install SDK (if not present)
+### Connection Authorization Flow
 
-Detect package manager and run appropriate command:
+Implement the OAuth connection flow using SDK methods. Check the fetched documentation for exact API:
 
-```bash
-# npm
-npm install @workos-inc/node
+1. **Generate authorization URL**
+   - Include provider type (github, slack, google, etc.)
+   - Include scopes matching dashboard configuration
+   - Include state parameter for CSRF protection
 
-# yarn
-yarn add @workos-inc/node
+2. **Redirect user to authorization URL**
+   - User consents in provider's OAuth screen
+   - Provider redirects back to WorkOS callback
 
-# pnpm
-pnpm add @workos-inc/node
+3. **Exchange code for connection**
+   - Handle redirect from WorkOS callback
+   - Extract authorization code from query params
+   - Call SDK method to finalize connection (see docs for exact method name)
 
-# bun
-bun add @workos-inc/node
-```
+**Reference the WebFetched docs** for SDK method names — they vary by language.
 
-**Verify:** Check `node_modules/@workos-inc/node` exists before continuing.
+### Token Management
 
-### Initialize SDK
+Pipes handles token refresh automatically. Do NOT implement custom refresh logic.
 
-Create SDK instance with API key. Check fetched docs for exact initialization pattern.
-
-Common pattern (verify against docs):
-
-```typescript
-import { WorkOS } from '@workos-inc/node';
-
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
-```
-
-**Framework-specific notes:**
-- **Next.js:** Initialize in API routes or server components, not client components
-- **Express/Node:** Initialize once at app startup, not per-request
-- **Serverless:** Initialize outside handler for connection reuse
-
-## Step 5: Connection Flow Implementation
-
-### Authorization URL Generation
-
-Generate authorization URL to redirect users to provider OAuth flow.
-
-**Required parameters (check docs):**
-- Provider slug (e.g., 'github', 'slack', 'google')
-- Client ID
-- Redirect URI (where user returns after auth)
-- Required scopes
-- State parameter (for CSRF protection)
-
-**Critical:** State parameter must be:
-1. Generated fresh per request
-2. Stored server-side (session, cookie, Redis)
-3. Validated on callback
-
-### Callback Handler
-
-Create endpoint to receive OAuth callback.
-
-**Required validations:**
-1. State parameter matches stored value
-2. Authorization code is present
-3. No error parameter in query string
-
-**Exchange code for connection:**
-- Use SDK method from docs to exchange code
-- Store connection ID securely
-- Associate with user account
-
-## Step 6: Connection Management
-
-### List User Connections
-
-Implement endpoint to fetch user's active connections.
-
-Check docs for SDK method to list connections. Filter by user ID or organization ID.
-
-### Revoke Connections
-
-Implement revocation flow using SDK method from docs.
-
-**User experience:**
-- Allow users to disconnect provider accounts
-- Update UI state immediately
-- Handle revocation errors gracefully
-
-## Step 7: API Proxy Pattern (if making provider API calls)
-
-If using Pipes to call provider APIs on behalf of users:
-
-### Token Retrieval
-
-Use SDK to get fresh access token for connection. SDK handles token refresh automatically.
-
-### API Call Pattern
+**Pattern:**
 
 ```
-1. Get connection ID for user + provider
-2. Use SDK to get access token
-3. Make API call to provider with token
-4. Return data to user
+User authorizes --> Connection created --> Tokens stored by WorkOS
+                                       |
+                                       +--> Auto-refresh before expiry
+                                       |
+                                       +--> Your app fetches fresh tokens via SDK
 ```
 
-**Error handling:**
-- Connection expired/revoked: Prompt re-authentication
-- Scope insufficient: Reconfigure provider scopes
-- Rate limit: Implement backoff/retry
+### Making Authenticated Requests
+
+Use SDK methods to get valid access tokens for API calls. The SDK returns fresh tokens (auto-refreshed if needed).
+
+**Check the docs** for the exact method signature — typically something like `getConnection()` or `getAccessToken()`.
+
+## Step 5: Webhook Setup (Optional but Recommended)
+
+If you need real-time notifications when connections change state:
+
+1. **Configure webhook endpoint in WorkOS dashboard**
+   - Settings → Webhooks → Add Endpoint
+   - URL: `https://your-domain.com/webhooks/workos`
+
+2. **Subscribe to events:**
+   - `connection.activated` - User completed OAuth
+   - `connection.deactivated` - User revoked access
+   - `connection.deleted` - Connection removed
+
+3. **Verify webhook signatures**
+   - Use SDK's webhook verification function
+   - Reject unsigned requests (security critical)
+
+**See the docs** for webhook payload schema and signature verification code.
 
 ## Verification Checklist (ALL MUST PASS)
 
-Run these commands to confirm integration:
+Run these checks to confirm Pipes integration:
 
 ```bash
-# 1. Check SDK installed
-npm list @workos-inc/node || echo "FAIL: SDK not installed"
+# 1. Environment variables exist
+env | grep WORKOS_API_KEY | grep -q "sk_" && echo "PASS: API key set" || echo "FAIL: API key missing or invalid"
+env | grep WORKOS_CLIENT_ID | grep -q "client_" && echo "PASS: Client ID set" || echo "FAIL: Client ID missing or invalid"
 
-# 2. Check environment variables set
-grep -E "WORKOS_API_KEY|WORKOS_CLIENT_ID" .env* || echo "FAIL: Env vars missing"
+# 2. SDK installed (adjust for your package manager)
+npm list @workos-inc/node 2>/dev/null && echo "PASS: SDK installed" || echo "FAIL: SDK not found"
 
-# 3. Verify API key format (starts with sk_)
-grep "WORKOS_API_KEY=sk_" .env* || echo "FAIL: Invalid API key format"
+# 3. Dashboard providers configured (manual check)
+echo "MANUAL: Open https://dashboard.workos.com/environment/pipes and verify at least one provider is configured"
 
-# 4. Check initialization code exists
-grep -r "new WorkOS\|WorkOS(" --include="*.ts" --include="*.js" || echo "FAIL: SDK not initialized"
+# 4. Test authorization URL generation (adjust for your language)
+# Example for Node.js - replace with your implementation
+node -e "const { WorkOS } = require('@workos-inc/node'); const workos = new WorkOS(process.env.WORKOS_API_KEY); console.log(workos.pipes ? 'PASS: Pipes SDK available' : 'FAIL: Pipes SDK missing');" 2>/dev/null
 
-# 5. Build succeeds
-npm run build || npm run dev -- --help
+# 5. Application builds
+npm run build  # or your build command
 ```
 
-**Manual checks:**
-- [ ] At least one provider configured in WorkOS Dashboard
-- [ ] Provider shows "Configured" status
-- [ ] Test authorization flow in browser returns connection ID
-- [ ] Callback handler validates state parameter
-- [ ] Revoked connections cannot make API calls
+**If any check fails:** Stop and fix before proceeding.
 
 ## Error Recovery
 
-### "Invalid API key" or "Unauthorized"
+### "Invalid redirect_uri" during OAuth
 
-**Root cause:** API key missing, malformed, or lacks Pipes permissions.
+**Root cause:** Redirect URI in provider's OAuth app doesn't match WorkOS callback URL.
 
-Fix:
-1. Verify key starts with `sk_`
-2. Check key environment (sandbox vs production)
-3. Go to WorkOS Dashboard → API Keys
-4. Confirm key has Pipes scope enabled
-5. If using wrong environment, create new key for correct environment
+**Fix:**
+1. Copy redirect URI from WorkOS dashboard provider settings (exact format)
+2. Go to provider's OAuth app settings
+3. Paste URI exactly — no trailing slashes, no typos
+4. Save and retry
 
-### "Provider not configured"
+**Check:** URIs must match character-for-character including protocol (https).
 
-**Root cause:** Provider not set up in WorkOS Dashboard, or using wrong environment.
+### "Invalid scope" error
 
-Fix:
-1. Check `WORKOS_API_KEY` environment (sandbox vs production)
-2. Go to Dashboard → Pipes → Providers
-3. Select provider
-4. Complete configuration (credentials + scopes)
-5. Verify "Configured" badge appears
+**Root cause:** Scopes in authorization request don't match provider's OAuth app configuration.
 
-### "Invalid redirect URI"
+**Fix:**
+1. Check scopes in WorkOS dashboard provider settings
+2. Check scopes in provider's OAuth app settings
+3. Ensure both lists match exactly (case-sensitive for some providers)
+4. Some providers (e.g., Google) require scopes set in OAuth app, not just in request
 
-**Root cause:** Redirect URI in code doesn't match provider OAuth app configuration.
+**Provider-specific:** GitHub uses space-separated scopes, Google uses space-separated URLs.
 
-Fix:
-1. Copy exact redirect URI from WorkOS provider setup modal
-2. Paste into provider OAuth app settings (GitHub, Google, etc.)
-3. Ensure URI includes protocol (https://) and path
-4. For local dev, add localhost URI to provider allow list
+### "Connection not found" when fetching token
 
-### "Invalid state parameter" or CSRF error
+**Root cause:** Connection ID doesn't exist or belongs to different environment.
 
-**Root cause:** State parameter validation failing.
+**Fix:**
+1. Verify you're using the correct `WORKOS_API_KEY` for environment (sandbox vs. production)
+2. Check connection was successfully created (look for `connection.activated` webhook or check dashboard)
+3. Ensure connection ID is stored correctly after authorization flow
 
-Fix:
-1. Check state is stored server-side before redirect
-2. Verify state from callback matches stored value exactly
-3. Implement expiration (5-10 minutes) to prevent replay
-4. Use cryptographically random state generation (not predictable)
+**Debug:** Log the connection ID immediately after creation to verify it's being passed correctly.
 
-### "Insufficient scopes"
+### "Unauthorized" when making API requests
 
-**Root cause:** OAuth scopes don't match API requirements.
+**Root cause:** Token expired and auto-refresh failed, or provider revoked access.
 
-Fix:
-1. Check provider API docs for required scopes
-2. Update scopes in WorkOS Dashboard provider config
-3. Update scopes in provider OAuth app settings
-4. Existing connections may need re-authentication
+**Fix:**
+1. Fetch fresh token via SDK before EVERY API call (don't cache tokens yourself)
+2. Check provider's dashboard for revoked OAuth apps
+3. Check if user manually disconnected in provider settings
+4. Listen for `connection.deactivated` webhook to detect revocations
 
-### Connection expired or revoked
+**Critical:** Never store access tokens long-term — always fetch fresh via SDK.
 
-**Root cause:** User revoked access or token expired beyond refresh window.
+### Webhook signature verification fails
 
-Fix:
-1. Catch SDK token retrieval errors
-2. Return clear error message to user
-3. Provide "Reconnect" button that starts new auth flow
-4. Clean up stored connection ID
+**Root cause:** Wrong signing secret or request body tampered with.
 
-### SDK import errors
+**Fix:**
+1. Get webhook signing secret from WorkOS dashboard (Settings → Webhooks → signing secret)
+2. Use SDK's verification function exactly as documented
+3. Verify raw request body (before parsing JSON) — some frameworks auto-parse
+4. Check webhook endpoint URL matches dashboard configuration exactly
 
-**Root cause:** Wrong import path or SDK not installed.
+**Security note:** Always reject webhooks with invalid signatures — this prevents spoofed events.
 
-Fix:
-```bash
-# Reinstall SDK
-rm -rf node_modules/@workos-inc
-npm install @workos-inc/node
+### Provider-specific OAuth errors
 
-# Check correct import (verify in docs)
-# Usually: import { WorkOS } from '@workos-inc/node'
-```
+Each provider has unique error codes. Common patterns:
 
-### Build fails with "process is not defined" (Next.js client components)
+- **GitHub "bad_verification_code":** Code already used or expired (codes are single-use, 10min TTL)
+- **Slack "invalid_code":** Same as GitHub, plus check client_id matches OAuth app
+- **Google "redirect_uri_mismatch":** Redirect URI must be registered in Google Cloud Console, not just WorkOS
+- **Salesforce "invalid_grant":** Refresh token revoked, user must re-authorize
 
-**Root cause:** Using WorkOS SDK in client component.
-
-Fix:
-1. Move SDK initialization to API route or server component
-2. Never import WorkOS SDK in files with `'use client'` directive
-3. Create API endpoints for client to call
+**Fix:** Check provider's OAuth documentation for error code meanings. WorkOS passes through provider errors.
 
 ## Related Skills
 
-- `workos-authkit-nextjs` - For user authentication with WorkOS
-- `workos-directory-sync` - For SCIM/directory syncing
+- `workos-authkit-nextjs` - If implementing authentication alongside Pipes
+- `workos-user-management` - For syncing connected user data to WorkOS directory

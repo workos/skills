@@ -3,7 +3,7 @@ name: workos-rbac
 description: Set up role-based access control for your application.
 ---
 
-<!-- generated -->
+<!-- refined:sha256:f02c2083efa0 -->
 
 # WorkOS Role-Based Access Control
 
@@ -12,495 +12,352 @@ description: Set up role-based access control for your application.
 **STOP. Do not proceed until complete.**
 
 WebFetch these URLs in order:
-- https://workos.com/docs/rbac/quick-start
-- https://workos.com/docs/rbac/organization-roles
-- https://workos.com/docs/rbac/integration
-- https://workos.com/docs/rbac/index
-- https://workos.com/docs/rbac/idp-role-assignment
-- https://workos.com/docs/rbac/configuration
 
-The documentation is the source of truth. If this skill conflicts with docs, follow docs.
+1. https://workos.com/docs/rbac/quick-start
+2. https://workos.com/docs/rbac/configuration
+3. https://workos.com/docs/rbac/integration
+4. https://workos.com/docs/rbac/organization-roles
+5. https://workos.com/docs/rbac/idp-role-assignment
+
+These docs are the source of truth. If this skill conflicts with documentation, follow the docs.
 
 ## Step 2: Pre-Flight Validation
 
 ### Environment Variables
 
-Check `.env` or `.env.local` for:
+Check `.env.local` or `.env` for:
+
 - `WORKOS_API_KEY` - starts with `sk_`
 - `WORKOS_CLIENT_ID` - starts with `client_`
 
-**Verify:**
+**Verify:** Both exist before continuing.
+
+### SDK Detection
+
 ```bash
-grep "WORKOS_API_KEY=sk_" .env* || echo "FAIL: Missing or invalid API key"
-grep "WORKOS_CLIENT_ID=client_" .env* || echo "FAIL: Missing or invalid client ID"
+# Check if WorkOS SDK is installed
+npm list @workos-inc/node || echo "MISSING: @workos-inc/node"
 ```
 
-### SDK Installation
+If missing, install SDK first (see documentation for package name and installation).
 
-Confirm WorkOS SDK is installed:
-```bash
-# Node.js
-npm list @workos-inc/node || yarn list @workos-inc/node
+### Dashboard Access
 
-# Other languages - check package manifest
+Confirm you can access: https://dashboard.workos.com/
+
+You will configure roles there in Step 3. No API alternative exists for initial setup.
+
+## Step 3: Configure Roles & Permissions (BLOCKING)
+
+**This step MUST be done in WorkOS Dashboard before writing code.**
+
+Navigate to: Dashboard → Environment → Roles & Permissions
+
+### Create Permissions
+
+Define atomic permissions (e.g., `video:view`, `video:create`, `settings:manage`).
+
+**Critical:** Permission slugs use `resource:action` format. Check docs for naming conventions.
+
+### Create Roles
+
+Create environment-level roles with permission sets:
+
+```
+Role structure:
+  |
+  +-- Role slug (e.g., "member", "admin")
+  +-- Role name (display name)
+  +-- Permissions assigned to role
+  +-- Default role flag (yes/no)
 ```
 
-If SDK is missing, install before continuing.
+**Set one role as default** — all new organization memberships receive this role automatically.
 
-## Step 3: Dashboard Configuration (REQUIRED)
+**Priority order matters:** If using multiple roles, set priority in Dashboard. Higher priority = more access in conflicts.
 
-**CRITICAL:** RBAC configuration happens in WorkOS Dashboard BEFORE code integration.
-
-Go to https://dashboard.workos.com/ and navigate to your environment.
-
-### Define Permissions
-
-1. Click **Roles & Permissions** in sidebar
-2. Click **Permissions** tab
-3. Create permissions for your resources:
-   - Use descriptive slugs: `videos:create`, `users:manage`, `settings:update`
-   - Group by resource type for clarity
-   - Document what each permission controls
-
-**Verify:** At least 2-3 permissions exist before proceeding.
-
-### Define Roles
-
-1. Click **Roles** tab
-2. Create roles with permission sets:
-   - **Member** (default role) - basic access
-   - **Admin** - elevated permissions
-   - **Owner** - full control
-
-**Critical:** Every environment MUST have a default role. This is auto-assigned to new organization members.
-
-3. Set default role:
-   - Click gear icon next to a role
-   - Select "Set as default role"
-
-4. Configure priority order (for multiple roles):
-   - Drag roles to reorder
-   - Higher = more privileged
-   - Used when user has multiple roles
-
-**Verify:**
-```bash
-# Test via API that roles exist
-curl -X GET https://api.workos.com/user_management/roles \
-  -H "Authorization: Bearer $WORKOS_API_KEY" \
-  | grep -q "slug" || echo "FAIL: No roles configured"
-```
+**Verify:** At least one role exists and is marked default before continuing.
 
 ## Step 4: Integration Path (Decision Tree)
 
-Determine which WorkOS product you're integrating RBAC with:
+```
+What WorkOS product are you using?
+  |
+  +-- AuthKit (user management)
+  |     |
+  |     +-- Go to Step 5: AuthKit Integration
+  |
+  +-- SSO only (no AuthKit)
+  |     |
+  |     +-- Go to Step 6: SSO Integration
+  |
+  +-- Directory Sync only
+  |     |
+  |     +-- Go to Step 7: Directory Integration
+  |
+  +-- Custom user management
+        |
+        +-- Go to Step 8: API-Only Integration
+```
+
+## Step 5: AuthKit Integration
+
+**Prerequisites:** AuthKit already integrated (see `workos-authkit-nextjs` or equivalent skill).
+
+### Role Assignment Methods (Choose One)
 
 ```
-Which WorkOS product?
+How will roles be assigned?
   |
-  +-- AuthKit --> Go to Step 5 (Role-aware sessions)
+  +-- Manual (API/Dashboard)
+  |     |
+  |     +-- Use Organization Membership API
   |
-  +-- SSO --> Go to Step 6 (IdP role assignment)
+  +-- IdP role assignment (SSO/Directory)
+  |     |
+  |     +-- Configure in Dashboard: Connections → [Connection] → Role Mappings
+  |     +-- CRITICAL: IdP assignment overrides manual assignment
   |
-  +-- Directory Sync --> Go to Step 7 (Group-based roles)
-  |
-  +-- Standalone RBAC --> Go to Step 8 (Manual assignment)
+  +-- Hybrid (both methods)
+        |
+        +-- IdP takes precedence when user authenticates
 ```
 
-## Step 5: AuthKit Integration (Role-Aware Sessions)
+### Read Roles from Session
 
-### Organization Membership Role Assignment
+After user authenticates, roles are in session JWT:
 
-Every user in an organization has an organization membership with assigned role(s).
-
-**Default behavior:** New members get the default role automatically.
-
-**Manual assignment via API:**
 ```typescript
-import { WorkOS } from '@workos-inc/node';
+import { getUser } from '@workos-inc/authkit-nextjs';
 
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
+const { user } = await getUser();
 
-// Update organization membership role
-await workos.userManagement.updateOrganizationMembership({
-  organizationMembershipId: 'om_...',
-  roleSlug: 'admin', // or multiple: ['admin', 'billing']
-});
+// Single role mode
+const role = user.role?.slug; // e.g., "member"
+
+// Multiple roles mode
+const roles = user.roles?.map(r => r.slug); // e.g., ["member", "billing_admin"]
 ```
 
-**Verify membership role:**
-```bash
-# Get organization membership
-curl -X GET "https://api.workos.com/user_management/organization_memberships/{org_membership_id}" \
-  -H "Authorization: Bearer $WORKOS_API_KEY" \
-  | jq '.role.slug'
-```
+Check documentation for exact session structure — may vary by SDK version.
 
-### Reading Roles from Session
+### Enforce Permissions in Code
 
-AuthKit sessions include role and permission data in the JWT.
+**Server-side enforcement (required):**
 
-**Server-side session check:**
 ```typescript
-import { withAuth } from '@workos-inc/authkit-nextjs';
+// Example pattern - exact API from docs
+const hasPermission = user.permissions?.includes('video:create');
 
-export default withAuth(async ({ user }) => {
-  // user.role contains { slug: 'admin' }
-  // user.permissions contains ['videos:create', 'users:manage', ...]
-  
-  if (!user.permissions.includes('videos:create')) {
-    return Response.json({ error: 'Forbidden' }, { status: 403 });
-  }
-  
-  // Proceed with authorized action
-});
-```
-
-**Client-side with useAuth hook:**
-```typescript
-'use client';
-import { useAuth } from '@workos-inc/authkit-nextjs';
-
-export function VideoUploadButton() {
-  const { user } = useAuth();
-  
-  if (!user?.permissions.includes('videos:create')) {
-    return null; // Hide button
-  }
-  
-  return <button>Upload Video</button>;
+if (!hasPermission) {
+  return new Response('Forbidden', { status: 403 });
 }
 ```
 
-**CRITICAL:** Never rely solely on client-side checks. Always validate permissions server-side.
+**Client-side UI (optional):**
 
-## Step 6: SSO Integration (IdP Role Assignment)
+Use session data to hide/show UI elements. **Never rely on client-side checks alone.**
 
-Map SSO groups to WorkOS roles for automatic assignment during SSO login.
+## Step 6: SSO Integration
 
-**When to use:** Customer's identity provider (Okta, Azure AD, etc.) manages groups, and you want groups to automatically map to application roles.
+**Prerequisites:** SSO connection configured (see `workos-sso` skill).
 
-### Configure SSO Group Mappings
+### Enable JIT Provisioning (if needed)
 
-1. Navigate to **SSO** > **Connections** in Dashboard
-2. Select the SSO connection
-3. Click **Role Mappings** tab
-4. Add mappings:
-   - IdP Group Name: `Engineering` → WorkOS Role: `admin`
-   - IdP Group Name: `Contractors` → WorkOS Role: `member`
+Dashboard → SSO Connection → Enable JIT Provisioning
 
-**Precedence:** IdP role assignments OVERRIDE manual assignments. When user logs in via SSO, their role is updated based on current group membership.
+This creates organization memberships automatically on first login.
 
-**Multiple groups → Multiple roles:**
-If user is in `Engineering` (maps to `admin`) AND `Billing` (maps to `billing`), they receive BOTH roles.
+### Configure Role Mappings
 
-### Test SSO Role Assignment
+Dashboard → SSO Connection → Role Mappings
 
-1. Trigger SSO login for test user
-2. Check organization membership role:
+Map IdP groups to WorkOS roles:
+
+```
+IdP Group        → WorkOS Role
+Engineering      → developer
+Administrators   → admin
+```
+
+**Critical:** Group names are case-sensitive and must match IdP exactly.
+
+### Read Roles After SSO
+
+After SSO redirect, fetch user profile:
+
 ```bash
-curl -X GET "https://api.workos.com/user_management/organization_memberships?user_id={user_id}" \
-  -H "Authorization: Bearer $WORKOS_API_KEY" \
-  | jq '.[0].role'
+# Example API call pattern - check docs for exact endpoint
+curl https://api.workos.com/sso/profile \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}"
 ```
 
-Expected: Role matches IdP group mapping.
+Response includes `role` or `roles` field. Use for access control.
 
-## Step 7: Directory Sync Integration (Group-Based Roles)
+## Step 7: Directory Sync Integration
 
-Map directory groups to WorkOS roles for automatic assignment during directory provisioning.
+**Prerequisites:** Directory connection configured.
 
-**When to use:** Customer provisions users via SCIM/directory sync, and directory groups should map to application roles.
+### Enable Directory Provisioning (if using AuthKit)
 
-### Configure Directory Group Mappings
+Dashboard → Directory Connection → Enable Provisioning
 
-1. Navigate to **Directory Sync** > **Directories** in Dashboard
-2. Select the directory
-3. Click **Role Mappings** tab
-4. Add mappings:
-   - Directory Group: `cn=Admins,ou=Groups,dc=example,dc=com` → Role: `admin`
-   - Directory Group: `cn=Users,ou=Groups,dc=example,dc=com` → Role: `member`
+### Configure Role Mappings
 
-**Precedence:** Same as SSO - directory role assignments override manual assignments.
+Dashboard → Directory Connection → Role Mappings
 
-**Multiple groups:** User in multiple mapped groups receives all corresponding roles.
+Map directory groups to WorkOS roles (same pattern as SSO).
 
-### Directory Event Handling
+**Role updates trigger:** Roles update on directory sync events (user added/removed from group).
 
-Roles update automatically when:
-- User added to directory group (receives role)
-- User removed from directory group (loses role)
-- Directory user created (receives roles for all groups)
+### Webhook Handling (if not using AuthKit)
 
-No code changes needed - WorkOS handles sync automatically.
+If managing users yourself, listen for `dsync.user.updated` webhooks to sync role changes.
 
-**Verify directory user roles:**
+Check documentation for webhook payload structure.
+
+## Step 8: API-Only Integration
+
+**Use case:** Custom user management without AuthKit/SSO.
+
+### Assign Roles via API
+
 ```bash
-curl -X GET "https://api.workos.com/directory_sync/directory_users/{directory_user_id}" \
-  -H "Authorization: Bearer $WORKOS_API_KEY" \
-  | jq '.role'
+# Example pattern - check docs for exact endpoint and payload
+curl -X PUT https://api.workos.com/organization_memberships/{id} \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -d '{"role_slug": "admin"}'
 ```
 
-## Step 8: Standalone RBAC (Manual Assignment)
+### Check Permissions
 
-Use RBAC without AuthKit/SSO/Directory Sync by manually managing role assignments.
+**Option 1: Fetch full role definition**
 
-**Use case:** Custom auth system, want WorkOS only for authorization logic.
+Cache role → permission mappings in your app. Query WorkOS API for role definitions on deploy.
 
-### API-Based Role Assignment
+**Option 2: Runtime authorization API**
 
-```typescript
-import { WorkOS } from '@workos-inc/node';
+Check documentation for authorization endpoint if available. Not all SDKs support runtime checks.
 
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
+## Step 9: Organization-Specific Roles (Optional)
 
-// Create organization membership with role
-const membership = await workos.userManagement.createOrganizationMembership({
-  userId: 'user_...',
-  organizationId: 'org_...',
-  roleSlug: 'admin',
-});
-
-// Update role later
-await workos.userManagement.updateOrganizationMembership({
-  organizationMembershipId: membership.id,
-  roleSlug: 'member',
-});
-
-// Assign multiple roles
-await workos.userManagement.updateOrganizationMembership({
-  organizationMembershipId: membership.id,
-  roleSlugs: ['admin', 'billing'], // Note: roleSlugs plural
-});
-```
-
-### Check Authorization
-
-```typescript
-// Get user's organization membership
-const membership = await workos.userManagement.getOrganizationMembership({
-  organizationMembershipId: 'om_...',
-});
-
-// Check permission
-if (membership.permissions.includes('videos:delete')) {
-  // Allow action
-}
-
-// Check role
-if (membership.role.slug === 'admin') {
-  // Allow admin action
-}
-```
-
-## Step 9: Organization-Specific Roles (Advanced)
-
-Create custom roles for individual organizations that differ from environment-level roles.
-
-**When to use:** Enterprise customer needs custom permission set not available in standard roles.
+**Use case:** Different organizations need different role structures.
 
 ### Create Organization Role
 
-1. Navigate to **Organizations** in Dashboard
-2. Select organization
-3. Click **Roles** tab
-4. Click **Create role**
-5. Define role:
-   - Slug is auto-prefixed with `org_`
-   - Select permissions
-   - Set as organization default if needed
+Dashboard → Organizations → [Organization] → Roles → Create Role
 
-**Key behavior:**
-- Organization roles are INDEPENDENT from environment roles
-- Organization has its own default role and priority order
-- New environment roles are added to organization but placed at bottom priority
-- Deleting environment role prompts for replacement role in affected organizations
+**Auto-prefix:** Organization role slugs get `org_` prefix automatically.
 
-**Verify organization role:**
-```bash
-curl -X GET "https://api.workos.com/user_management/organizations/{org_id}/roles" \
-  -H "Authorization: Bearer $WORKOS_API_KEY" \
-  | jq '.data[] | select(.slug | startswith("org_"))'
-```
+**Configuration scope:** Organization has its own:
+- Default role (independent from environment default)
+- Priority order (independent from environment order)
 
-## Step 10: Multiple Roles (Optional)
+### Behavior After Creation
 
-Enable users to have multiple roles simultaneously in an organization.
+- New environment roles auto-added to organization (bottom of priority order)
+- Organization roles usable in all assignment methods (API, IdP, manual)
+- Deleting environment role prompts for replacement in affected organizations
 
-**When to use:** User needs permissions from multiple roles (e.g., both `admin` AND `billing` manager).
-
-### Assigning Multiple Roles
-
-```typescript
-// Via API
-await workos.userManagement.updateOrganizationMembership({
-  organizationMembershipId: 'om_...',
-  roleSlugs: ['admin', 'billing', 'support'], // Array of role slugs
-});
-```
-
-**Permission resolution:**
-- User receives UNION of all permissions from assigned roles
-- No conflicts - permissions are additive
-- Priority order determines which role is "primary" for display purposes
-
-**Session behavior:**
-```typescript
-// Session includes all roles and combined permissions
-const { user } = await getUser();
-// user.roles = [{ slug: 'admin' }, { slug: 'billing' }]
-// user.permissions = ['videos:create', 'users:manage', 'billing:view', ...]
-```
+**Verify:** Organization role appears in organization member assignments.
 
 ## Verification Checklist (ALL MUST PASS)
 
-Run these checks in order:
+Run these checks before marking complete:
 
 ```bash
-# 1. Environment variables configured
-grep "WORKOS_API_KEY=sk_" .env* && grep "WORKOS_CLIENT_ID=client_" .env* || echo "FAIL: Missing env vars"
+# 1. Roles exist in Dashboard
+echo "Manual check: Dashboard → Roles shows at least 1 role with 'Default' badge"
 
-# 2. Roles exist in Dashboard
-curl -s -X GET https://api.workos.com/user_management/roles \
-  -H "Authorization: Bearer $WORKOS_API_KEY" \
-  | jq -e '.data | length > 0' || echo "FAIL: No roles configured"
+# 2. SDK installed and importable
+node -e "require('@workos-inc/node')" && echo "PASS: SDK installed" || echo "FAIL: SDK missing"
 
-# 3. Permissions exist in Dashboard
-curl -s -X GET https://api.workos.com/user_management/permissions \
-  -H "Authorization: Bearer $WORKOS_API_KEY" \
-  | jq -e '.data | length > 0' || echo "FAIL: No permissions configured"
+# 3. Environment variables set
+test -n "$WORKOS_API_KEY" && echo "PASS: API key set" || echo "FAIL: API key missing"
+test -n "$WORKOS_CLIENT_ID" && echo "PASS: Client ID set" || echo "FAIL: Client ID missing"
 
-# 4. Test organization membership has role
-curl -s -X GET "https://api.workos.com/user_management/organization_memberships?limit=1" \
-  -H "Authorization: Bearer $WORKOS_API_KEY" \
-  | jq -e '.data[0].role.slug' || echo "FAIL: No memberships with roles"
-
-# 5. SDK imports work
-node -e "require('@workos-inc/node')" || echo "FAIL: SDK not installed"
-
-# 6. Application builds
-npm run build || yarn build || echo "FAIL: Build errors"
+# 4. Test API connectivity
+curl -f -H "Authorization: Bearer $WORKOS_API_KEY" \
+  https://api.workos.com/organizations?limit=1 && echo "PASS: API reachable" || echo "FAIL: API error"
 ```
 
-**If using AuthKit:** Verify session includes role data:
-```bash
-# Start dev server, authenticate, check session
-curl -s http://localhost:3000/api/auth/session \
-  | jq -e '.user.role' || echo "FAIL: Session missing role"
-```
+**Manual verification:**
+
+- [ ] Dashboard shows configured permissions
+- [ ] Dashboard shows at least one role marked "Default"
+- [ ] Test user has role assigned (check in Dashboard or via API)
+- [ ] Application code reads role/permissions from session or API
 
 ## Error Recovery
 
-### "User does not have required permission"
+### "User has no role assigned"
 
-**Root cause:** User's role lacks the permission being checked.
-
-**Fix:**
-1. Verify user's organization membership:
-```bash
-curl -X GET "https://api.workos.com/user_management/organization_memberships/{om_id}" \
-  -H "Authorization: Bearer $WORKOS_API_KEY" | jq '.role, .permissions'
-```
-2. Check if role has permission in Dashboard: **Roles & Permissions** > **Roles** > select role
-3. Either:
-   - Add permission to role, OR
-   - Assign user a different role with permission, OR
-   - Update authorization logic to check different permission
-
-### "Invalid role slug"
-
-**Root cause:** Role doesn't exist or typo in slug.
+**Cause:** No default role set in Dashboard, or user created before default role configured.
 
 **Fix:**
-```bash
-# List all available roles
-curl -X GET https://api.workos.com/user_management/roles \
-  -H "Authorization: Bearer $WORKOS_API_KEY" | jq '.data[].slug'
-```
-Compare slug in code to available roles. Slugs are case-sensitive.
+1. Dashboard → Roles → Mark one role as "Default"
+2. Manually assign role to existing users via Dashboard or API
 
-### "Cannot assign multiple roles" error
+### "Permission denied" for valid role
 
-**Root cause:** Using `roleSlug` (singular) instead of `roleSlugs` (plural).
+**Cause 1:** Permission not added to role definition.
 
-**Fix:**
-```typescript
-// WRONG
-await workos.userManagement.updateOrganizationMembership({
-  roleSlug: ['admin', 'billing'], // Array not allowed with singular
-});
+**Fix:** Dashboard → Roles → [Role] → Edit → Add missing permission
 
-// CORRECT
-await workos.userManagement.updateOrganizationMembership({
-  roleSlugs: ['admin', 'billing'], // Use plural for arrays
-});
-```
+**Cause 2:** Cached session/token with old permissions.
 
-### "Organization membership not found"
+**Fix:** Force user logout and re-authenticate to get fresh token.
 
-**Root cause:** User not added to organization yet.
+### "IdP role assignment not working"
 
-**Fix:**
-```typescript
-// Create organization membership first
-const membership = await workos.userManagement.createOrganizationMembership({
-  userId: 'user_...',
-  organizationId: 'org_...',
-  roleSlug: 'member', // Optional - defaults to default role
-});
-```
+**Cause 1:** Group name mismatch (case-sensitive).
 
-### IdP role assignment not working
+**Fix:** Dashboard → Connection → Role Mappings → Verify group name matches IdP exactly.
 
-**Root cause 1:** Group name mismatch between IdP and mapping.
+**Cause 2:** User not in IdP group.
 
-**Fix:** 
-1. Check exact group name in IdP admin panel (case-sensitive, includes spaces)
-2. Update mapping in Dashboard to match exactly
+**Fix:** Check IdP admin panel to confirm user's group membership.
 
-**Root cause 2:** SSO connection not configured for role sync.
+**Cause 3:** SSO profile or directory user not synced.
 
-**Fix:**
-1. Verify connection in **SSO** > **Connections**
-2. Check **Role Mappings** tab has mappings
-3. Test SSO login - check IdP sends group claims in SAML/OIDC response
+**Fix:** Trigger re-authentication (SSO) or wait for next directory sync (Directory Sync).
 
-**Root cause 3:** Directory sync delay.
+### "Multiple roles not appearing in session"
 
-**Fix:** Directory events process asynchronously. Wait 30-60 seconds after directory change, then check membership role.
+**Cause:** Multiple roles feature not enabled.
 
-### Session missing role/permissions data
+**Fix:** Check documentation for multiple roles support. May require:
+- Feature flag in Dashboard
+- SDK version upgrade
+- Configuration change in role assignment
 
-**Root cause:** AuthKit version too old or session not refreshed.
+### "Organization role not assignable"
 
-**Fix:**
-```bash
-# 1. Check SDK version supports RBAC
-npm list @workos-inc/authkit-nextjs
+**Cause:** Organization role only usable within its organization scope.
 
-# 2. Force new session
-# - Log out and log back in
-# - Or clear session cookie and re-authenticate
+**Fix:** Verify you're assigning role to member of correct organization. Organization roles cannot be assigned cross-organization.
 
-# 3. Verify middleware includes role data
-grep "authkitMiddleware" middleware.ts || grep "authkit()" middleware.ts
-```
+### "API returns 401 Unauthorized"
 
-If session still missing data, check WebFetch docs for required AuthKit version.
+**Cause 1:** Wrong API key or expired key.
 
-### "No default role set" warning
+**Fix:** Regenerate API key in Dashboard → API Keys.
 
-**Root cause:** Environment or organization has no default role configured.
+**Cause 2:** API key lacks required scopes.
 
-**Fix:**
-1. Go to **Roles & Permissions** > **Roles** in Dashboard
-2. Click gear icon next to desired default role
-3. Select "Set as default role"
-4. New organization memberships will automatically get this role
+**Fix:** Dashboard → API Keys → Check key has "organizations" and "roles" scopes.
+
+### "Environment role deletion blocked"
+
+**Cause:** Role is default for one or more organizations.
+
+**Expected behavior:** Dashboard prompts you to select replacement role for affected organizations. This is not an error — it's data protection.
+
+**Action:** Choose replacement role in prompt, then deletion proceeds.
 
 ## Related Skills
 
-- **workos-authkit-nextjs**: AuthKit integration for role-aware authentication
-- **workos-fga**: Fine-grained authorization beyond role-based permissions
-- **workos-sso**: SSO setup for IdP-based role assignment
-- **workos-directory-sync**: Directory provisioning with group-based roles
+- **workos-authkit-nextjs**: Required for AuthKit integration path
+- **workos-sso**: Required for SSO integration path
+- **workos-fga**: Fine-grained authorization (complementary to RBAC)
+- **workos-directory-sync**: Required for Directory Sync integration path

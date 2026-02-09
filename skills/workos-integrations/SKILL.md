@@ -3,7 +3,7 @@ name: workos-integrations
 description: Set up identity provider integrations with WorkOS. Covers SSO, SCIM, and OAuth for 40+ providers.
 ---
 
-<!-- generated -->
+<!-- generated:sha256:bd246ad25d66 -->
 
 # WorkOS Integrations
 
@@ -70,6 +70,7 @@ Ask the user which identity provider they need to integrate. Then find it in the
 | React Native Expo              | General      | workos.com/docs/integrations/react-native-expo |
 | Rippling                       | SCIM         | workos.com/docs/integrations/rippling-scim |
 | Rippling                       | SAML         | workos.com/docs/integrations/rippling-saml |
+| Sailpoint                      | SCIM         | workos.com/docs/integrations/sailpoint-scim |
 | Salesforce                     | SAML         | workos.com/docs/integrations/salesforce-saml |
 | Salesforce                     | OAuth        | workos.com/docs/integrations/salesforce-oauth |
 | Saml                           | General      | workos.com/docs/integrations/saml |

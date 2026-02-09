@@ -3,7 +3,7 @@ name: workos-feature-flags
 description: Manage feature flags and rollouts with WorkOS.
 ---
 
-<!-- generated -->
+<!-- refined:sha256:c47a1d3b60a1 -->
 
 # WorkOS Feature Flags
 
@@ -19,337 +19,260 @@ If this skill conflicts with the docs, follow the docs.
 
 ## Step 2: Pre-Flight Validation
 
-### WorkOS Account Setup
+### WorkOS Dashboard Setup (REQUIRED)
 
-Check WorkOS Dashboard at https://dashboard.workos.com:
+Before writing ANY code, confirm in WorkOS Dashboard:
 
-- [ ] Environment exists (Staging or Production)
-- [ ] At least one Organization created (Feature Flags require organizations)
-- [ ] Navigate to Feature Flags section — URL is `https://dashboard.workos.com/environment/flags`
+1. Navigate to https://dashboard.workos.com/environment/flags
+2. Verify at least one organization exists in your account
+3. **Optional:** Create a test flag to understand the UI
 
-**Without an organization:** Feature flags cannot target users. Create one in Dashboard → Organizations before proceeding.
+**Cannot proceed without an organization.** Feature flags target organizations or users within organizations.
 
 ### Environment Variables
 
 Check `.env` or `.env.local` for:
 
-- `WORKOS_API_KEY` - starts with `sk_` (use staging key for dev)
-- `WORKOS_CLIENT_ID` - starts with `client_`
+- `WORKOS_API_KEY` - starts with `sk_`
+- `WORKOS_CLIENT_ID` - starts with `client_` (if using AuthKit integration)
 
-**Verify keys are valid:**
-
+**Verify now:**
 ```bash
-curl -H "Authorization: Bearer $WORKOS_API_KEY" \
-  https://api.workos.com/feature-flags
+grep -E "WORKOS_API_KEY|WORKOS_CLIENT_ID" .env .env.local 2>/dev/null || echo "FAIL: Missing environment variables"
 ```
-
-Expected: 200 response with `{ data: [], ... }`. If 401, regenerate key in Dashboard.
 
 ### SDK Installation
 
-Check if WorkOS SDK is installed:
+Detect package manager, install WorkOS SDK if not present:
 
 ```bash
-# Node.js projects
-grep "@workos-inc/node" package.json
-
-# Other languages - check respective package manifests
+# Check if SDK exists
+npm list @workos-inc/node || yarn list @workos-inc/node || pnpm list @workos-inc/node
 ```
 
-If missing, install SDK before continuing. Detect package manager:
+If missing, install via detected package manager.
 
-```bash
-[ -f "package-lock.json" ] && echo "npm" || \
-[ -f "yarn.lock" ] && echo "yarn" || \
-[ -f "pnpm-lock.yaml" ] && echo "pnpm" || \
-echo "npm"
-```
+## Step 3: Access Pattern Decision Tree
 
-Install with detected manager. See docs for language-specific SDK packages.
-
-## Step 3: Create Feature Flags in Dashboard
-
-Navigate to https://dashboard.workos.com/environment/flags
-
-### Creating a Flag (Decision Tree)
+WorkOS Feature Flags are accessed through user access tokens. Choose your integration pattern:
 
 ```
-What's the flag targeting?
+Using WorkOS AuthKit for authentication?
   |
-  +-- Organization feature (e.g., premium tier, beta program)
-  |     --> Create flag
-  |     --> In Targeting, select "Some organizations"
-  |     --> Add specific org IDs
+  +-- YES --> Use access token from AuthKit session (Step 4A)
   |
-  +-- User-specific feature (e.g., early access, user preference)
-  |     --> Create flag
-  |     --> In Targeting, select "Some users"
-  |     --> Add specific user IDs
-  |
-  +-- Global killswitch (enable/disable for everyone)
-        --> Create flag
-        --> In Targeting, toggle "All" or "None"
+  +-- NO  --> Do you have user access tokens from another WorkOS auth flow?
+              |
+              +-- YES --> Use existing access token (Step 4B)
+              |
+              +-- NO  --> STOP: Feature flags require authenticated users
 ```
 
-**Flag naming convention:** Use lowercase with hyphens (e.g., `new-dashboard`, `premium-analytics`). Avoid spaces or special characters.
+**Critical:** Feature flags are NOT accessed via API key alone. They require a user context via access token.
 
-**Verify flag creation:**
+## Step 4A: AuthKit Integration (Recommended)
 
-```bash
-# List all flags via API
-curl -H "Authorization: Bearer $WORKOS_API_KEY" \
-  https://api.workos.com/feature-flags | jq '.data[].key'
-```
+If using `@workos-inc/authkit-nextjs` or similar AuthKit SDK:
 
-You should see your flag key in the output.
+1. Get user session (see `workos-authkit-nextjs` skill for setup)
+2. Extract access token from session
+3. Pass token to feature flag checks
 
-## Step 4: SDK Integration (Language-Specific Paths)
-
-### For Next.js with AuthKit
-
-If using `@workos-inc/authkit-nextjs`:
-
-**Step 4a: Access token contains flags automatically**
-
-WorkOS AuthKit includes feature flags in the user session by default. No additional API calls needed.
+**Pattern for Next.js server components:**
 
 ```typescript
-// app/page.tsx or any server component
 import { getUser } from '@workos-inc/authkit-nextjs';
 
-export default async function Dashboard() {
-  const { user } = await getUser();
+export default async function Page() {
+  const { user, accessToken } = await getUser();
   
-  // Access flags from user session
-  const hasNewDashboard = user?.features?.['new-dashboard'] ?? false;
-  
-  return hasNewDashboard ? <NewDashboard /> : <LegacyDashboard />;
+  // Use accessToken for feature flag evaluation
+  // See docs for exact SDK method
 }
 ```
 
-**Critical:** Flags are only available if user is authenticated. Check `user` exists before accessing `user.features`.
-
-### For Generic Node.js Backend
-
-If NOT using AuthKit or need server-side flag checks:
-
-**Step 4b: Fetch flags via SDK**
+**Pattern for Next.js API routes:**
 
 ```typescript
-import { WorkOS } from '@workos-inc/node';
+import { withAuth } from '@workos-inc/authkit-nextjs';
 
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
-
-// Get flags for a specific user
-async function getUserFlags(userId: string, organizationId: string) {
-  const flags = await workos.featureFlags.getFeatureFlags({
-    userId,
-    organizationId
-  });
-  
-  return flags.data; // Array of enabled flag keys
-}
-
-// Check specific flag
-const flags = await getUserFlags('user_123', 'org_456');
-const hasFeature = flags.some(flag => flag.key === 'new-dashboard');
+export const GET = withAuth(async ({ user }) => {
+  const accessToken = user.accessToken;
+  // Use accessToken for feature flag evaluation
+});
 ```
 
-**Important:** Both `userId` and `organizationId` are required for flag evaluation. These must match the IDs configured in Dashboard targeting.
+Check the WebFetch'd docs for the exact SDK method to evaluate flags with the access token.
 
-### Caching Strategy
+## Step 4B: Manual Access Token Usage
 
-Feature flag responses should be cached to avoid API rate limits:
+If you have access tokens from another WorkOS auth flow:
+
+1. Retrieve the access token from your auth session/storage
+2. Pass token to WorkOS SDK feature flag method
+3. Check WebFetch'd docs for exact SDK method signature
+
+**Do NOT attempt to decode or parse the access token** — treat it as an opaque string.
+
+## Step 5: Create Feature Flags in Dashboard
+
+**This is done via UI, not API:**
+
+1. Navigate to https://dashboard.workos.com/environment/flags
+2. Click "Create Flag" or similar button
+3. Set flag name, description, tags (optional)
+4. Configure targeting:
+   - **All:** Enabled for everyone
+   - **Some:** Enabled for specific organizations or users
+   - **None:** Disabled for everyone
+
+**Verification:**
+```bash
+# No programmatic check - verify visually in dashboard
+echo "Check https://dashboard.workos.com/environment/flags shows your flag"
+```
+
+## Step 6: Evaluate Flags in Code
+
+Check the WebFetch'd documentation for the exact SDK method to evaluate flags. Common pattern:
 
 ```typescript
-// In-memory cache with TTL
-const flagCache = new Map<string, { flags: string[], expiry: number }>();
-const CACHE_TTL = 60000; // 1 minute
+// Pseudocode - check docs for actual SDK method
+const flagValue = await workos.featureFlags.evaluate({
+  accessToken: userAccessToken,
+  flagKey: 'your-flag-key'
+});
 
-async function getCachedFlags(userId: string, orgId: string) {
-  const cacheKey = `${userId}:${orgId}`;
-  const cached = flagCache.get(cacheKey);
-  
-  if (cached && cached.expiry > Date.now()) {
-    return cached.flags;
-  }
-  
-  const flags = await getUserFlags(userId, orgId);
-  flagCache.set(cacheKey, { flags, expiry: Date.now() + CACHE_TTL });
-  
-  return flags;
+if (flagValue.enabled) {
+  // Feature is enabled for this user
 }
 ```
 
-Check docs for recommended cache duration based on your flag update frequency.
+**Integration points:**
+- **Server components:** Evaluate flags in async component functions
+- **API routes:** Evaluate flags in route handlers
+- **Client components:** Fetch flag state from API route (do NOT expose access token to client)
 
-## Step 5: Slack Notifications Setup (Optional)
+## Step 7: Slack Notifications (Optional)
 
-If you need team notifications for flag changes:
-
-### Enable Slack Integration
+To receive Slack notifications for flag lifecycle events:
 
 1. Navigate to https://dashboard.workos.com/environment/flags
 2. Click "Enable Slack notifications"
-3. Click "Connect to Slack" — this redirects to Slack OAuth
-4. Select the Slack channel for notifications
-5. Authorize the WorkOS app
+3. Click "Connect to Slack"
+4. Authorize WorkOS app in your Slack workspace
+5. Select target channel for notifications
 
-**Verify connection:**
-
-```bash
-# Check Slack connection status in Dashboard
-# Should see "Connected to Slack" with channel name
-```
-
-### Notification Events
-
-You'll receive Slack messages for:
-
-- Flag created, updated, or deleted
+**Events that trigger notifications:**
+- Flag created
+- Flag details updated (name, description, tags)
+- Flag deleted
 - Flag enabled/disabled
-- Targeting changed (All → Some, added/removed orgs or users)
+- Targeting changed (All/Some/None)
+- Specific users/organizations added or removed
 
-**Test the integration:**
-
-1. Create a test flag in Dashboard
-2. Check Slack channel for creation notification
-3. Enable the flag for one organization
-4. Check Slack for targeting change notification
-
-### Disconnecting Slack
-
-To change channels or disable:
-
-1. Navigate to Feature Flags in Dashboard
+**To disconnect:**
+1. Navigate to https://dashboard.workos.com/environment/flags
 2. Click "Connected to Slack"
-3. Click "Disconnect"
-4. Repeat setup steps to reconnect with new channel
+3. Click disconnect or similar option
+
+**No code changes required** — this is a dashboard-only configuration.
 
 ## Verification Checklist (ALL MUST PASS)
 
 Run these commands to confirm integration:
 
 ```bash
-# 1. Check environment variables exist
-env | grep -E "WORKOS_(API_KEY|CLIENT_ID)" || echo "FAIL: Missing env vars"
+# 1. Environment variables exist
+grep -q "WORKOS_API_KEY=sk_" .env* && echo "PASS: API key configured" || echo "FAIL: Missing or invalid API key"
 
-# 2. Verify API key is valid
-curl -sf -H "Authorization: Bearer $WORKOS_API_KEY" \
-  https://api.workos.com/feature-flags > /dev/null && \
-  echo "PASS: API key valid" || echo "FAIL: Invalid API key"
+# 2. SDK installed
+npm list @workos-inc/node 2>/dev/null && echo "PASS: SDK installed" || echo "FAIL: SDK not found"
 
-# 3. Check at least one flag exists
-FLAG_COUNT=$(curl -sf -H "Authorization: Bearer $WORKOS_API_KEY" \
-  https://api.workos.com/feature-flags | jq '.data | length')
-[ "$FLAG_COUNT" -gt 0 ] && echo "PASS: Flags exist ($FLAG_COUNT)" || \
-  echo "FAIL: No flags created"
+# 3. Access token retrieval works (if using AuthKit)
+grep -r "accessToken" app/ src/ pages/ 2>/dev/null && echo "PASS: Access token usage found" || echo "INFO: Verify access token extraction manually"
 
-# 4. Verify SDK is installed
-grep -q "@workos-inc" package.json && \
-  echo "PASS: SDK installed" || echo "FAIL: SDK missing"
-
-# 5. Check for flag usage in code
-grep -r "features\[" app/ src/ 2>/dev/null | wc -l | \
-  awk '{if($1>0) print "PASS: Flag checks found"; else print "FAIL: No flag usage"}'
+# 4. Build succeeds
+npm run build || yarn build || pnpm build
 ```
 
-**All checks must show PASS before considering integration complete.**
+**Manual checks (no bash equivalent):**
+
+- [ ] At least one flag exists in WorkOS Dashboard
+- [ ] At least one organization exists in WorkOS Dashboard
+- [ ] Flag evaluation returns expected true/false based on targeting rules
 
 ## Error Recovery
 
-### "flags.data is undefined" in AuthKit
+### "No organizations found"
 
-**Root cause:** User session doesn't include feature flags.
-
-**Fix:**
-
-1. Check AuthKit SDK version — feature flags require `@workos-inc/authkit-nextjs@>=1.3.0`
-2. Verify user is authenticated: `user` object exists before accessing `user.features`
-3. Check Dashboard: flag must be enabled for user's organization
-4. Refresh user session: sign out and sign back in to get updated token
-
-### "Invalid organization_id" API error
-
-**Root cause:** Organization ID doesn't match Dashboard records.
+**Root cause:** Your WorkOS account has no organizations created.
 
 **Fix:**
+1. Go to https://dashboard.workos.com/organizations
+2. Create at least one organization (can be a test org)
+3. Retry flag creation
 
-1. List organizations via API:
-   ```bash
-   curl -H "Authorization: Bearer $WORKOS_API_KEY" \
-     https://api.workos.com/organizations | jq '.data[].id'
-   ```
-2. Use exact org ID from response (format: `org_XXXXXXXX`)
-3. Check user is actually member of that organization in Dashboard
+### "Invalid access token" or "Unauthorized"
 
-### "Rate limit exceeded" errors
-
-**Root cause:** Too many API calls without caching.
+**Root cause:** Access token is missing, expired, or incorrectly extracted.
 
 **Fix:**
+1. Verify user session is valid (re-authenticate if needed)
+2. Check access token is passed correctly to SDK method
+3. Ensure access token is NOT being sent to client-side code
+4. If using AuthKit, verify `getUser()` or `withAuth()` returns `accessToken` field
 
-1. Implement caching strategy from Step 4
-2. Cache duration: Start with 60 seconds, increase if flag changes are infrequent
-3. Use in-memory cache for single-instance apps, Redis for multi-instance
-4. **Never** fetch flags on every request — cache per user session
+Check WebFetch'd docs for exact token field name — it may be `access_token` or `accessToken`.
 
-### Slack notifications not appearing
+### "API key invalid" (sk_ prefix check fails)
 
-**Root cause:** Channel permissions or disconnected integration.
+**Root cause:** `WORKOS_API_KEY` is missing, wrong prefix, or from wrong environment.
 
 **Fix:**
+1. Go to https://dashboard.workos.com/api-keys
+2. Copy correct API key for your environment (staging vs production)
+3. Verify key starts with `sk_`
+4. Update `.env.local` (Next.js) or `.env` (other frameworks)
+5. Restart dev server
 
-1. Check Dashboard shows "Connected to Slack" with correct channel
-2. Verify WorkOS app is in the target Slack channel (invite if missing)
-3. Test with a flag change — create/enable a flag and wait 10 seconds
-4. If still failing, disconnect and reconnect Slack integration
+### "Module not found" for SDK import
 
-### Flags not appearing for user
+**Root cause:** SDK package not installed or wrong package name.
 
-**Root cause:** Targeting misconfiguration.
+**Fix:**
+1. Run `npm list @workos-inc/node` to verify installation
+2. If missing, install: `npm install @workos-inc/node`
+3. Check package.json for typos in package name
+4. Verify node_modules/@workos-inc/node exists
 
-**Fix (Decision Tree):**
+### "Feature flag not found"
 
+**Root cause:** Flag key mismatch between code and dashboard.
+
+**Fix:**
+1. Check exact flag key in dashboard (case-sensitive)
+2. Verify flag exists in correct environment (staging vs production)
+3. Copy-paste flag key from dashboard to avoid typos
+
+### Client-side access token exposure
+
+**Root cause:** Access token being sent to browser, creating security risk.
+
+**Fix:**
+1. **NEVER** pass access tokens to client components
+2. Move flag evaluation to server component or API route
+3. Pass only the boolean result to client:
+
+```typescript
+// Server component
+const flagEnabled = await evaluateFlag(accessToken, 'flag-key');
+
+// Pass to client
+<ClientComponent featureEnabled={flagEnabled} />
 ```
-Flag not showing for user?
-  |
-  +-- Check Dashboard targeting
-  |     Is flag set to "Some" with specific orgs/users?
-  |       --> Verify user's org ID or user ID is in the list
-  |
-  +-- Check user session
-  |     AuthKit: Is user authenticated? (user object exists)
-  |     API: Are userId and organizationId correct?
-  |
-  +-- Check flag key spelling
-        SDK: Does flag key match Dashboard exactly?
-          --> Case-sensitive, no typos
-```
-
-**Verify targeting via API:**
-
-```bash
-# Get flag details including targeting
-curl -H "Authorization: Bearer $WORKOS_API_KEY" \
-  https://api.workos.com/feature-flags/FLAG_KEY | jq
-```
-
-Check `.targeting` field matches your expectations.
-
-### Build fails with "Cannot find module '@workos-inc/node'"
-
-**Root cause:** SDK not installed or wrong package.
-
-**Fix:**
-
-1. Check language: Node.js uses `@workos-inc/node`, not `@workos-inc/workos`
-2. Install: `npm install @workos-inc/node` (or yarn/pnpm equivalent)
-3. Verify: `ls node_modules/@workos-inc/node` should show package directory
-4. Clear build cache: `rm -rf .next node_modules/.cache` then rebuild
 
 ## Related Skills
 
-- **workos-authkit-nextjs**: If using Next.js, AuthKit provides automatic flag integration in user sessions
-- **workos-organizations**: Feature flags require organizations — see this skill for org setup
-- **workos-directory-sync**: Combine flags with SCIM user provisioning for enterprise feature gating
+- `workos-authkit-nextjs` — For obtaining user access tokens via AuthKit
+- `workos-organizations` — For managing organizations that flags target

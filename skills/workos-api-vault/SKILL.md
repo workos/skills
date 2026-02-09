@@ -3,7 +3,7 @@ name: workos-api-vault
 description: WorkOS Vault API endpoints — create, read, update, delete encrypted objects.
 ---
 
-<!-- generated -->
+<!-- refined:sha256:59789ab29ba2 -->
 
 # WorkOS Vault API Reference
 
@@ -22,100 +22,86 @@ description: WorkOS Vault API endpoints — create, read, update, delete encrypt
 
 ## Authentication Setup
 
-All requests require an API key in the Authorization header:
+Set the `Authorization` header on all requests:
 
 ```
-Authorization: Bearer sk_live_your_api_key_here
+Authorization: Bearer sk_your_api_key
 ```
 
-Set your API key as an environment variable:
-```bash
-export WORKOS_API_KEY='sk_live_your_api_key_here'
-```
-
-## Endpoint Catalog
-
-### Data Encryption Key Operations
-
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| POST | `/vault/key/create-data-key` | Generate a new data encryption key (DEK) |
-| POST | `/vault/key/encrypt-data` | Encrypt data using a DEK |
-| POST | `/vault/key/decrypt-data` | Decrypt data using a DEK |
-| POST | `/vault/key/decrypt-data-key` | Decrypt an encrypted DEK |
-
-### Vault Object Operations (CRUD)
-
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| POST | `/vault/object/create` | Store sensitive data as a new object |
-| GET | `/vault/object/get` | Retrieve object by ID |
-| GET | `/vault/object/get-by-name` | Retrieve object by name |
-| PUT | `/vault/object/update` | Update existing object data |
-| DELETE | `/vault/object/delete` | Delete a vault object |
-| GET | `/vault/object/list` | List all vault objects (paginated) |
-| GET | `/vault/object/metadata` | Retrieve object metadata only |
-| GET | `/vault/object/version` | Get specific version of object |
-| GET | `/vault/object/versions` | List all versions of object |
+Your API key must start with `sk_` and be obtained from the WorkOS Dashboard.
 
 ## Operation Decision Tree
 
-**Choose your endpoint based on your use case:**
+**To encrypt sensitive data:**
+- Use `POST /vault/key/encrypt-data` for data you control
+- Use `POST /vault/key/create-data-key` for client-side encryption (returns encrypted key)
 
-### Encryption Operations (Client-Side Control)
-- **Need to encrypt data yourself?** → Use `/vault/key/create-data-key` + `/vault/key/encrypt-data`
-- **Need to decrypt encrypted data?** → Use `/vault/key/decrypt-data`
-- **Need to decrypt a DEK?** → Use `/vault/key/decrypt-data-key`
+**To decrypt data:**
+- Use `POST /vault/key/decrypt-data` for data encrypted by WorkOS
+- Use `POST /vault/key/decrypt-data-key` for data keys (returns plaintext key for client-side decryption)
 
-### Vault Object Operations (Server-Side Storage)
-- **First time storing data?** → Use `POST /vault/object/create`
-- **Updating existing data?** → Use `PUT /vault/object/update` (if you have object ID)
-- **Don't know if object exists?** → Try `GET /vault/object/get-by-name`, then create or update
-- **Retrieving data by ID?** → Use `GET /vault/object/get`
-- **Retrieving data by name?** → Use `GET /vault/object/get-by-name`
-- **Removing data?** → Use `DELETE /vault/object/delete`
-- **Need all objects?** → Use `GET /vault/object/list` (with pagination)
-- **Need only metadata?** → Use `GET /vault/object/metadata`
-- **Working with versioning?** → Use `GET /vault/object/version` or `/vault/object/versions`
+**To store encrypted objects:**
+- Use `POST /vault/object/create` to create a new vault object
+- Use `PUT /vault/object/update` to update an existing object (requires `id`)
+
+**To retrieve encrypted objects:**
+- Use `GET /vault/object/get` when you have the object `id`
+- Use `GET /vault/object/get-by-name` to retrieve by a custom name field
+- Use `GET /vault/object/list` to paginate through all objects
+
+**To manage object metadata:**
+- Use `GET /vault/object/metadata` to retrieve metadata without decrypting the object
+- Use `GET /vault/object/versions` to list all versions of an object
+- Use `GET /vault/object/version` to retrieve a specific version
+
+**To remove objects:**
+- Use `DELETE /vault/object/delete` to delete an object (requires `id`)
+
+## Endpoint Catalog
+
+### Key Operations
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/vault/key/encrypt-data` | Encrypt plaintext data |
+| POST | `/vault/key/decrypt-data` | Decrypt encrypted data |
+| POST | `/vault/key/create-data-key` | Generate an encrypted data key |
+| POST | `/vault/key/decrypt-data-key` | Decrypt a data key |
+
+### Object Operations
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/vault/object/create` | Create a new vault object |
+| PUT | `/vault/object/update` | Update an existing object |
+| GET | `/vault/object/get` | Retrieve object by ID |
+| GET | `/vault/object/get-by-name` | Retrieve object by name |
+| GET | `/vault/object/list` | List all objects (paginated) |
+| GET | `/vault/object/metadata` | Get object metadata only |
+| GET | `/vault/object/version` | Get a specific object version |
+| GET | `/vault/object/versions` | List all object versions |
+| DELETE | `/vault/object/delete` | Delete an object |
 
 ## Request/Response Patterns
-
-### Create Data Encryption Key
-
-**Request:**
-```bash
-curl -X POST https://api.workos.com/vault/key/create-data-key \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json"
-```
-
-**Response:**
-```json
-{
-  "key_id": "key_01HXYZ...",
-  "plaintext_key": "base64_encoded_key",
-  "ciphertext_key": "encrypted_key_material"
-}
-```
 
 ### Encrypt Data
 
 **Request:**
 ```bash
 curl -X POST https://api.workos.com/vault/key/encrypt-data \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Authorization: Bearer sk_your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
-    "key_id": "key_01HXYZ...",
-    "plaintext": "sensitive data to encrypt"
+    "data": "sensitive-value",
+    "key_id": "key_01234567890abcdef"
   }'
 ```
 
 **Response:**
 ```json
 {
-  "ciphertext": "encrypted_base64_data",
-  "key_id": "key_01HXYZ..."
+  "encrypted_data": "AQIDAHi...",
+  "key_id": "key_01234567890abcdef"
 }
 ```
 
@@ -124,19 +110,18 @@ curl -X POST https://api.workos.com/vault/key/encrypt-data \
 **Request:**
 ```bash
 curl -X POST https://api.workos.com/vault/key/decrypt-data \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Authorization: Bearer sk_your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
-    "ciphertext": "encrypted_base64_data",
-    "key_id": "key_01HXYZ..."
+    "encrypted_data": "AQIDAHi...",
+    "key_id": "key_01234567890abcdef"
   }'
 ```
 
 **Response:**
 ```json
 {
-  "plaintext": "decrypted data",
-  "key_id": "key_01HXYZ..."
+  "data": "sensitive-value"
 }
 ```
 
@@ -145,13 +130,17 @@ curl -X POST https://api.workos.com/vault/key/decrypt-data \
 **Request:**
 ```bash
 curl -X POST https://api.workos.com/vault/object/create \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Authorization: Bearer sk_your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "customer_ssn",
+    "name": "user-123-ssn",
     "data": {
       "ssn": "123-45-6789",
-      "customer_id": "cust_12345"
+      "passport": "AB1234567"
+    },
+    "metadata": {
+      "user_id": "user_123",
+      "category": "pii"
     }
   }'
 ```
@@ -159,59 +148,79 @@ curl -X POST https://api.workos.com/vault/object/create \
 **Response:**
 ```json
 {
-  "id": "vault_obj_01HXYZ...",
-  "name": "customer_ssn",
-  "version": 1,
-  "created_at": "2024-01-15T10:00:00.000Z",
-  "updated_at": "2024-01-15T10:00:00.000Z"
+  "id": "vault_obj_01234567890abcdef",
+  "name": "user-123-ssn",
+  "created_at": "2024-01-15T10:30:00.000Z",
+  "updated_at": "2024-01-15T10:30:00.000Z",
+  "version": 1
 }
 ```
 
-### Get Vault Object by ID
+### Get Vault Object
 
 **Request:**
 ```bash
-curl -X GET "https://api.workos.com/vault/object/get?id=vault_obj_01HXYZ..." \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+curl -X GET https://api.workos.com/vault/object/get?id=vault_obj_01234567890abcdef \
+  -H "Authorization: Bearer sk_your_api_key"
 ```
 
 **Response:**
 ```json
 {
-  "id": "vault_obj_01HXYZ...",
-  "name": "customer_ssn",
-  "version": 1,
+  "id": "vault_obj_01234567890abcdef",
+  "name": "user-123-ssn",
   "data": {
     "ssn": "123-45-6789",
-    "customer_id": "cust_12345"
+    "passport": "AB1234567"
   },
-  "created_at": "2024-01-15T10:00:00.000Z",
-  "updated_at": "2024-01-15T10:00:00.000Z"
+  "metadata": {
+    "user_id": "user_123",
+    "category": "pii"
+  },
+  "version": 1,
+  "created_at": "2024-01-15T10:30:00.000Z",
+  "updated_at": "2024-01-15T10:30:00.000Z"
 }
 ```
 
-### Get Vault Object by Name
+### List Vault Objects (Paginated)
 
 **Request:**
 ```bash
-curl -X GET "https://api.workos.com/vault/object/get-by-name?name=customer_ssn" \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+curl -X GET "https://api.workos.com/vault/object/list?limit=10&after=vault_obj_abc123" \
+  -H "Authorization: Bearer sk_your_api_key"
 ```
 
-**Response:** Same as Get by ID
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "vault_obj_01234567890abcdef",
+      "name": "user-123-ssn",
+      "version": 1,
+      "created_at": "2024-01-15T10:30:00.000Z",
+      "updated_at": "2024-01-15T10:30:00.000Z"
+    }
+  ],
+  "list_metadata": {
+    "after": "vault_obj_xyz789"
+  }
+}
+```
 
 ### Update Vault Object
 
 **Request:**
 ```bash
 curl -X PUT https://api.workos.com/vault/object/update \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Authorization: Bearer sk_your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
-    "id": "vault_obj_01HXYZ...",
+    "id": "vault_obj_01234567890abcdef",
     "data": {
       "ssn": "987-65-4321",
-      "customer_id": "cust_12345"
+      "passport": "XY9876543"
     }
   }'
 ```
@@ -219,11 +228,11 @@ curl -X PUT https://api.workos.com/vault/object/update \
 **Response:**
 ```json
 {
-  "id": "vault_obj_01HXYZ...",
-  "name": "customer_ssn",
+  "id": "vault_obj_01234567890abcdef",
+  "name": "user-123-ssn",
   "version": 2,
-  "created_at": "2024-01-15T10:00:00.000Z",
-  "updated_at": "2024-01-15T11:30:00.000Z"
+  "created_at": "2024-01-15T10:30:00.000Z",
+  "updated_at": "2024-01-15T11:45:00.000Z"
 }
 ```
 
@@ -232,10 +241,10 @@ curl -X PUT https://api.workos.com/vault/object/update \
 **Request:**
 ```bash
 curl -X DELETE https://api.workos.com/vault/object/delete \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Authorization: Bearer sk_your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
-    "id": "vault_obj_01HXYZ..."
+    "id": "vault_obj_01234567890abcdef"
   }'
 ```
 
@@ -246,342 +255,153 @@ curl -X DELETE https://api.workos.com/vault/object/delete \
 }
 ```
 
-### List Vault Objects
-
-**Request:**
-```bash
-curl -X GET "https://api.workos.com/vault/object/list?limit=10&before=vault_obj_01ABC..." \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
-```
-
-**Response:**
-```json
-{
-  "data": [
-    {
-      "id": "vault_obj_01HXYZ...",
-      "name": "customer_ssn",
-      "version": 1,
-      "created_at": "2024-01-15T10:00:00.000Z",
-      "updated_at": "2024-01-15T10:00:00.000Z"
-    }
-  ],
-  "list_metadata": {
-    "before": "vault_obj_01ABC...",
-    "after": "vault_obj_01XYZ..."
-  }
-}
-```
-
-### Get Object Metadata Only
-
-**Request:**
-```bash
-curl -X GET "https://api.workos.com/vault/object/metadata?id=vault_obj_01HXYZ..." \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
-```
-
-**Response:**
-```json
-{
-  "id": "vault_obj_01HXYZ...",
-  "name": "customer_ssn",
-  "version": 1,
-  "created_at": "2024-01-15T10:00:00.000Z",
-  "updated_at": "2024-01-15T10:00:00.000Z"
-}
-```
-
-## Pagination Handling
+## Pagination Pattern
 
 The `/vault/object/list` endpoint uses cursor-based pagination:
 
-1. **Initial request:** `GET /vault/object/list?limit=10`
-2. **Response includes cursors:**
-   ```json
-   {
-     "data": [...],
-     "list_metadata": {
-       "before": "vault_obj_01ABC...",
-       "after": "vault_obj_01XYZ..."
-     }
-   }
-   ```
-3. **Next page:** Use `before` cursor: `GET /vault/object/list?limit=10&before=vault_obj_01ABC...`
-4. **Previous page:** Use `after` cursor: `GET /vault/object/list?limit=10&after=vault_obj_01XYZ...`
-5. **End of list:** When `before` is `null`, you've reached the end
+1. **First request:** Omit `after` parameter or set `limit` (default 10, max 100)
+2. **Subsequent requests:** Use the `after` value from `list_metadata` in the response
+3. **End of results:** `list_metadata.after` is `null` or absent
+
+Example pagination loop:
+```bash
+# First page
+curl -X GET "https://api.workos.com/vault/object/list?limit=50" \
+  -H "Authorization: Bearer sk_your_api_key"
+
+# Next page (use 'after' from previous response)
+curl -X GET "https://api.workos.com/vault/object/list?limit=50&after=vault_obj_xyz789" \
+  -H "Authorization: Bearer sk_your_api_key"
+```
 
 ## Error Code Mapping
 
-### 400 Bad Request
-- **Cause:** Invalid request body or missing required fields
-- **Fix:** Check request JSON matches the expected schema from docs
-- **Example:** Missing `name` field in object creation
+| Status Code | Cause | Fix |
+|------------|-------|-----|
+| 401 | Invalid or missing API key | Verify `Authorization: Bearer sk_...` header is set correctly |
+| 403 | API key lacks required permissions | Check API key permissions in WorkOS Dashboard |
+| 404 | Object or key not found | Verify the `id` or `key_id` exists and is not deleted |
+| 422 | Invalid request parameters | Check required fields: `data` (encrypt), `encrypted_data` (decrypt), `id` (update/delete) |
+| 429 | Rate limit exceeded | Implement exponential backoff with retry after 1s, 2s, 4s, 8s |
+| 500 | Internal server error | Retry with exponential backoff; contact support if persists |
 
-### 401 Unauthorized
-- **Cause:** Missing or invalid API key
-- **Fix:** Verify `Authorization: Bearer sk_live_...` header is present and key is valid
-- **Check:** API key should start with `sk_live_` or `sk_test_`
+### Specific Error Scenarios
 
-### 403 Forbidden
-- **Cause:** API key lacks permissions for this operation
-- **Fix:** Check API key permissions in WorkOS Dashboard
-- **Note:** Ensure Vault feature is enabled for your environment
+**Missing required field:**
+```json
+{
+  "error": "invalid_request",
+  "message": "Missing required parameter: data"
+}
+```
+Fix: Include all required fields in request body.
 
-### 404 Not Found
-- **Cause:** Object ID or name doesn't exist
-- **Fix:** Verify the object ID/name is correct; use `/vault/object/list` to check available objects
-- **Note:** Objects are environment-specific (test vs production)
+**Invalid object ID:**
+```json
+{
+  "error": "not_found",
+  "message": "Vault object not found"
+}
+```
+Fix: Verify the object ID is correct and the object has not been deleted.
 
-### 409 Conflict
-- **Cause:** Object name already exists (when creating)
-- **Fix:** Use `/vault/object/update` instead, or choose a different name
-- **Pattern:** Check with `/vault/object/get-by-name` first
+**Encryption key not found:**
+```json
+{
+  "error": "not_found",
+  "message": "Key not found"
+}
+```
+Fix: Create the encryption key first or use a valid `key_id`.
 
-### 422 Unprocessable Entity
-- **Cause:** Invalid data format or constraint violation
-- **Fix:** Validate data types and value constraints before sending
-- **Example:** Data field exceeds maximum size limit
+## Rate Limit Guidance
 
-### 429 Too Many Requests
-- **Cause:** Rate limit exceeded
-- **Fix:** Implement exponential backoff: wait 1s, 2s, 4s, 8s between retries
-- **Pattern:** Check `Retry-After` header if present
+The Vault API enforces rate limits per API key. When you receive a 429 response:
 
-### 500 Internal Server Error
-- **Cause:** WorkOS service issue
-- **Fix:** Retry with exponential backoff; check status.workos.com
-- **Pattern:** Safe to retry idempotent operations (GET, DELETE)
+1. **Wait:** Start with a 1-second delay
+2. **Retry:** Exponentially increase delay (1s → 2s → 4s → 8s)
+3. **Max retries:** Stop after 5 attempts
+4. **Check limits:** Review your plan limits in the WorkOS Dashboard
 
-### 503 Service Unavailable
-- **Cause:** Temporary service outage or maintenance
-- **Fix:** Retry after delay; check status.workos.com
-- **Pattern:** Implement circuit breaker after 3 consecutive failures
-
-## Rate Limits
-
-WorkOS Vault applies rate limits per API key. When approaching limits:
-
-1. **Monitor response headers:**
-   - `X-RateLimit-Limit`: Total requests allowed per window
-   - `X-RateLimit-Remaining`: Requests remaining in current window
-   - `X-RateLimit-Reset`: Unix timestamp when window resets
-
-2. **Implement retry strategy:**
-   ```bash
-   # Example retry with exponential backoff
-   for i in {1..5}; do
-     response=$(curl -w "%{http_code}" -s -o response.json \
-       -X GET "https://api.workos.com/vault/object/get?id=vault_obj_01HXYZ..." \
-       -H "Authorization: Bearer ${WORKOS_API_KEY}")
-     
-     if [ $response -eq 429 ]; then
-       wait_time=$((2 ** i))
-       echo "Rate limited. Waiting ${wait_time}s..."
-       sleep $wait_time
-     else
-       break
-     fi
-   done
-   ```
-
-3. **Best practices:**
-   - Batch operations when possible (use list endpoints)
-   - Cache metadata responses (they change less frequently)
-   - Implement client-side request queuing
-
-## Runnable Verification Commands
-
-### Verify Authentication
+Example retry logic:
 ```bash
-# Should return 401 with invalid key
-curl -X GET "https://api.workos.com/vault/object/list" \
-  -H "Authorization: Bearer invalid_key" \
-  -w "\nHTTP Status: %{http_code}\n"
+for i in {1..5}; do
+  response=$(curl -X POST https://api.workos.com/vault/key/encrypt-data \
+    -H "Authorization: Bearer sk_your_api_key" \
+    -H "Content-Type: application/json" \
+    -d '{"data": "value", "key_id": "key_123"}')
+  
+  if [[ $? -eq 0 ]]; then
+    echo "$response"
+    break
+  fi
+  
+  sleep $((2**i))
+done
+```
 
-# Should return 200 with valid key
-curl -X GET "https://api.workos.com/vault/object/list" \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+## Runnable Verification
+
+### Step 1: Test Authentication
+
+```bash
+curl -X GET https://api.workos.com/vault/object/list \
+  -H "Authorization: Bearer sk_your_api_key" \
   -w "\nHTTP Status: %{http_code}\n"
 ```
 
-### End-to-End Encryption Flow
+Expected: HTTP 200 with object list or empty array.
+
+### Step 2: Test Encryption/Decryption
+
 ```bash
-# 1. Create a data encryption key
-DEK_RESPONSE=$(curl -s -X POST https://api.workos.com/vault/key/create-data-key \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json")
-
-KEY_ID=$(echo $DEK_RESPONSE | jq -r '.key_id')
-echo "Created key: $KEY_ID"
-
-# 2. Encrypt some data
-ENCRYPT_RESPONSE=$(curl -s -X POST https://api.workos.com/vault/key/encrypt-data \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+# Encrypt data
+ENCRYPTED=$(curl -X POST https://api.workos.com/vault/key/encrypt-data \
+  -H "Authorization: Bearer sk_your_api_key" \
   -H "Content-Type: application/json" \
-  -d "{
-    \"key_id\": \"$KEY_ID\",
-    \"plaintext\": \"Secret data to encrypt\"
-  }")
+  -d '{"data": "test-value", "key_id": "key_01234567890abcdef"}' | jq -r '.encrypted_data')
 
-CIPHERTEXT=$(echo $ENCRYPT_RESPONSE | jq -r '.ciphertext')
-echo "Encrypted data: $CIPHERTEXT"
+echo "Encrypted: $ENCRYPTED"
 
-# 3. Decrypt the data
-DECRYPT_RESPONSE=$(curl -s -X POST https://api.workos.com/vault/key/decrypt-data \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+# Decrypt data
+curl -X POST https://api.workos.com/vault/key/decrypt-data \
+  -H "Authorization: Bearer sk_your_api_key" \
   -H "Content-Type: application/json" \
-  -d "{
-    \"key_id\": \"$KEY_ID\",
-    \"ciphertext\": \"$CIPHERTEXT\"
-  }")
-
-PLAINTEXT=$(echo $DECRYPT_RESPONSE | jq -r '.plaintext')
-echo "Decrypted data: $PLAINTEXT"
+  -d "{\"encrypted_data\": \"$ENCRYPTED\", \"key_id\": \"key_01234567890abcdef\"}"
 ```
 
-### End-to-End Vault Object Flow
+Expected: Decrypted response shows `"data": "test-value"`.
+
+### Step 3: Test Object CRUD
+
 ```bash
-# 1. Create a vault object
-CREATE_RESPONSE=$(curl -s -X POST https://api.workos.com/vault/object/create \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+# Create
+OBJECT_ID=$(curl -X POST https://api.workos.com/vault/object/create \
+  -H "Authorization: Bearer sk_your_api_key" \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "test_object_'$(date +%s)'",
-    "data": {
-      "field1": "value1",
-      "field2": "value2"
-    }
-  }')
+  -d '{"name": "test-object", "data": {"field": "value"}}' | jq -r '.id')
 
-OBJECT_ID=$(echo $CREATE_RESPONSE | jq -r '.id')
-OBJECT_NAME=$(echo $CREATE_RESPONSE | jq -r '.name')
-echo "Created object: $OBJECT_ID (name: $OBJECT_NAME)"
+echo "Created: $OBJECT_ID"
 
-# 2. Retrieve by ID
-curl -s -X GET "https://api.workos.com/vault/object/get?id=$OBJECT_ID" \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" | jq '.'
-
-# 3. Retrieve by name
-curl -s -X GET "https://api.workos.com/vault/object/get-by-name?name=$OBJECT_NAME" \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" | jq '.'
-
-# 4. Update the object
-curl -s -X PUT https://api.workos.com/vault/object/update \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"id\": \"$OBJECT_ID\",
-    \"data\": {
-      \"field1\": \"updated_value\",
-      \"field2\": \"value2\",
-      \"field3\": \"new_field\"
-    }
-  }" | jq '.'
-
-# 5. Get metadata only
-curl -s -X GET "https://api.workos.com/vault/object/metadata?id=$OBJECT_ID" \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" | jq '.'
-
-# 6. List all objects
-curl -s -X GET "https://api.workos.com/vault/object/list?limit=5" \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" | jq '.'
-
-# 7. Delete the object
-curl -s -X DELETE https://api.workos.com/vault/object/delete \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"id\": \"$OBJECT_ID\"
-  }" | jq '.'
-
-echo "Verification complete!"
-```
-
-## SDK Usage Patterns
-
-### Node.js
-```javascript
-import { WorkOS } from '@workos-inc/node';
-
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
-
-// Create vault object
-const vaultObject = await workos.vault.createObject({
-  name: 'user_payment_info',
-  data: {
-    cardNumber: '4111111111111111',
-    cvv: '123'
-  }
-});
-
-// Retrieve by ID
-const retrieved = await workos.vault.getObject({
-  id: vaultObject.id
-});
-
-// Retrieve by name
-const byName = await workos.vault.getObjectByName({
-  name: 'user_payment_info'
-});
-
-// Update
-await workos.vault.updateObject({
-  id: vaultObject.id,
-  data: {
-    cardNumber: '4111111111111111',
-    cvv: '456'
-  }
-});
-
-// List with pagination
-const objects = await workos.vault.listObjects({
-  limit: 10
-});
-
-// Delete
-await workos.vault.deleteObject({
-  id: vaultObject.id
-});
-```
-
-### Python
-```python
-from workos import WorkOSClient
-
-client = WorkOSClient(api_key=os.getenv('WORKOS_API_KEY'))
-
-# Create vault object
-vault_object = client.vault.create_object(
-    name='user_payment_info',
-    data={
-        'card_number': '4111111111111111',
-        'cvv': '123'
-    }
-)
-
-# Retrieve by ID
-retrieved = client.vault.get_object(id=vault_object.id)
-
-# Retrieve by name
-by_name = client.vault.get_object_by_name(name='user_payment_info')
+# Read
+curl -X GET "https://api.workos.com/vault/object/get?id=$OBJECT_ID" \
+  -H "Authorization: Bearer sk_your_api_key"
 
 # Update
-client.vault.update_object(
-    id=vault_object.id,
-    data={
-        'card_number': '4111111111111111',
-        'cvv': '456'
-    }
-)
-
-# List with pagination
-objects = client.vault.list_objects(limit=10)
+curl -X PUT https://api.workos.com/vault/object/update \
+  -H "Authorization: Bearer sk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d "{\"id\": \"$OBJECT_ID\", \"data\": {\"field\": \"updated-value\"}}"
 
 # Delete
-client.vault.delete_object(id=vault_object.id)
+curl -X DELETE https://api.workos.com/vault/object/delete \
+  -H "Authorization: Bearer sk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d "{\"id\": \"$OBJECT_ID\"}"
 ```
+
+Expected: All operations return 200 status with appropriate responses.
 
 ## Related Skills
 
-- **workos-vault** - Feature overview and use cases for WorkOS Vault (encryption, key management, compliance)
+- **workos-vault** — Feature overview and implementation patterns for WorkOS Vault (encryption, object storage, versioning)

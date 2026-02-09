@@ -3,7 +3,7 @@ name: workos-api-authkit
 description: WorkOS AuthKit API endpoints — users, sessions, authentication, MFA, and organization memberships.
 ---
 
-<!-- generated -->
+<!-- refined:sha256:5f44c1949409 -->
 
 # WorkOS AuthKit API Reference
 
@@ -22,844 +22,561 @@ description: WorkOS AuthKit API endpoints — users, sessions, authentication, M
 
 ## Authentication Setup
 
-All API requests require authentication using your WorkOS API key in the Authorization header:
+Authenticate all API requests using your WorkOS API key in the Authorization header:
 
 ```bash
-Authorization: Bearer sk_test_abc123...
+Authorization: Bearer sk_live_YourAPIKeyHere
 ```
 
-Set environment variables:
-```bash
-export WORKOS_API_KEY="sk_test_abc123..."
-export WORKOS_CLIENT_ID="client_abc123..."
-```
+API keys starting with `sk_test_` are for test environments. Keys starting with `sk_live_` are for production.
+
+## Core Endpoint Catalog
+
+### User Management
+
+| Method | Endpoint | Purpose |
+| ------ | -------- | ------- |
+| POST | `/user_management/users` | Create a new user |
+| GET | `/user_management/users/{user_id}` | Retrieve user details |
+| GET | `/user_management/users` | List all users (paginated) |
+| PUT | `/user_management/users/{user_id}` | Update user attributes |
+| DELETE | `/user_management/users/{user_id}` | Delete a user |
+
+### Authentication
+
+| Method | Endpoint | Purpose |
+| ------ | -------- | ------- |
+| GET | `/user_management/authorize` | Get authorization URL for login flow |
+| POST | `/sso/token` | Exchange authorization code for tokens |
+| POST | `/user_management/sessions` | Create a new session |
+| GET | `/user_management/sessions/{session_id}` | Retrieve session details |
+| POST | `/user_management/sessions/{session_id}/revoke` | Revoke (logout) a session |
+
+### Organization Membership
+
+| Method | Endpoint | Purpose |
+| ------ | -------- | ------- |
+| POST | `/user_management/organization_memberships` | Add user to organization |
+| GET | `/user_management/organization_memberships/{membership_id}` | Get membership details |
+| GET | `/user_management/organization_memberships` | List memberships (paginated) |
+| PUT | `/user_management/organization_memberships/{membership_id}` | Update membership role |
+| DELETE | `/user_management/organization_memberships/{membership_id}` | Remove user from organization |
+
+### Invitations
+
+| Method | Endpoint | Purpose |
+| ------ | -------- | ------- |
+| POST | `/user_management/invitations` | Send invitation to join organization |
+| GET | `/user_management/invitations/{invitation_id}` | Get invitation details |
+| GET | `/user_management/invitations` | List invitations (paginated) |
+| POST | `/user_management/invitations/{invitation_id}/resend` | Resend invitation email |
+| POST | `/user_management/invitations/{invitation_id}/revoke` | Cancel invitation |
+
+### MFA (Multi-Factor Authentication)
+
+| Method | Endpoint | Purpose |
+| ------ | -------- | ------- |
+| POST | `/user_management/authentication_factors` | Enroll user in MFA |
+| GET | `/user_management/authentication_factors` | List user's MFA factors |
+| DELETE | `/user_management/authentication_factors/{factor_id}` | Remove MFA factor |
+
+### API Key Management
+
+| Method | Endpoint | Purpose |
+| ------ | -------- | ------- |
+| POST | `/user_management/organizations/{org_id}/api_keys` | Create API key for organization |
+| GET | `/user_management/organizations/{org_id}/api_keys` | List organization API keys |
+| POST | `/user_management/api_keys/validate` | Validate API key and get metadata |
+| DELETE | `/user_management/api_keys/{key_id}` | Delete API key |
 
 ## Operation Decision Tree
 
-**Choose the right endpoint based on your task:**
+### User Operations
 
-### User Management Operations
-- **Create user** → `POST /user_management/users`
-- **Get user by ID** → `GET /user_management/users/{user_id}`
-- **Get user by external ID** → `GET /user_management/users/by_external_id/{external_id}`
-- **Update user** → `PUT /user_management/users/{user_id}`
-- **Delete user** → `DELETE /user_management/users/{user_id}`
-- **List users** → `GET /user_management/users` (with pagination)
+**Creating a user:**
+- Use `POST /user_management/users` with `email`, `password` (optional), `first_name`, `last_name`
+- For SSO users, omit `password` — authentication happens via SSO provider
 
-### Authentication Operations
-- **Start auth flow** → `getAuthorizationUrl()` (SDK helper)
-- **Exchange code for tokens** → `POST /user_management/authenticate` with `code` grant
-- **Refresh session** → `POST /user_management/authenticate` with `refresh_token` grant
-- **Get logout URL** → `getLogoutUrl()` (SDK helper)
+**Retrieving a user:**
+- By ID: `GET /user_management/users/{user_id}`
+- By email or external ID: `GET /user_management/users?email={email}` or `?external_id={id}`
+
+**Updating a user:**
+- Use `PUT /user_management/users/{user_id}` with fields to update (`first_name`, `last_name`, `email_verified`)
+- Cannot update `email` directly — user must verify new email
+
+**Deleting a user:**
+- Use `DELETE /user_management/users/{user_id}`
+- Also revokes all sessions and removes from all organizations
+
+### Authentication Flow
+
+**Standard email/password login:**
+1. Call `GET /user_management/authorize` with `client_id`, `redirect_uri`, `response_type=code`
+2. User authenticates via AuthKit UI
+3. Redirect back to your app with `code` parameter
+4. Exchange code: `POST /sso/token` with `code`, `client_id`, `client_secret`, `grant_type=authorization_code`
+5. Receive `access_token`, `refresh_token`, and user profile
+
+**SSO login:**
+1. Same as above, but `GET /user_management/authorize` includes `organization_id` or `connection_id`
+2. User redirects to SSO provider
+3. After SSO auth, redirect back with `code`
+4. Exchange code as above
+
+**Refresh tokens:**
+- Use `POST /sso/token` with `refresh_token`, `grant_type=refresh_token`
+- Returns new `access_token` (and optionally new `refresh_token`)
 
 ### Session Management
-- **List sessions** → `GET /user_management/sessions`
-- **Revoke session** → `POST /user_management/sessions/{session_id}/revoke`
-- **Validate session** → Use access token with `/user_management/users` endpoints
+
+**Creating sessions:**
+- Sessions are created automatically during authentication flow
+- Or use `POST /user_management/sessions` for manual session creation
+
+**Revoking sessions (logout):**
+- Single session: `POST /user_management/sessions/{session_id}/revoke`
+- All user sessions: `GET /user_management/sessions?user_id={user_id}`, then revoke each
 
 ### Organization Membership
-- **Add user to org** → `POST /user_management/organization_memberships`
-- **Get membership** → `GET /user_management/organization_memberships/{membership_id}`
-- **Update role** → `PUT /user_management/organization_memberships/{membership_id}`
-- **Remove from org** → `DELETE /user_management/organization_memberships/{membership_id}`
-- **Deactivate (soft delete)** → `POST /user_management/organization_memberships/{membership_id}/deactivate`
-- **Reactivate** → `POST /user_management/organization_memberships/{membership_id}/reactivate`
 
-### Invitation Management
-- **Send invitation** → `POST /user_management/invitations`
-- **List invitations** → `GET /user_management/invitations`
-- **Get invitation** → `GET /user_management/invitations/{invitation_id}`
-- **Find by token** → `GET /user_management/invitations/by_token/{token}`
-- **Revoke invitation** → `POST /user_management/invitations/{invitation_id}/revoke`
-- **Resend invitation** → `POST /user_management/invitations/{invitation_id}/send`
+**Adding user to organization:**
+- Use `POST /user_management/organization_memberships` with `user_id`, `organization_id`, `role_slug`
 
-### Password Reset
-- **Create reset** → `POST /user_management/password_reset`
-- **Get reset details** → `GET /user_management/password_reset/{password_reset_id}`
-- **Complete reset** → `POST /user_management/password_reset/confirm`
+**Updating role:**
+- Use `PUT /user_management/organization_memberships/{membership_id}` with new `role_slug`
 
-### Magic Auth
-- **Create magic link** → `POST /user_management/magic_auth`
-- **Get magic auth** → `GET /user_management/magic_auth/{magic_auth_id}`
+**Removing user:**
+- Use `DELETE /user_management/organization_memberships/{membership_id}`
 
-### Email Verification
-- **Get verification** → `GET /user_management/email_verification/{email_verification_id}`
-- **Send verification code** → Triggered automatically on user creation
+### Invitations
 
-### MFA Operations
-- **Enroll auth factor** → `POST /user_management/authentication_factors`
-- **List factors** → `GET /user_management/authentication_factors`
-- **Challenge MFA** → `POST /user_management/authentication_factors/{factor_id}/challenge`
+**Sending invitation:**
+- Use `POST /user_management/invitations` with `email`, `organization_id`, `role_slug` (optional)
+- User receives email with invitation link
 
-### API Key Management
-- **Create API key** → `POST /user_management/organizations/{org_id}/api_keys`
-- **List API keys** → `GET /user_management/organizations/{org_id}/api_keys`
-- **Validate API key** → `GET /user_management/api_keys/validate`
-- **Delete API key** → `DELETE /user_management/api_keys/{api_key_id}`
+**Accepting invitation:**
+- Not a direct API call — user clicks link in email, creates account, and is auto-added to organization
 
-### CLI Auth (Device Flow)
-- **Initiate device auth** → `POST /user_management/device_authorization`
-- **Poll for token** → `POST /user_management/device_code`
+**Resending or canceling:**
+- Resend: `POST /user_management/invitations/{invitation_id}/resend`
+- Cancel: `POST /user_management/invitations/{invitation_id}/revoke`
 
-## Core Endpoint Patterns
+## Request/Response Patterns
 
-### User CRUD Operations
+### Create User
 
-**Create User**
 ```bash
 curl -X POST https://api.workos.com/user_management/users \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Authorization: Bearer sk_live_..." \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
+    "password": "SecureP@ssw0rd",
     "first_name": "Jane",
     "last_name": "Doe",
-    "email_verified": true
+    "email_verified": false
   }'
 ```
 
-Response (201):
+**Response (201 Created):**
 ```json
 {
   "object": "user",
-  "id": "user_01HXYZ...",
+  "id": "user_01H7ZGXFP5C6BBQY6Z7277ZCT0",
   "email": "user@example.com",
   "first_name": "Jane",
   "last_name": "Doe",
-  "email_verified": true,
-  "created_at": "2024-01-15T10:30:00.000Z",
-  "updated_at": "2024-01-15T10:30:00.000Z"
+  "email_verified": false,
+  "created_at": "2023-08-15T14:30:00.000Z",
+  "updated_at": "2023-08-15T14:30:00.000Z"
 }
 ```
 
-**Get User**
+### List Users (Paginated)
+
 ```bash
-curl https://api.workos.com/user_management/users/user_01HXYZ... \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+curl -X GET "https://api.workos.com/user_management/users?limit=10&order=desc" \
+  -H "Authorization: Bearer sk_live_..."
 ```
 
-**Update User**
-```bash
-curl -X PUT https://api.workos.com/user_management/users/user_01HXYZ... \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "first_name": "Janet",
-    "email_verified": true
-  }'
-```
-
-**Delete User**
-```bash
-curl -X DELETE https://api.workos.com/user_management/users/user_01HXYZ... \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
-```
-
-Response (202): Empty response with 202 Accepted status
-
-**List Users (Paginated)**
-```bash
-curl "https://api.workos.com/user_management/users?limit=10&order=desc" \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
-```
-
-Response includes pagination metadata:
+**Response (200 OK):**
 ```json
 {
-  "data": [...],
+  "object": "list",
+  "data": [
+    {
+      "object": "user",
+      "id": "user_01H7ZGXFP5C6BBQY6Z7277ZCT0",
+      "email": "user@example.com",
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "email_verified": true,
+      "created_at": "2023-08-15T14:30:00.000Z",
+      "updated_at": "2023-08-15T14:30:00.000Z"
+    }
+  ],
   "list_metadata": {
-    "before": "user_01HXYZ...",
-    "after": "user_01HABC..."
+    "before": null,
+    "after": "user_01H7ZGXFP5C6BBQY6Z7277ZCT0"
   }
 }
 ```
 
-### Authentication Flow
+**Pagination pattern:**
+- Use `after` cursor from `list_metadata` in next request: `?after=user_01H7ZGXFP5C6BBQY6Z7277ZCT0`
+- Use `before` cursor to paginate backwards
+- `limit` parameter controls page size (default 10, max 100)
 
-**Get Authorization URL (SDK)**
-```typescript
-const authorizationUrl = workos.userManagement.getAuthorizationUrl({
-  provider: 'authkit',
-  clientId: process.env.WORKOS_CLIENT_ID,
-  redirectUri: 'https://your-app.com/callback',
-  state: 'optional-state-param'
-});
+### Get Authorization URL
+
+```bash
+curl -X GET "https://api.workos.com/user_management/authorize?client_id=client_01H7ZGXFP5C6BBQY6Z7277ZCT0&redirect_uri=https://yourapp.com/callback&response_type=code&state=random_state_string" \
+  -H "Authorization: Bearer sk_live_..."
 ```
 
-**Exchange Code for Session**
+**Response (302 Redirect or JSON with URL):**
+```json
+{
+  "url": "https://auth.workos.com/authorize?client_id=...&redirect_uri=...&response_type=code&state=..."
+}
+```
+
+Redirect user to this URL for authentication.
+
+### Exchange Code for Tokens
+
 ```bash
-curl -X POST https://api.workos.com/user_management/authenticate \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+curl -X POST https://api.workos.com/sso/token \
   -H "Content-Type: application/json" \
   -d '{
-    "client_id": "client_abc123...",
-    "code": "auth_code_from_callback",
+    "client_id": "client_01H7ZGXFP5C6BBQY6Z7277ZCT0",
+    "client_secret": "sk_live_...",
+    "code": "auth_code_received_from_callback",
     "grant_type": "authorization_code"
   }'
 ```
 
-Response:
+**Response (200 OK):**
 ```json
 {
+  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "refresh_01H7ZGXFP5C6BBQY6Z7277ZCT0",
+  "token_type": "Bearer",
+  "expires_in": 3600,
   "user": {
     "object": "user",
-    "id": "user_01HXYZ...",
+    "id": "user_01H7ZGXFP5C6BBQY6Z7277ZCT0",
     "email": "user@example.com",
     "first_name": "Jane",
     "last_name": "Doe",
-    "email_verified": true
-  },
-  "organization_id": "org_01HXYZ...",
-  "access_token": "eyJhbGc...",
-  "refresh_token": "KJxyz...",
-  "authentication_method": "Password",
-  "impersonator": null
+    "email_verified": true,
+    "created_at": "2023-08-15T14:30:00.000Z",
+    "updated_at": "2023-08-15T14:30:00.000Z"
+  }
 }
 ```
 
-**Refresh Token**
-```bash
-curl -X POST https://api.workos.com/user_management/authenticate \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "client_id": "client_abc123...",
-    "refresh_token": "KJxyz...",
-    "grant_type": "refresh_token"
-  }'
-```
+### Create Organization Membership
 
-### Session Management
-
-**List Sessions**
-```bash
-curl "https://api.workos.com/user_management/sessions?limit=10" \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
-```
-
-**Revoke Session**
-```bash
-curl -X POST https://api.workos.com/user_management/sessions/session_01HXYZ.../revoke \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
-```
-
-Response (200):
-```json
-{
-  "object": "session",
-  "id": "session_01HXYZ...",
-  "user_id": "user_01HXYZ...",
-  "organization_id": "org_01HXYZ...",
-  "created_at": "2024-01-15T10:30:00.000Z",
-  "updated_at": "2024-01-15T10:35:00.000Z"
-}
-```
-
-### Organization Membership
-
-**Create Membership**
 ```bash
 curl -X POST https://api.workos.com/user_management/organization_memberships \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Authorization: Bearer sk_live_..." \
   -H "Content-Type: application/json" \
   -d '{
-    "user_id": "user_01HXYZ...",
-    "organization_id": "org_01HXYZ...",
+    "user_id": "user_01H7ZGXFP5C6BBQY6Z7277ZCT0",
+    "organization_id": "org_01H7ZGXFP5C6BBQY6Z7277ZCT0",
     "role_slug": "member"
   }'
 ```
 
-Response (201):
+**Response (201 Created):**
 ```json
 {
   "object": "organization_membership",
-  "id": "om_01HXYZ...",
-  "user_id": "user_01HXYZ...",
-  "organization_id": "org_01HXYZ...",
+  "id": "om_01H7ZGXFP5C6BBQY6Z7277ZCT0",
+  "user_id": "user_01H7ZGXFP5C6BBQY6Z7277ZCT0",
+  "organization_id": "org_01H7ZGXFP5C6BBQY6Z7277ZCT0",
   "role": {
     "slug": "member"
   },
   "status": "active",
-  "created_at": "2024-01-15T10:30:00.000Z",
-  "updated_at": "2024-01-15T10:30:00.000Z"
+  "created_at": "2023-08-15T14:30:00.000Z",
+  "updated_at": "2023-08-15T14:30:00.000Z"
 }
 ```
 
-**Update Membership Role**
-```bash
-curl -X PUT https://api.workos.com/user_management/organization_memberships/om_01HXYZ... \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "role_slug": "admin"
-  }'
-```
+### Send Invitation
 
-**Deactivate Membership (Soft Delete)**
-```bash
-curl -X POST https://api.workos.com/user_management/organization_memberships/om_01HXYZ.../deactivate \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
-```
-
-**List Memberships (Paginated)**
-```bash
-curl "https://api.workos.com/user_management/organization_memberships?organization_id=org_01HXYZ...&limit=10" \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
-```
-
-### Invitation Management
-
-**Send Invitation**
 ```bash
 curl -X POST https://api.workos.com/user_management/invitations \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Authorization: Bearer sk_live_..." \
   -H "Content-Type: application/json" \
   -d '{
     "email": "newuser@example.com",
-    "organization_id": "org_01HXYZ...",
-    "expires_in_days": 7,
-    "inviter_user_id": "user_01HXYZ...",
+    "organization_id": "org_01H7ZGXFP5C6BBQY6Z7277ZCT0",
     "role_slug": "member"
   }'
 ```
 
-Response (201):
+**Response (201 Created):**
 ```json
 {
   "object": "invitation",
-  "id": "invitation_01HXYZ...",
+  "id": "invitation_01H7ZGXFP5C6BBQY6Z7277ZCT0",
   "email": "newuser@example.com",
+  "organization_id": "org_01H7ZGXFP5C6BBQY6Z7277ZCT0",
   "state": "pending",
-  "accepted_at": null,
-  "revoked_at": null,
-  "expires_at": "2024-01-22T10:30:00.000Z",
-  "organization_id": "org_01HXYZ...",
-  "inviter_user_id": "user_01HXYZ...",
-  "token": "invite_token_abc123...",
-  "accept_invitation_url": "https://your-app.com/invite/accept?token=invite_token_abc123...",
-  "created_at": "2024-01-15T10:30:00.000Z",
-  "updated_at": "2024-01-15T10:30:00.000Z"
+  "token": "invite_token_abcd1234",
+  "accept_invitation_url": "https://auth.workos.com/invitations/accept?token=invite_token_abcd1234",
+  "expires_at": "2023-08-22T14:30:00.000Z",
+  "created_at": "2023-08-15T14:30:00.000Z",
+  "updated_at": "2023-08-15T14:30:00.000Z"
 }
 ```
 
-**Find Invitation by Token**
-```bash
-curl https://api.workos.com/user_management/invitations/by_token/invite_token_abc123... \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
-```
+## Error Code Mapping
 
-**Revoke Invitation**
-```bash
-curl -X POST https://api.workos.com/user_management/invitations/invitation_01HXYZ.../revoke \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
-```
+WorkOS returns standard HTTP status codes with detailed error responses.
 
-**Resend Invitation**
-```bash
-curl -X POST https://api.workos.com/user_management/invitations/invitation_01HXYZ.../send \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
-```
+### 400 Bad Request
 
-### Password Reset
+**Cause:** Invalid request parameters or malformed JSON.
 
-**Create Password Reset**
-```bash
-curl -X POST https://api.workos.com/user_management/password_reset \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com"
-  }'
-```
-
-Response (201):
+**Example response:**
 ```json
 {
-  "object": "password_reset",
-  "id": "password_reset_01HXYZ...",
-  "user_id": "user_01HXYZ...",
-  "email": "user@example.com",
-  "password_reset_token": "reset_token_abc123...",
-  "password_reset_url": "https://your-app.com/reset?token=reset_token_abc123...",
-  "expires_at": "2024-01-15T11:30:00.000Z",
-  "created_at": "2024-01-15T10:30:00.000Z"
+  "error": "invalid_request",
+  "error_description": "Missing required parameter: email",
+  "code": "missing_required_parameter"
 }
 ```
 
-**Complete Password Reset**
-```bash
-curl -X POST https://api.workos.com/user_management/password_reset/confirm \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "token": "reset_token_abc123...",
-    "new_password": "new_secure_password_123"
-  }'
-```
+**Fix:** Check request body matches API schema. Verify all required fields are included.
 
-Response (200):
+### 401 Unauthorized
+
+**Cause:** Missing or invalid API key.
+
+**Example response:**
 ```json
 {
-  "user": {
-    "object": "user",
-    "id": "user_01HXYZ...",
-    "email": "user@example.com"
-  }
+  "error": "unauthorized",
+  "error_description": "Invalid API key",
+  "code": "invalid_api_key"
 }
 ```
 
-### Magic Auth (Passwordless Login)
+**Fix:** Verify `Authorization` header includes `Bearer sk_live_...` or `Bearer sk_test_...`. Check API key is active in WorkOS Dashboard.
 
-**Create Magic Auth**
-```bash
-curl -X POST https://api.workos.com/user_management/magic_auth \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com"
-  }'
-```
+### 403 Forbidden
 
-Response (201):
+**Cause:** API key lacks permission for the requested operation.
+
+**Example response:**
 ```json
 {
-  "object": "magic_auth",
-  "id": "magic_auth_01HXYZ...",
-  "user_id": "user_01HXYZ...",
-  "email": "user@example.com",
-  "expires_at": "2024-01-15T10:40:00.000Z",
-  "code": "123456",
-  "created_at": "2024-01-15T10:30:00.000Z",
-  "updated_at": "2024-01-15T10:30:00.000Z"
+  "error": "forbidden",
+  "error_description": "API key does not have permission to access this resource",
+  "code": "insufficient_permissions"
 }
 ```
 
-### MFA Operations
+**Fix:** Check API key permissions in WorkOS Dashboard. Ensure key has `user_management` scope enabled.
 
-**Enroll Authentication Factor**
-```bash
-curl -X POST https://api.workos.com/user_management/authentication_factors \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "totp",
-    "totp_issuer": "YourApp",
-    "totp_user": "user@example.com"
-  }'
-```
+### 404 Not Found
 
-Response (201):
+**Cause:** Resource ID does not exist or was deleted.
+
+**Example response:**
 ```json
 {
-  "object": "authentication_factor",
-  "id": "auth_factor_01HXYZ...",
-  "type": "totp",
-  "totp": {
-    "qr_code": "data:image/png;base64,...",
-    "secret": "BASE32SECRETKEY",
-    "uri": "otpauth://totp/YourApp:user@example.com?secret=BASE32SECRETKEY&issuer=YourApp"
-  },
-  "created_at": "2024-01-15T10:30:00.000Z",
-  "updated_at": "2024-01-15T10:30:00.000Z"
+  "error": "not_found",
+  "error_description": "User not found",
+  "code": "resource_not_found"
 }
 ```
 
-**Challenge MFA Factor**
-```bash
-curl -X POST https://api.workos.com/user_management/authentication_factors/auth_factor_01HXYZ.../challenge \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "code": "123456"
-  }'
-```
+**Fix:** Verify resource ID is correct. Check resource was not deleted. For user lookups, use email/external_id instead of ID if unsure.
 
-Response (200):
+### 409 Conflict
+
+**Cause:** Resource already exists (e.g., user with duplicate email).
+
+**Example response:**
 ```json
 {
-  "challenge": {
-    "object": "authentication_challenge",
-    "id": "auth_challenge_01HXYZ...",
-    "created_at": "2024-01-15T10:30:00.000Z",
-    "updated_at": "2024-01-15T10:30:00.000Z",
-    "expires_at": "2024-01-15T10:40:00.000Z",
-    "authentication_factor_id": "auth_factor_01HXYZ..."
-  },
-  "valid": true
+  "error": "conflict",
+  "error_description": "User with this email already exists",
+  "code": "duplicate_email"
 }
 ```
 
-### API Key Management
+**Fix:** For user creation, check if user exists first with `GET /user_management/users?email={email}`. For updates, use idempotent operations.
 
-**Create API Key for Organization**
-```bash
-curl -X POST https://api.workos.com/user_management/organizations/org_01HXYZ.../api_keys \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Production Key"
-  }'
-```
+### 422 Unprocessable Entity
 
-Response (201):
+**Cause:** Request is syntactically valid but semantically incorrect (e.g., invalid email format).
+
+**Example response:**
 ```json
 {
-  "object": "api_key",
-  "id": "api_key_01HXYZ...",
-  "name": "Production Key",
-  "secret": "sk_live_abc123...",
-  "created_at": "2024-01-15T10:30:00.000Z",
-  "updated_at": "2024-01-15T10:30:00.000Z"
+  "error": "unprocessable_entity",
+  "error_description": "Invalid email format",
+  "code": "invalid_email_format"
 }
 ```
 
-**Validate API Key**
-```bash
-curl https://api.workos.com/user_management/api_keys/validate \
-  -H "Authorization: Bearer sk_live_abc123..."
+**Fix:** Validate input format before sending. Common validation rules:
+- Email: RFC 5322 compliant
+- Password: Min 8 characters (check docs for current requirements)
+- Role slug: Must match predefined roles in organization
+
+### 429 Too Many Requests
+
+**Cause:** Rate limit exceeded.
+
+**Example response:**
+```json
+{
+  "error": "rate_limit_exceeded",
+  "error_description": "Rate limit exceeded. Retry after 60 seconds",
+  "code": "rate_limit_exceeded"
+}
 ```
 
-Response (200):
+**Fix:** Implement exponential backoff. Check `Retry-After` header for wait time. Default rate limits documented at https://workos.com/docs/reference/authkit (check Step 1 docs for current limits).
+
+### 500 Internal Server Error
+
+**Cause:** WorkOS server error.
+
+**Example response:**
+```json
+{
+  "error": "internal_server_error",
+  "error_description": "An unexpected error occurred",
+  "code": "internal_error"
+}
+```
+
+**Fix:** Retry request with exponential backoff. If persistent, contact WorkOS support with request ID from response headers.
+
+## Rate Limiting
+
+WorkOS enforces rate limits per API key. Check the fetched documentation for current limits.
+
+**Retry strategy:**
+1. Check for `429` status code
+2. Read `Retry-After` header (seconds to wait)
+3. Implement exponential backoff: `wait_time = min(2^attempt * 1s, 60s)`
+4. Retry request after wait period
+
+**Example retry logic:**
+```bash
+# Pseudo-code for retry with backoff
+attempt=0
+max_attempts=5
+
+while [ $attempt -lt $max_attempts ]; do
+  response=$(curl -w "%{http_code}" -X GET https://api.workos.com/user_management/users \
+    -H "Authorization: Bearer sk_live_...")
+  
+  if [ "$response" -eq 200 ]; then
+    break
+  elif [ "$response" -eq 429 ]; then
+    wait_time=$((2**attempt))
+    sleep $wait_time
+    ((attempt++))
+  else
+    # Handle other errors
+    break
+  fi
+done
+```
+
+## Runnable Verification Commands
+
+### Verify API Key
+
+```bash
+curl -X POST https://api.workos.com/user_management/api_keys/validate \
+  -H "Authorization: Bearer sk_live_YourAPIKeyHere" \
+  -H "Content-Type: application/json"
+```
+
+**Expected response (200 OK):**
 ```json
 {
   "valid": true,
-  "organization_id": "org_01HXYZ..."
-}
-```
-
-**Delete API Key**
-```bash
-curl -X DELETE https://api.workos.com/user_management/api_keys/api_key_01HXYZ... \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
-```
-
-Response (204): Empty response
-
-### CLI Auth (Device Flow)
-
-**Initiate Device Authorization**
-```bash
-curl -X POST https://api.workos.com/user_management/device_authorization \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "client_id": "client_abc123..."
-  }'
-```
-
-Response (200):
-```json
-{
-  "device_code": "device_abc123...",
-  "user_code": "ABCD-EFGH",
-  "verification_uri": "https://auth.workos.com/activate",
-  "verification_uri_complete": "https://auth.workos.com/activate?user_code=ABCD-EFGH",
-  "expires_in": 600,
-  "interval": 5
-}
-```
-
-**Poll for Token**
-```bash
-curl -X POST https://api.workos.com/user_management/device_code \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "client_id": "client_abc123...",
-    "device_code": "device_abc123...",
-    "grant_type": "urn:ietf:params:oauth:grant-type:device_code"
-  }'
-```
-
-Response (200 when authorized):
-```json
-{
-  "access_token": "eyJhbGc...",
-  "refresh_token": "KJxyz...",
-  "token_type": "Bearer",
-  "expires_in": 3600
-}
-```
-
-## Pagination Pattern
-
-All list endpoints support cursor-based pagination:
-
-```bash
-# First page
-curl "https://api.workos.com/user_management/users?limit=10" \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
-
-# Next page using 'after' cursor
-curl "https://api.workos.com/user_management/users?limit=10&after=user_01HABC..." \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
-
-# Previous page using 'before' cursor
-curl "https://api.workos.com/user_management/users?limit=10&before=user_01HXYZ..." \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
-```
-
-Additional filters available:
-- `organization_id` — Filter by organization
-- `order` — `asc` or `desc` (default: `desc`)
-- `email` — Exact email match
-
-## Error Handling
-
-### HTTP Status Codes
-
-| Status | Meaning | Action |
-|--------|---------|--------|
-| 200 | Success | Process response data |
-| 201 | Created | Resource created successfully |
-| 202 | Accepted | Async operation initiated (e.g., user deletion) |
-| 204 | No Content | Operation successful, no response body |
-| 400 | Bad Request | Check request parameters and body format |
-| 401 | Unauthorized | Verify API key is valid and starts with `sk_` |
-| 403 | Forbidden | Check API key has required permissions |
-| 404 | Not Found | Verify resource ID exists |
-| 409 | Conflict | Resource already exists or constraint violation |
-| 422 | Unprocessable | Validation failed, check error details |
-| 429 | Rate Limited | Wait and retry with exponential backoff |
-| 500 | Server Error | WorkOS issue, retry with backoff |
-| 503 | Service Unavailable | Temporary outage, retry with backoff |
-
-### Authentication Error Responses
-
-**401 Unauthorized**
-```json
-{
-  "message": "Unauthorized",
-  "code": "unauthorized",
-  "error": "invalid_api_key"
-}
-```
-**Fix:** Verify API key format (`sk_test_...` or `sk_live_...`) and check it's active in dashboard
-
-**403 Forbidden**
-```json
-{
-  "message": "Forbidden",
-  "code": "forbidden",
-  "error": "insufficient_permissions"
-}
-```
-**Fix:** Check API key scopes in WorkOS dashboard match required permissions
-
-### Validation Error Responses
-
-**422 Unprocessable Entity**
-```json
-{
-  "message": "Validation failed",
-  "code": "invalid_request",
-  "errors": [
-    {
-      "field": "email",
-      "code": "invalid_email",
-      "message": "Email format is invalid"
-    }
-  ]
-}
-```
-
-Common validation errors:
-- `invalid_email` — Email format incorrect
-- `email_already_exists` — User with email already exists
-- `required_field` — Required field missing
-- `invalid_organization_id` — Organization doesn't exist
-- `invalid_user_id` — User doesn't exist
-- `invalid_role_slug` — Role not defined in organization
-- `expired_token` — Password reset or invitation expired
-- `invalid_verification_code` — MFA code incorrect or expired
-
-### Authentication Flow Errors
-
-**Email Verification Required**
-```json
-{
-  "error": "email_verification_required",
-  "error_description": "User must verify their email before authenticating",
-  "email_verification": {
-    "id": "email_verification_01HXYZ...",
-    "user_id": "user_01HXYZ...",
-    "email": "user@example.com",
-    "expires_at": "2024-01-15T11:30:00.000Z"
+  "metadata": {
+    "organization_id": "org_01H7ZGXFP5C6BBQY6Z7277ZCT0",
+    "environment": "production"
   }
 }
 ```
-**Fix:** Prompt user to check email and verify, or resend verification
 
-**MFA Challenge Required**
-```json
-{
-  "error": "mfa_challenge",
-  "error_description": "User must complete MFA challenge",
-  "authentication_challenge_id": "auth_challenge_01HXYZ...",
-  "authentication_factor_id": "auth_factor_01HXYZ..."
-}
-```
-**Fix:** Present MFA input UI and submit challenge with code
+### Create Test User
 
-**Organization Selection Required**
-```json
-{
-  "error": "organization_selection_required",
-  "error_description": "User belongs to multiple organizations",
-  "organizations": [
-    {"id": "org_01HXYZ...", "name": "Company A"},
-    {"id": "org_01HABC...", "name": "Company B"}
-  ]
-}
-```
-**Fix:** Show organization picker and retry with `organization_id` parameter
-
-**SSO Required**
-```json
-{
-  "error": "sso_required",
-  "error_description": "Organization requires SSO authentication",
-  "organization_id": "org_01HXYZ...",
-  "sso_url": "https://sso.workos.com/..."
-}
-```
-**Fix:** Redirect user to SSO URL
-
-### Rate Limiting
-
-WorkOS rate limits are applied per API key:
-- **User-facing operations:** 100 requests per 10 seconds
-- **Background operations:** 1000 requests per 10 seconds
-
-Rate limit headers in response:
-```
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 95
-X-RateLimit-Reset: 1704454800
-```
-
-**429 Rate Limited Response**
-```json
-{
-  "message": "Rate limit exceeded",
-  "code": "rate_limit_exceeded",
-  "retry_after": 5
-}
-```
-
-**Retry Strategy:**
 ```bash
-# Exponential backoff with jitter
-RETRY_AFTER=$(curl -I ... | grep -i retry-after | cut -d' ' -f2)
-sleep $((RETRY_AFTER + RANDOM % 5))
-```
-
-## Verification Commands
-
-### Quick Health Check
-```bash
-# Verify API credentials
-curl https://api.workos.com/user_management/users?limit=1 \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -w "\nHTTP Status: %{http_code}\n"
-```
-
-Expected output includes `HTTP Status: 200`
-
-### End-to-End User Flow Test
-```bash
-#!/bin/bash
-set -e
-
-# 1. Create user
-USER_RESPONSE=$(curl -s -X POST https://api.workos.com/user_management/users \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+curl -X POST https://api.workos.com/user_management/users \
+  -H "Authorization: Bearer sk_test_YourTestAPIKey" \
   -H "Content-Type: application/json" \
   -d '{
     "email": "test@example.com",
+    "password": "TestPassword123!",
     "first_name": "Test",
     "last_name": "User",
     "email_verified": true
-  }')
-
-USER_ID=$(echo $USER_RESPONSE | jq -r '.id')
-echo "✓ Created user: $USER_ID"
-
-# 2. Get user
-curl -s https://api.workos.com/user_management/users/$USER_ID \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" | jq '.email'
-
-echo "✓ Retrieved user"
-
-# 3. Update user
-curl -s -X PUT https://api.workos.com/user_management/users/$USER_ID \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{"first_name": "Updated"}' | jq '.first_name'
-
-echo "✓ Updated user"
-
-# 4. Create organization membership
-ORG_ID="org_01HXYZ..." # Replace with your org ID
-MEMBERSHIP_RESPONSE=$(curl -s -X POST https://api.workos.com/user_management/organization_memberships \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"user_id\": \"$USER_ID\",
-    \"organization_id\": \"$ORG_ID\",
-    \"role_slug\": \"member\"
-  }")
-
-MEMBERSHIP_ID=$(echo $MEMBERSHIP_RESPONSE | jq -r '.id')
-echo "✓ Created membership: $MEMBERSHIP_ID"
-
-# 5. List user's memberships
-curl -s "https://api.workos.com/user_management/organization_memberships?user_id=$USER_ID" \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" | jq '.data | length'
-
-echo "✓ Listed memberships"
-
-# 6. Delete membership
-curl -s -X DELETE https://api.workos.com/user_management/organization_memberships/$MEMBERSHIP_ID \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
-
-echo "✓ Deleted membership"
-
-# 7. Delete user
-curl -s -X DELETE https://api.workos.com/user_management/users/$USER_ID \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
-
-echo "✓ Deleted user"
-echo "All tests passed!"
+  }'
 ```
 
-### SDK Verification (Node.js)
-```typescript
-import { WorkOS } from '@workos-inc/node';
+**Expected response (201 Created):** User object with `id`, `email`, etc.
 
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
+### List Users
 
-async function verifyIntegration() {
-  // 1. Test user creation
-  const user = await workos.userManagement.createUser({
-    email: 'sdk-test@example.com',
-    firstName: 'SDK',
-    lastName: 'Test',
-    emailVerified: true,
-  });
-  console.log('✓ Created user:', user.id);
+```bash
+curl -X GET "https://api.workos.com/user_management/users?limit=5" \
+  -H "Authorization: Bearer sk_test_YourTestAPIKey"
+```
 
-  // 2. Test user retrieval
-  const fetchedUser = await workos.userManagement.getUser(user.id);
-  console.log('✓ Retrieved user:', fetchedUser.email);
+**Expected response (200 OK):** List object with `data` array and `list_metadata` for pagination.
 
-  // 3. Test authorization URL generation
-  const authUrl = workos.userManagement.getAuthorizationUrl({
-    provider: 'authkit',
-    clientId: process.env.WORKOS_CLIENT_ID!,
-    redirectUri: 'http://localhost:3000/callback',
-  });
-  console.log('✓ Generated auth URL:', authUrl);
+### Get Authorization URL
 
-  // 4. Test user deletion
-  await workos.userManagement.deleteUser(
+```bash
+curl -X GET "https://api.workos.com/user_management/authorize?client_id=client_YourClientID&redirect_uri=http://localhost:3000/callback&response_type=code" \
+  -H "Authorization: Bearer sk_test_YourTestAPIKey"
+```
+
+**Expected response (200 OK):** JSON with `url` field pointing to AuthKit login page.
+
+### Revoke Session (Logout)
+
+```bash
+curl -X POST https://api.workos.com/user_management/sessions/session_01H7ZGXFP5C6BBQY6Z7277ZCT0/revoke \
+  -H "Authorization: Bearer sk_test_YourTestAPIKey" \
+  -H "Content-Type: application/json"
+```
+
+**Expected response (200 OK):** Empty response body or success confirmation.
+
+## Integration Checklist
+
+- [ ] Fetch latest documentation (Step 1) before starting implementation
+- [ ] API key configured in environment variables (`WORKOS_API_KEY`, `WORKOS_CLIENT_ID`)
+- [ ] Test API key validation endpoint returns `valid: true`
+- [ ] Create test user succeeds with 201 status
+- [ ] List users endpoint returns paginated results
+- [ ] Authorization URL generation works (returns valid URL)
+- [ ] Token exchange with test code succeeds (if testing full auth flow)
+- [ ] Session revocation returns 200 status
+- [ ] Error responses include `code` and `error_description` fields
+- [ ] Rate limit handling implemented with exponential backoff
+- [ ] Production API key (`sk_live_`) configured for production environment
+
+## Related Skills
+
+- **workos-feature-authkit** — High-level feature guide for implementing AuthKit in your application
+- **workos-feature-directory-sync** — Sync user directories from identity providers
+- **workos-feature-admin-portal** — Build admin interfaces for organization settings

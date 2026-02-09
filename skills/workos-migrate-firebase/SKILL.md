@@ -3,7 +3,7 @@ name: workos-migrate-firebase
 description: Migrate to WorkOS from Firebase.
 ---
 
-<!-- generated -->
+<!-- refined:sha256:bdf357fa5da5 -->
 
 # WorkOS Migration: Firebase
 
@@ -13,362 +13,446 @@ description: Migrate to WorkOS from Firebase.
 
 WebFetch: `https://workos.com/docs/migrate/firebase`
 
-The documentation is the source of truth. If this skill conflicts with the official docs, follow the docs.
+The migration guide is the source of truth. If this skill conflicts with the guide, follow the guide.
 
-## Step 2: Pre-Flight Validation
+## Step 2: Pre-Migration Assessment
 
-### WorkOS Configuration
+### Identify Firebase Auth Methods in Use
 
-Check environment variables:
-- `WORKOS_API_KEY` - starts with `sk_`
-- `WORKOS_CLIENT_ID` - starts with `client_`
+Run Firebase CLI to export user data and analyze auth methods:
 
-Verify WorkOS SDK is installed:
 ```bash
-# Check package.json for WorkOS SDK
-grep -E "@workos-inc/(node|authkit)" package.json || echo "FAIL: WorkOS SDK not installed"
+# Export Firebase users (requires Firebase CLI and project credentials)
+firebase auth:export users.json --format=JSON
+
+# Analyze auth methods in use
+cat users.json | jq '[.users[].providerUserInfo[].providerId] | unique'
 ```
 
-### Firebase Access
-
-Verify you have:
-- Firebase console access for your project
-- Firebase CLI installed: `firebase --version`
-- Admin permissions to export user data
-
-## Step 3: Migration Strategy (Decision Tree)
+Expected outputs and migration paths:
 
 ```
-What auth methods does Firebase use?
-  |
-  +-- Passwords only
-  |     |
-  |     +-- Go to Step 4 (Password Hash Import)
-  |
-  +-- Social Auth (Google, Microsoft, etc.)
-  |     |
-  |     +-- Go to Step 5 (Social Provider Migration)
-  |
-  +-- Email Link (passwordless)
-  |     |
-  |     +-- Go to Step 6 (Magic Auth Setup)
-  |
-  +-- OIDC/SAML (Enterprise)
-  |     |
-  |     +-- Go to Step 7 (Enterprise SSO Migration)
-  |
-  +-- Multiple methods
-        |
-        +-- Execute steps 4-7 in sequence as needed
+Auth method in Firebase        --> WorkOS equivalent
+password                       --> Password import with scrypt
+google.com                     --> Google OAuth connection
+microsoft.com                  --> Microsoft OAuth connection  
+emailLink                      --> Magic Auth
+oidc.{provider}                --> OIDC connection
+saml.{provider}                --> SAML connection
 ```
 
-## Step 4: Password Hash Import (If Using Firebase Passwords)
+**Decision point:** If output includes `password`, proceed to Step 3. Otherwise skip to Step 4.
 
-### 4.1: Export Firebase Password Parameters
+## Step 3: Password Hash Migration (If Users Have Passwords)
 
-Get project-level password hash parameters from Firebase console:
-1. Navigate to Project Settings → Users and permissions
-2. Export password hash parameters
-3. Save: `base64_signer_key`, `base64_salt_separator`, `rounds`, `mem_cost`
+### 3.1: Retrieve Firebase Password Parameters
 
-**Verify:** All four parameters are base64-encoded strings or integers.
+Firebase Console → Project Settings → Users and permissions → Password hash parameters
 
-### 4.2: Export User Data
+Extract these values (base64-encoded strings):
+- `base64_signer_key`
+- `base64_salt_separator`
+- `rounds` (integer)
+- `mem_cost` (integer)
 
-Run Firebase CLI export:
+**Verify:** All four parameters are present. If missing, password import will fail.
+
+### 3.2: Export User Password Hashes
+
 ```bash
-firebase auth:export firebase-users.json --project YOUR_PROJECT_ID
+# Export includes passwordHash and salt fields
+firebase auth:export firebase_users.json --format=JSON
+
+# Verify password hashes present
+cat firebase_users.json | jq '.users[] | select(.passwordHash != null) | {uid, passwordHash, salt}' | head -5
 ```
 
-**Verify:** JSON file contains users with `passwordHash` and `salt` fields:
-```bash
-jq '[.users[] | select(.passwordHash != null)] | length' firebase-users.json
+**Critical:** The `passwordHash` and `salt` fields must exist for password users. Missing fields mean incomplete export.
+
+### 3.3: Convert to PHC Format
+
+Firebase uses a proprietary scrypt variant. WorkOS accepts PHC-formatted hashes.
+
+**Mapping (from WorkOS migration docs):**
+
+```
+Firebase parameter      --> PHC parameter
+base64_signer_key       --> sk
+base64_salt_separator   --> ss
+rounds                  --> (implicit in PHC)
+mem_cost                --> (implicit in PHC)
+passwordHash            --> (hash component)
+salt                    --> (salt component)
 ```
 
-This should return the count of users with passwords.
+**PHC format template:**
 
-### 4.3: Convert to PHC Format
-
-Transform Firebase hash format to PHC-compatible string:
-
-**Firebase → PHC parameter mapping:**
-| Firebase                | PHC param |
-|-------------------------|-----------|
-| `base64_signer_key`     | `sk`      |
-| `base64_salt_separator` | `ss`      |
-| `rounds`                | `r`       |
-| `mem_cost`              | `m`       |
-| User's `passwordHash`   | hash body |
-| User's `salt`           | `s`       |
-
-**PHC format structure:**
 ```
-$scrypt-firebase$r=ROUNDS,m=MEMCOST,sk=SIGNERKEY,ss=SALTSEP$s=USERSALT$PASSWORDHASH
+$scrypt-firebase$sk={base64_signer_key}$ss={base64_salt_separator}$rounds={rounds}$mem_cost={mem_cost}${user_salt}${user_password_hash}
 ```
 
-Example conversion script pattern:
-```javascript
-const phcHash = `$scrypt-firebase$r=${rounds},m=${mem_cost},sk=${base64_signer_key},ss=${base64_salt_separator}$s=${user.salt}$${user.passwordHash}`;
-```
-
-### 4.4: Import to WorkOS
-
-For each user, call WorkOS User Create API with the PHC hash:
+Create conversion script:
 
 ```javascript
-// Using @workos-inc/node SDK
-import { WorkOS } from '@workos-inc/node';
+// convert-firebase-hashes.js
+const fs = require('fs');
 
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
+const params = {
+  sk: process.env.FIREBASE_SIGNER_KEY,
+  ss: process.env.FIREBASE_SALT_SEPARATOR,
+  rounds: process.env.FIREBASE_ROUNDS,
+  mem_cost: process.env.FIREBASE_MEM_COST
+};
 
-const user = await workos.userManagement.createUser({
-  email: firebaseUser.email,
-  emailVerified: firebaseUser.emailVerified,
-  password: phcHashString, // PHC-formatted hash from step 4.3
-});
+const users = JSON.parse(fs.readFileSync('firebase_users.json'));
+
+const converted = users.users
+  .filter(u => u.passwordHash)
+  .map(u => ({
+    email: u.email,
+    passwordHash: `$scrypt-firebase$sk=${params.sk}$ss=${params.ss}$rounds=${params.rounds}$mem_cost=${params.mem_cost}$${u.salt}$${u.passwordHash}`
+  }));
+
+fs.writeFileSync('workos_passwords.json', JSON.stringify(converted, null, 2));
 ```
 
-**CRITICAL:** The `password` field must be the complete PHC string, not the raw hash.
+Run conversion:
 
-**Verify import success:**
 ```bash
-# Check user count in WorkOS dashboard matches Firebase export
-# Dashboard: Organizations → Users → Total count
+# Set Firebase parameters from console
+export FIREBASE_SIGNER_KEY="your_base64_signer_key"
+export FIREBASE_SALT_SEPARATOR="your_base64_salt_separator"
+export FIREBASE_ROUNDS="8"
+export FIREBASE_MEM_COST="14"
+
+node convert-firebase-hashes.js
+
+# Verify output format
+head -20 workos_passwords.json
 ```
 
-## Step 5: Social Provider Migration (If Using Social Auth)
+### 3.4: Import to WorkOS
 
-### 5.1: Identify Active Providers
+Use WorkOS User Creation API with `password_hash` field:
 
-Check Firebase console under Authentication → Sign-in method for enabled providers:
-- Google
-- Microsoft
-- GitHub
-- Apple
-- Others
-
-### 5.2: Extract Client Credentials
-
-For each enabled provider, get from Firebase console:
-- **Client ID** (OAuth app identifier)
-- **Client Secret** (OAuth app secret)
-
-**Location in Firebase:**
-- Google: Authentication → Sign-in method → Google → Web SDK configuration
-- Microsoft: Authentication → Sign-in method → Microsoft → OAuth redirect domain
-- GitHub: Authentication → Sign-in method → GitHub → Client ID/Secret
-
-### 5.3: Configure in WorkOS
-
-Navigate to WorkOS Dashboard → Connections → Social Connections:
-
-For each provider:
-1. Click "Add Connection"
-2. Select provider (Google, Microsoft, etc.)
-3. Paste Client ID from Firebase
-4. Paste Client Secret from Firebase
-5. Save
-
-**Critical:** Use the SAME credentials from Firebase to avoid forcing users to re-authorize.
-
-**Verify configuration:**
 ```bash
-# Test sign-in flow with social provider
-# User should NOT see new OAuth consent screen if credentials match
+# Example: Import single user with password hash
+curl https://api.workos.com/user_management/users \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password_hash": "$scrypt-firebase$sk=...$ss=...$rounds=8$mem_cost=14$salt$hash"
+  }'
 ```
 
-## Step 6: Magic Auth Setup (If Using Email Link)
+**Batch import:** See WorkOS User Management API docs for bulk operations. Process `workos_passwords.json` in batches of 100.
 
-Firebase Email Link authentication maps to WorkOS Magic Auth.
+**Verify:** Test login with migrated user credentials before bulk import.
 
-### 6.1: Enable Magic Auth
+## Step 4: Social Auth Provider Migration
 
-WorkOS Dashboard → Authentication → Magic Auth:
-- Toggle "Enable Magic Auth"
-- Configure email template (optional)
+### 4.1: Identify OAuth Providers
 
-### 6.2: Update Application Code
+From Step 2 analysis, identify OAuth providers in use (google.com, microsoft.com, etc.)
+
+### 4.2: Extract OAuth Credentials from Firebase
+
+Firebase Console → Authentication → Sign-in method → [Provider]
+
+For each OAuth provider, retrieve:
+- Client ID
+- Client Secret
+
+**Critical:** Use the SAME credentials in WorkOS. Do NOT regenerate — this breaks existing user sessions.
+
+### 4.3: Configure in WorkOS
+
+WorkOS Dashboard → Authentication → Connections → Add Connection
+
+**Google OAuth:**
+- Connection type: Google OAuth
+- Client ID: (from Firebase)
+- Client Secret: (from Firebase)
+- Redirect URI: `https://api.workos.com/sso/oauth/google/callback`
+
+**Microsoft OAuth:**
+- Connection type: Microsoft OAuth  
+- Client ID: (from Firebase)
+- Client Secret: (from Firebase)
+- Redirect URI: `https://api.workos.com/sso/oauth/microsoft/callback`
+
+**Verify:** Test OAuth flow with a Firebase user account before migration.
+
+### 4.4: Update OAuth Redirect URIs
+
+**CRITICAL:** Update redirect URIs in provider consoles (Google Cloud Console, Azure Portal, etc.)
+
+Add WorkOS callback URL:
+- Google: `https://api.workos.com/sso/oauth/google/callback`
+- Microsoft: `https://api.workos.com/sso/oauth/microsoft/callback`
+
+**Do NOT remove Firebase redirect URIs** until migration is complete and verified.
+
+## Step 5: Email Link → Magic Auth Migration
+
+If Firebase Email Link is in use (passwordless authentication):
+
+### 5.1: Enable Magic Auth in WorkOS
+
+WorkOS Dashboard → Authentication → Magic Auth → Enable
+
+Configure:
+- Email template (customize or use default)
+- Link expiration (default: 10 minutes)
+
+### 5.2: Update Application Code
 
 Replace Firebase `sendSignInLinkToEmail` with WorkOS Magic Auth:
 
 **Before (Firebase):**
-```javascript
-firebase.auth().sendSignInLinkToEmail(email, actionCodeSettings);
+```typescript
+import { sendSignInLinkToEmail } from 'firebase/auth';
+await sendSignInLinkToEmail(auth, email, actionCodeSettings);
 ```
 
 **After (WorkOS):**
-```javascript
-// Using @workos-inc/authkit-nextjs or equivalent
-const { url } = await workos.userManagement.createMagicAuth({
-  email: email,
-  invitationUrl: 'https://yourapp.com/auth/callback',
-});
-// Send url via email
-```
+```typescript
+import { WorkOS } from '@workos-inc/node';
+const workos = new WorkOS(process.env.WORKOS_API_KEY);
 
-Check WebFetch docs for exact SDK method names.
-
-## Step 7: Enterprise SSO Migration (If Using OIDC/SAML)
-
-### 7.1: Inventory Enterprise Connections
-
-List all OIDC/SAML integrations configured in Firebase:
-- Authentication → Sign-in method → SAML/OIDC providers
-- Document: Provider name, metadata URL/XML, client credentials
-
-### 7.2: Migrate Each Connection
-
-For OIDC connections:
-1. WorkOS Dashboard → Connections → Add Connection → OIDC
-2. Enter Client ID, Client Secret, Discovery Endpoint from Firebase config
-3. Save and test
-
-For SAML connections:
-1. WorkOS Dashboard → Connections → Add Connection → SAML
-2. Upload IdP metadata XML from Firebase config
-3. Provide ACS URL and Entity ID to IdP admin (WorkOS will display these)
-4. Test connection
-
-**Critical:** Coordinate with enterprise customer IT teams for SAML metadata updates if Entity ID changes.
-
-### 7.3: Update Domain Routing
-
-If Firebase used domain-based routing for enterprise connections:
-1. WorkOS Dashboard → Organizations → [Org Name] → Domains
-2. Add verified domains that should route to this SSO connection
-
-## Step 8: Authentication Flow Update
-
-Replace Firebase SDK calls in application code:
-
-### 8.1: Sign In Flow
-
-**Before (Firebase):**
-```javascript
-const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
-```
-
-**After (WorkOS):**
-```javascript
-// Using AuthKit - redirect to hosted auth
-const authUrl = getSignInUrl();
-window.location.href = authUrl;
-```
-
-### 8.2: Session Management
-
-**Before (Firebase):**
-```javascript
-firebase.auth().onAuthStateChanged((user) => {
-  // Handle user state
+await workos.userManagement.sendMagicAuthCode({
+  email: email
 });
 ```
 
-**After (WorkOS):**
-```javascript
-// Server-side in Next.js
-const { user } = await getUser();
-// Or client-side with AuthKitProvider
-const { user } = useUser();
+**Verify:** WebFetch `https://workos.com/docs/reference/authkit/magic-auth` for exact API usage.
+
+## Step 6: OIDC/SAML Enterprise Connection Migration
+
+### 6.1: Export OIDC/SAML Configurations from Firebase
+
+Firebase Console → Authentication → Sign-in method → SAML/OIDC providers
+
+For each enterprise connection, document:
+- Provider name
+- SSO URL / Issuer URL
+- Entity ID
+- X.509 Certificate (for SAML)
+- Client ID / Client Secret (for OIDC)
+
+### 6.2: Recreate in WorkOS
+
+WorkOS Dashboard → Connections → Add Connection
+
+**SAML:**
+- Connection type: SAML
+- Identity Provider SSO URL: (from Firebase)
+- X.509 Certificate: (from Firebase)
+- Entity ID: (from Firebase or generate new)
+
+**OIDC:**
+- Connection type: Generic OIDC
+- Issuer URL: (from Firebase)
+- Client ID: (from Firebase)
+- Client Secret: (from Firebase)
+
+**Verify:** Test SSO flow with enterprise user before migrating production traffic.
+
+### 6.3: Update Service Provider Metadata
+
+Provide updated metadata to enterprise customer's IT team:
+
+- WorkOS Entity ID: (from WorkOS Dashboard)
+- WorkOS ACS URL: `https://api.workos.com/sso/saml/acs/{organization_id}`
+- WorkOS Login URL: `https://api.workos.com/sso/authorize`
+
+**Coordination required:** Schedule cutover window with customer to update IdP configuration.
+
+## Step 7: User Data Migration
+
+### 7.1: Map Firebase User Fields to WorkOS
+
+```
+Firebase field          --> WorkOS field
+uid                     --> external_id (optional)
+email                   --> email
+emailVerified           --> email_verified
+displayName             --> first_name + last_name (split)
+photoURL                --> profile_picture_url
+phoneNumber             --> (custom attribute)
+metadata.creationTime   --> (audit log)
 ```
 
-### 8.3: Sign Out
+### 7.2: Bulk User Import
 
-**Before (Firebase):**
+Create import script using WorkOS User Management API:
+
 ```javascript
-await firebase.auth().signOut();
+// import-users.js
+const { WorkOS } = require('@workos-inc/node');
+const workos = new WorkOS(process.env.WORKOS_API_KEY);
+
+const firebaseUsers = require('./firebase_users.json');
+
+async function importUser(firebaseUser) {
+  const [firstName, ...lastNameParts] = (firebaseUser.displayName || '').split(' ');
+  
+  return await workos.userManagement.createUser({
+    email: firebaseUser.email,
+    emailVerified: firebaseUser.emailVerified,
+    firstName: firstName,
+    lastName: lastNameParts.join(' '),
+    // Include password_hash if from Step 3.4
+  });
+}
+
+// Process in batches
+async function main() {
+  for (const user of firebaseUsers.users) {
+    try {
+      await importUser(user);
+      console.log(`Imported: ${user.email}`);
+    } catch (error) {
+      console.error(`Failed: ${user.email}`, error.message);
+    }
+  }
+}
+
+main();
 ```
 
-**After (WorkOS):**
-```javascript
-const url = await getSignOutUrl();
-window.location.href = url;
-```
+**Rate limiting:** Process max 10 users/second to avoid API throttling.
 
 ## Verification Checklist (ALL MUST PASS)
 
-Run these checks after migration:
+Run these checks before cutting over production traffic:
 
 ```bash
-# 1. Check WorkOS SDK is installed
-npm list @workos-inc/node @workos-inc/authkit-nextjs 2>/dev/null || echo "FAIL: SDK not found"
+# 1. Verify WorkOS API key is set
+echo $WORKOS_API_KEY | grep -q '^sk_' && echo "PASS: API key valid" || echo "FAIL: API key missing or invalid"
 
-# 2. Verify environment variables
-env | grep -E "WORKOS_(API_KEY|CLIENT_ID)" || echo "FAIL: Missing env vars"
+# 2. Test password login (if passwords migrated)
+curl -X POST https://api.workos.com/user_management/authenticate \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com", "password": "test123"}' \
+  | jq -r '.user.id' || echo "FAIL: Password auth"
 
-# 3. Check API key format
-echo $WORKOS_API_KEY | grep -E "^sk_" || echo "FAIL: Invalid API key format"
+# 3. Verify OAuth connections configured
+curl https://api.workos.com/connections \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  | jq '.data[] | {type: .connection_type, name: .name}'
 
-# 4. Verify Firebase exports exist (if doing password import)
-test -f firebase-users.json && echo "PASS: Firebase export found" || echo "SKIP: No password import"
+# 4. Check user count matches Firebase export
+WORKOS_COUNT=$(curl -s https://api.workos.com/user_management/users \
+  -H "Authorization: Bearer $WORKOS_API_KEY" | jq '.data | length')
+FIREBASE_COUNT=$(cat firebase_users.json | jq '.users | length')
+echo "Firebase: $FIREBASE_COUNT, WorkOS: $WORKOS_COUNT"
 
-# 5. Test WorkOS API connectivity
-curl -H "Authorization: Bearer $WORKOS_API_KEY" \
-  https://api.workos.com/user_management/users?limit=1 \
-  && echo "PASS: API accessible" || echo "FAIL: Cannot reach WorkOS API"
+# 5. Test Magic Auth (if applicable)
+curl -X POST https://api.workos.com/user_management/magic_auth/send \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com"}' \
+  && echo "PASS: Magic Auth" || echo "FAIL: Magic Auth"
 ```
 
-**Manual verification steps:**
+**All checks must pass** before proceeding to Step 8.
 
-1. **Password users:** Test login with migrated credentials - should succeed without password reset
-2. **Social auth users:** Test OAuth flow - should NOT show new consent screen
-3. **Magic Auth users:** Test email link - should receive and verify successfully
-4. **Enterprise SSO users:** Test with enterprise email - should route to correct IdP
+## Step 8: Application Code Migration
+
+### 8.1: Replace Firebase SDK Imports
+
+**Before:**
+```typescript
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+```
+
+**After:**
+```typescript
+import { WorkOS } from '@workos-inc/node';
+const workos = new WorkOS(process.env.WORKOS_API_KEY);
+```
+
+### 8.2: Update Authentication Flows
+
+See related skill `workos-authkit-nextjs` for complete integration guide.
+
+**Critical:** Update ALL authentication flows:
+- Login
+- Signup  
+- Password reset
+- OAuth redirects
+- Session management
+
+### 8.3: Update Security Rules
+
+Firebase Security Rules → WorkOS Roles & Permissions
+
+Map Firebase custom claims to WorkOS organizations and roles:
+
+```
+Firebase custom claim    --> WorkOS concept
+customClaims.role        --> User role in organization
+customClaims.orgId       --> Organization membership
+```
+
+**Verify:** WebFetch `https://workos.com/docs/user-management/authorization` for authorization patterns.
 
 ## Error Recovery
 
 ### "Invalid password hash format"
 
-**Cause:** PHC string malformed or missing parameters.
+**Root cause:** PHC hash string malformed or Firebase parameters incorrect.
 
 **Fix:**
-1. Verify PHC format: `$scrypt-firebase$r=X,m=Y,sk=Z,ss=W$s=SALT$HASH`
-2. Check all commas and dollar signs are in correct positions
-3. Ensure base64 values have no whitespace
+1. Verify Firebase parameters match console exactly (copy-paste, no manual transcription)
+2. Check PHC format: `$scrypt-firebase$sk={key}$ss={separator}$rounds={rounds}$mem_cost={cost}${salt}${hash}`
+3. Ensure no line breaks or whitespace in hash string
 4. Test with single user before bulk import
 
-### "OAuth consent screen shown to existing users"
+### "OAuth connection failed" during provider test
 
-**Cause:** Client ID/Secret in WorkOS doesn't match Firebase.
-
-**Fix:**
-1. Re-check credentials copied from Firebase console
-2. Verify no extra spaces in Client Secret
-3. Delete and recreate connection in WorkOS with exact credentials
-4. Clear browser OAuth consent cache for testing
-
-### "SAML assertion failed"
-
-**Cause:** Entity ID or ACS URL changed during migration.
+**Root cause:** Client credentials mismatch or redirect URI not updated in provider console.
 
 **Fix:**
-1. Get WorkOS Entity ID and ACS URL from Dashboard → Connection details
-2. Contact IdP admin to update SAML configuration
-3. Re-upload IdP metadata to WorkOS if IdP regenerated it
-4. Test with SSO doctor tool in WorkOS Dashboard
+1. Verify Client ID/Secret copied EXACTLY from Firebase (trailing spaces cause failures)
+2. Check provider console (Google Cloud, Azure) has WorkOS callback URL added
+3. Ensure callback URL format exact: `https://api.workos.com/sso/oauth/{provider}/callback`
+4. Wait 5 minutes after updating redirect URIs (DNS/cache propagation)
 
-### "User not found" after migration
+### "User already exists" during import
 
-**Cause:** Email mismatch or user not imported.
-
-**Fix:**
-1. Check Firebase export: `jq '.users[] | select(.email=="user@example.com")' firebase-users.json`
-2. Check WorkOS API: `curl -H "Authorization: Bearer $WORKOS_API_KEY" https://api.workos.com/user_management/users?email=user@example.com`
-3. Verify email normalization (lowercase, trimmed) matches between systems
-4. Re-import user if missing
-
-### "Firebase SDK still initializing"
-
-**Cause:** Firebase SDK not fully removed from application.
+**Root cause:** Duplicate email or previous partial import.
 
 **Fix:**
-1. Search for Firebase imports: `grep -r "firebase" src/`
-2. Remove `firebase` from package.json dependencies
-3. Delete `firebase.json` and `.firebaserc` if present
-4. Clear `node_modules` and reinstall: `rm -rf node_modules && npm install`
+1. Check if user already in WorkOS: `curl https://api.workos.com/user_management/users?email={email}`
+2. Use Update User API instead of Create User for duplicates
+3. Track imported UIDs to resume failed batch imports
+
+### Firebase users cannot log in after migration
+
+**Root cause:** Password hash conversion error or OAuth provider misconfiguration.
+
+**Fix:**
+1. For password users: Test hash format with known-good credentials first
+2. For OAuth users: Verify provider credentials identical to Firebase (regenerating breaks sessions)
+3. Check WorkOS Dashboard → Users → [user] → Authentication Methods shows expected method
+4. Review WorkOS API logs for specific auth failure reasons
+
+### SAML/OIDC enterprise connection fails
+
+**Root cause:** Service Provider metadata not updated at Identity Provider.
+
+**Fix:**
+1. Confirm IT team updated IdP with WorkOS Entity ID and ACS URL
+2. Check certificate expiration (SAML)
+3. Verify Issuer URL exact match (OIDC)
+4. Test with WorkOS Dashboard → Connections → Test Connection before user migration
 
 ## Related Skills
 
-- `workos-authkit-nextjs` - Setting up AuthKit in Next.js projects
-- `workos-user-management` - Managing users via WorkOS API
-- `workos-organizations` - Multi-tenant organization setup
+- `workos-authkit-nextjs` - Complete Next.js integration after migration
+- `workos-user-management` - User CRUD operations and role management
+- `workos-organizations` - Multi-tenant setup for migrated users
