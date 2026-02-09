@@ -5,353 +5,454 @@ description: WorkOS Audit Logs API endpoints — create events, manage schemas, 
 
 <!-- generated -->
 
-# WorkOS Audit Logs API
+# WorkOS Audit Logs API Reference
 
-## Step 1: Fetch Documentation (BLOCKING)
+## Step 1: Fetch Documentation
 
-**STOP. Do not proceed until complete.**
+**STOP. WebFetch the relevant docs for latest implementation details before proceeding.**
 
-WebFetch these URLs in order — they are the source of truth:
+- https://workos.com/docs/reference/audit-logs
+- https://workos.com/docs/reference/audit-logs/configuration
+- https://workos.com/docs/reference/audit-logs/event
+- https://workos.com/docs/reference/audit-logs/event/create
+- https://workos.com/docs/reference/audit-logs/export
+- https://workos.com/docs/reference/audit-logs/export/create
+- https://workos.com/docs/reference/audit-logs/export/get
+- https://workos.com/docs/reference/audit-logs/retention
 
-1. https://workos.com/docs/reference/audit-logs
-2. https://workos.com/docs/reference/audit-logs/configuration
-3. https://workos.com/docs/reference/audit-logs/event
-4. https://workos.com/docs/reference/audit-logs/event/create
-5. https://workos.com/docs/reference/audit-logs/export
-6. https://workos.com/docs/reference/audit-logs/export/create
-7. https://workos.com/docs/reference/audit-logs/export/get
-8. https://workos.com/docs/reference/audit-logs/retention
+## Authentication
 
-If this skill conflicts with fetched documentation, follow the documentation.
+All API calls require your WorkOS API key in the `Authorization` header:
 
-## Step 2: Pre-Flight Validation
+```
+Authorization: Bearer sk_live_your_api_key_here
+```
 
-### Environment Variables
+Get your API key from the WorkOS Dashboard under API Keys. Use `sk_test_*` keys for development and `sk_live_*` keys for production.
 
-Check for required credentials:
+## Endpoint Catalog
 
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/events` | Create a single audit log event |
+| POST | `/events/batch` | Create multiple audit log events (bulk) |
+| POST | `/exports` | Create an export of audit log events |
+| GET | `/exports/{export_id}` | Get export status and download URL |
+| GET | `/audit_log_retention` | Get current retention period |
+| PUT | `/audit_log_retention` | Set retention period (days) |
+| POST | `/schemas` | Create an audit log schema |
+| GET | `/schemas` | List all schemas for organization |
+| GET | `/schemas/{schema_id}/actions` | List actions for a schema |
+
+## Operation Decision Tree
+
+**When to use each endpoint:**
+
+- **Recording events** → POST `/events` (single) or POST `/events/batch` (multiple at once)
+- **Exporting audit logs** → POST `/exports` to start, then GET `/exports/{id}` to check status
+- **Managing retention** → GET `/audit_log_retention` to check, PUT to update
+- **Defining event types** → POST `/schemas` to create, GET `/schemas` to list
+- **Listing allowed actions** → GET `/schemas/{schema_id}/actions`
+
+## Request/Response Patterns
+
+### Create Audit Log Event
+
+**Request:**
 ```bash
-# Verify API key exists and format
-grep "WORKOS_API_KEY" .env* | grep -E "sk_[a-zA-Z0-9]+"
-```
-
-**Required format:**
-- `WORKOS_API_KEY` - starts with `sk_`
-- `WORKOS_CLIENT_ID` - if using OAuth flows
-
-**STOP if check fails.** Get credentials from WorkOS Dashboard > API Keys.
-
-### SDK Installation
-
-Detect package manager and verify SDK:
-
-```bash
-# Check SDK is installed
-npm list @workos-inc/node 2>/dev/null || yarn list --pattern @workos-inc/node 2>/dev/null
-```
-
-If missing, install per fetched documentation (Step 1). Typically:
-
-```bash
-npm install @workos-inc/node
-# or
-yarn add @workos-inc/node
-```
-
-## Step 3: Initialize WorkOS Client
-
-Create a module that exports configured WorkOS instance. Location depends on project structure:
-
-```
-Project type          --> Location
-Node/Express         --> src/lib/workos.js or lib/workos.ts
-Next.js              --> lib/workos.ts
-Standalone script    --> workos-client.js at root
-```
-
-**Pattern from documentation:**
-
-```typescript
-import { WorkOS } from '@workos-inc/node';
-
-export const workos = new WorkOS(process.env.WORKOS_API_KEY);
-```
-
-**Verify initialization:**
-
-```bash
-# Check client file exists
-find . -name "*workos*" -type f \( -name "*.ts" -o -name "*.js" \) | head -1
-```
-
-## Step 4: Feature Selection (Decision Tree)
-
-Audit Logs has multiple use cases. Determine which applies:
-
-```
-What are you building?
-  |
-  +-- Emit events from app --> Step 5: Create Events
-  |
-  +-- Export audit trail    --> Step 6: Create Exports
-  |
-  +-- Configure retention   --> Step 7: Set Retention
-  |
-  +-- Define event schema   --> Step 8: Create Schema
-```
-
-**Most common:** Step 5 (Create Events) for application audit logging.
-
-## Step 5: Create Events (Most Common)
-
-### Event Structure
-
-Parse documentation for required fields. Standard pattern:
-
-- `organization_id` - WorkOS organization identifier
-- `action` - Event name (e.g., `user.login`, `document.delete`)
-- `actor` - Who performed action (name, type, id)
-- `targets` - What was affected (resources, entities)
-- `occurred_at` - ISO 8601 timestamp
-- `metadata` - Additional context (optional)
-
-### Implementation Location
-
-Add audit logging at critical actions:
-
-```
-Action type           --> Where to add
-Authentication       --> Login/logout handlers
-Data mutations       --> CRUD API routes
-Admin actions        --> Admin panel endpoints
-Security events      --> Password changes, MFA, etc.
-```
-
-### Code Pattern
-
-```typescript
-import { workos } from './lib/workos';
-
-async function logAuditEvent(eventData) {
-  await workos.auditLogs.createEvent({
-    organization_id: eventData.orgId,
-    action: eventData.action,
-    actor: {
-      type: 'user',
-      id: eventData.userId,
-      name: eventData.userName,
-    },
-    targets: [
-      {
-        type: eventData.targetType,
-        id: eventData.targetId,
-      },
-    ],
-    occurred_at: new Date().toISOString(),
-    metadata: eventData.metadata || {},
-  });
-}
-```
-
-**Critical:** Do NOT block user requests on audit logging. Wrap in try/catch or use async queue.
-
-### Error Handling Pattern
-
-```typescript
-try {
-  await workos.auditLogs.createEvent(event);
-} catch (error) {
-  // Log to monitoring, do NOT throw to user
-  console.error('Audit log failed:', error.message);
-}
-```
-
-## Step 6: Create Exports
-
-Use when building compliance reports or data export features.
-
-### Export Flow
-
-1. Create export request (returns `export_id`)
-2. Poll export status until ready
-3. Download via returned URL
-
-### Implementation Pattern
-
-```typescript
-// 1. Create export
-const exportRequest = await workos.auditLogs.createExport({
-  organization_id: orgId,
-  range_start: '2024-01-01T00:00:00Z',
-  range_end: '2024-01-31T23:59:59Z',
-  actions: ['user.*', 'document.delete'], // optional filter
-});
-
-// 2. Poll until ready (typically async job/webhook in production)
-let exportData;
-while (!exportData) {
-  exportData = await workos.auditLogs.getExport(exportRequest.id);
-  if (exportData.state === 'ready') break;
-  await new Promise(resolve => setTimeout(resolve, 2000));
-}
-
-// 3. Download CSV
-const response = await fetch(exportData.url);
-const csv = await response.text();
-```
-
-**Production pattern:** Use webhook callbacks instead of polling. See documentation for webhook setup.
-
-## Step 7: Set Retention Policy
-
-Configure how long audit logs are stored. **Affects compliance requirements.**
-
-```typescript
-await workos.auditLogs.setRetentionPeriod({
-  organization_id: orgId,
-  retention_days: 365, // 1 year for most compliance
-});
-```
-
-**Common retention periods:**
-- 90 days - Basic security
-- 365 days - SOC 2, ISO 27001
-- 2555 days (7 years) - Financial regulations
-
-Check documentation for organization-wide vs per-org settings.
-
-## Step 8: Create Schema (Optional)
-
-Define custom event types for validation and UI rendering.
-
-**Only needed if:**
-- Building custom audit log viewer
-- Strict event validation required
-- Custom event metadata fields
-
-See documentation for schema format. Most projects skip this.
-
-## Verification Checklist (ALL MUST PASS)
-
-Run these commands to confirm integration:
-
-```bash
-# 1. Check WorkOS client initialization
-grep -r "new WorkOS" --include="*.ts" --include="*.js" . | head -1
-
-# 2. Check audit log calls exist
-grep -r "auditLogs.createEvent" --include="*.ts" --include="*.js" . | wc -l
-
-# 3. Verify API key format
-grep "WORKOS_API_KEY=sk_" .env* 2>/dev/null || echo "FAIL: API key missing or wrong format"
-
-# 4. Test event creation (replace values)
-curl -X POST https://api.workos.com/audit_logs/events \
-  -H "Authorization: Bearer $WORKOS_API_KEY" \
+curl -X POST https://api.workos.com/events \
+  -H "Authorization: Bearer sk_live_..." \
   -H "Content-Type: application/json" \
   -d '{
-    "organization_id": "org_test",
-    "action": "test.verify",
-    "actor": {"type": "user", "id": "test"},
-    "targets": [{"type": "system", "id": "cli"}],
-    "occurred_at": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
+    "organization_id": "org_01H1234567890ABCDEFG",
+    "event": {
+      "action": "user.created",
+      "occurred_at": "2024-01-15T10:30:00Z",
+      "actor": {
+        "id": "user_123",
+        "name": "Jane Doe",
+        "type": "user"
+      },
+      "targets": [{
+        "id": "user_456",
+        "type": "user",
+        "name": "New User"
+      }],
+      "context": {
+        "location": "192.168.1.1",
+        "user_agent": "Mozilla/5.0..."
+      }
+    }
   }'
-
-# 5. Application builds
-npm run build 2>&1 | grep -i error
 ```
 
-**Expected results:**
-- Check 1: Shows file path with WorkOS initialization
-- Check 2: Shows count > 0 (events being logged)
-- Check 3: Shows API key, no "FAIL" message
-- Check 4: Returns 201 status with event object
-- Check 5: No error output
-
-## Error Recovery
-
-### "401 Unauthorized" on API calls
-
-**Root cause:** Invalid or missing API key.
-
-Fix:
-1. Verify key format: `echo $WORKOS_API_KEY | grep "^sk_"`
-2. Check key scope in Dashboard > API Keys > Key Details
-3. Regenerate key if rotated/revoked
-
-### "422 Unprocessable Entity" on createEvent
-
-**Root cause:** Missing required fields or invalid format.
-
-Fix by checking documentation for required fields. Common issues:
-- `organization_id` - Must be valid WorkOS org ID (starts with `org_`)
-- `occurred_at` - Must be valid ISO 8601 string
-- `action` - Cannot be empty or whitespace-only
-
-**Debug pattern:**
-
-```typescript
-try {
-  await workos.auditLogs.createEvent(event);
-} catch (error) {
-  console.error('Validation failed:', error.response?.data);
-  // Shows which field is invalid
+**Response (201 Created):**
+```json
+{
+  "success": true
 }
 ```
 
-### "429 Rate Limited"
+### Create Export
 
-**Root cause:** Exceeding API rate limits.
+**Request:**
+```bash
+curl -X POST https://api.workos.com/exports \
+  -H "Authorization: Bearer sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "organization_id": "org_01H1234567890ABCDEFG",
+    "range_start": "2024-01-01T00:00:00Z",
+    "range_end": "2024-01-31T23:59:59Z",
+    "actions": ["user.created", "user.updated"],
+    "actors": ["user_123"]
+  }'
+```
 
-Fix:
-1. Implement exponential backoff for retries
-2. Batch events if possible (check docs for batch endpoint)
-3. Queue audit logs async to avoid blocking requests
-4. Contact WorkOS if limits too restrictive for use case
+**Response (201 Created):**
+```json
+{
+  "object": "audit_log_export",
+  "id": "audit_log_export_01H1234567890ABCDEFG",
+  "state": "pending",
+  "url": null,
+  "created_at": "2024-01-15T10:30:00.000Z",
+  "updated_at": "2024-01-15T10:30:00.000Z"
+}
+```
 
-### Events not appearing in WorkOS Dashboard
+### Get Export Status
 
-**Root cause:** Wrong organization ID or event schema mismatch.
+**Request:**
+```bash
+curl https://api.workos.com/exports/audit_log_export_01H1234567890ABCDEFG \
+  -H "Authorization: Bearer sk_live_..."
+```
 
-Fix:
-1. Verify `organization_id` matches Dashboard org
-2. Check events in Dashboard > Audit Logs > Events (may have filter active)
-3. Verify event `action` matches schema if custom schema defined
-4. Check occurred_at is not in future (silently dropped)
+**Response when ready (200 OK):**
+```json
+{
+  "object": "audit_log_export",
+  "id": "audit_log_export_01H1234567890ABCDEFG",
+  "state": "ready",
+  "url": "https://workos-exports.s3.amazonaws.com/...",
+  "created_at": "2024-01-15T10:30:00.000Z",
+  "updated_at": "2024-01-15T10:32:15.000Z"
+}
+```
 
-### SDK import errors ("Cannot find module @workos-inc/node")
+### Set Retention Period
 
-**Root cause:** SDK not installed or wrong package name.
+**Request:**
+```bash
+curl -X PUT https://api.workos.com/audit_log_retention \
+  -H "Authorization: Bearer sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "organization_id": "org_01H1234567890ABCDEFG",
+    "retention_period": 90
+  }'
+```
 
-Fix:
-1. Check package.json: `grep "@workos-inc/node" package.json`
-2. Reinstall: `npm install @workos-inc/node`
-3. Clear cache: `rm -rf node_modules && npm install`
-4. Check Node version compatibility in SDK docs
+**Response (200 OK):**
+```json
+{
+  "retention_period": 90
+}
+```
 
-### TypeScript type errors with WorkOS SDK
+## Error Codes and Fixes
 
-**Root cause:** SDK types not installed or version mismatch.
+### 401 Unauthorized
+**Cause:** Invalid or missing API key  
+**Fix:** Verify your API key starts with `sk_live_` or `sk_test_` and is set correctly in the Authorization header
 
-Fix:
-1. Check TypeScript version: `npx tsc --version`
-2. Install type definitions if separate: Check SDK docs for @types package
-3. Upgrade SDK to latest: `npm update @workos-inc/node`
-4. Add explicit types if SDK types incomplete:
+### 400 Bad Request - "organization_id is required"
+**Cause:** Missing organization_id in request body  
+**Fix:** Include the organization_id field with a valid org ID (starts with `org_`)
 
-```typescript
-interface AuditLogEvent {
-  organization_id: string;
-  action: string;
-  actor: { type: string; id: string; name?: string };
-  targets: Array<{ type: string; id: string }>;
-  occurred_at: string;
-  metadata?: Record<string, unknown>;
+### 400 Bad Request - "action is not valid for schema"
+**Cause:** The action name doesn't exist in your schema  
+**Fix:** Create the action in your schema first via POST `/schemas`, or check GET `/schemas/{schema_id}/actions` for valid actions
+
+### 422 Unprocessable Entity - "occurred_at must be in the past"
+**Cause:** Event timestamp is in the future  
+**Fix:** Use a timestamp at or before the current time in ISO 8601 format
+
+### 429 Too Many Requests
+**Cause:** Rate limit exceeded  
+**Fix:** Implement exponential backoff. Wait 1s, then 2s, then 4s between retries. Use batch endpoints for bulk operations.
+
+### 404 Not Found - Export ID
+**Cause:** Export ID doesn't exist or belongs to different organization  
+**Fix:** Verify the export_id matches the response from POST `/exports`. Check organization_id matches.
+
+## Pagination
+
+The WorkOS Audit Logs API does not paginate event creation, but exports handle large datasets automatically. When creating an export:
+
+- Exports process asynchronously
+- Poll GET `/exports/{export_id}` every 5-10 seconds until `state` is `ready`
+- Download from the `url` field in the response
+- Export URLs expire after 24 hours
+
+For listing schemas:
+
+**Request:**
+```bash
+curl "https://api.workos.com/schemas?limit=10&after=schema_01H123" \
+  -H "Authorization: Bearer sk_live_..."
+```
+
+**Response includes:**
+```json
+{
+  "data": [...],
+  "list_metadata": {
+    "after": "schema_01H456"
+  }
+}
+```
+
+Use the `after` cursor from `list_metadata` in the next request to fetch the next page.
+
+## Rate Limits
+
+- **Event creation:** 100 requests per second per organization
+- **Batch events:** 1,000 events per request, 10 requests per second
+- **Exports:** 5 concurrent exports per organization
+- **Retry strategy:** Use exponential backoff starting at 1 second
+
+When rate limited (429), the response includes a `Retry-After` header indicating seconds to wait.
+
+## Verification Commands
+
+### Test Event Creation
+```bash
+# Replace with your actual API key and org ID
+export WORKOS_API_KEY="sk_test_..."
+export ORG_ID="org_01H..."
+
+curl -X POST https://api.workos.com/events \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"organization_id\": \"$ORG_ID\",
+    \"event\": {
+      \"action\": \"test.verification\",
+      \"occurred_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+      \"actor\": {
+        \"id\": \"test_actor\",
+        \"type\": \"user\"
+      },
+      \"targets\": [{
+        \"id\": \"test_target\",
+        \"type\": \"resource\"
+      }]
+    }
+  }"
+
+# Should return: {"success":true}
+```
+
+### Test Export Creation and Retrieval
+```bash
+# Create export
+EXPORT_RESPONSE=$(curl -s -X POST https://api.workos.com/exports \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"organization_id\": \"$ORG_ID\",
+    \"range_start\": \"2024-01-01T00:00:00Z\",
+    \"range_end\": \"2024-12-31T23:59:59Z\"
+  }")
+
+EXPORT_ID=$(echo $EXPORT_RESPONSE | jq -r '.id')
+echo "Export created: $EXPORT_ID"
+
+# Poll until ready
+while true; do
+  STATUS=$(curl -s https://api.workos.com/exports/$EXPORT_ID \
+    -H "Authorization: Bearer $WORKOS_API_KEY" | jq -r '.state')
+  echo "Export state: $STATUS"
+  if [ "$STATUS" = "ready" ]; then
+    break
+  fi
+  sleep 5
+done
+
+# Get download URL
+curl -s https://api.workos.com/exports/$EXPORT_ID \
+  -H "Authorization: Bearer $WORKOS_API_KEY" | jq -r '.url'
+```
+
+### Test Retention Settings
+```bash
+# Get current retention
+curl https://api.workos.com/audit_log_retention?organization_id=$ORG_ID \
+  -H "Authorization: Bearer $WORKOS_API_KEY"
+
+# Set retention to 90 days
+curl -X PUT https://api.workos.com/audit_log_retention \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"organization_id\": \"$ORG_ID\",
+    \"retention_period\": 90
+  }"
+```
+
+## SDK Examples
+
+### Node.js
+```javascript
+const { WorkOS } = require('@workos-inc/node');
+
+const workos = new WorkOS(process.env.WORKOS_API_KEY);
+
+// Create event
+await workos.auditLogs.createEvent({
+  organizationId: 'org_01H...',
+  event: {
+    action: 'user.created',
+    occurredAt: new Date().toISOString(),
+    actor: {
+      id: 'user_123',
+      type: 'user'
+    },
+    targets: [{
+      id: 'user_456',
+      type: 'user'
+    }]
+  }
+});
+
+// Create and download export
+const exportObj = await workos.auditLogs.createExport({
+  organizationId: 'org_01H...',
+  rangeStart: '2024-01-01T00:00:00Z',
+  rangeEnd: '2024-01-31T23:59:59Z'
+});
+
+// Poll until ready
+let exportStatus = await workos.auditLogs.getExport(exportObj.id);
+while (exportStatus.state !== 'ready') {
+  await new Promise(resolve => setTimeout(resolve, 5000));
+  exportStatus = await workos.auditLogs.getExport(exportObj.id);
+}
+console.log('Download URL:', exportStatus.url);
+```
+
+### Python
+```python
+from workos import WorkOSClient
+import os
+import time
+
+workos = WorkOSClient(api_key=os.getenv('WORKOS_API_KEY'))
+
+# Create event
+workos.audit_logs.create_event(
+    organization_id='org_01H...',
+    event={
+        'action': 'user.created',
+        'occurred_at': '2024-01-15T10:30:00Z',
+        'actor': {
+            'id': 'user_123',
+            'type': 'user'
+        },
+        'targets': [{
+            'id': 'user_456',
+            'type': 'user'
+        }]
+    }
+)
+
+# Create export
+export = workos.audit_logs.create_export(
+    organization_id='org_01H...',
+    range_start='2024-01-01T00:00:00Z',
+    range_end='2024-01-31T23:59:59Z'
+)
+
+# Poll until ready
+while True:
+    export_status = workos.audit_logs.get_export(export.id)
+    if export_status.state == 'ready':
+        print(f'Download URL: {export_status.url}')
+        break
+    time.sleep(5)
+```
+
+## Common Integration Patterns
+
+### Recording User Actions
+Emit events whenever users perform sensitive operations:
+```javascript
+// After successful user creation
+await workos.auditLogs.createEvent({
+  organizationId: user.organizationId,
+  event: {
+    action: 'user.created',
+    occurredAt: new Date().toISOString(),
+    actor: { id: currentUser.id, type: 'user' },
+    targets: [{ id: newUser.id, type: 'user' }],
+    context: {
+      location: req.ip,
+      user_agent: req.headers['user-agent']
+    }
+  }
+});
+```
+
+### Scheduled Export Generation
+Create exports nightly for compliance:
+```javascript
+// Cron job running daily at 2 AM
+const yesterday = new Date();
+yesterday.setDate(yesterday.getDate() - 1);
+yesterday.setHours(0, 0, 0, 0);
+
+const today = new Date(yesterday);
+today.setDate(today.getDate() + 1);
+
+const exportObj = await workos.auditLogs.createExport({
+  organizationId: org.id,
+  rangeStart: yesterday.toISOString(),
+  rangeEnd: today.toISOString()
+});
+
+// Store export ID for later retrieval
+await db.exports.create({
+  workosExportId: exportObj.id,
+  organizationId: org.id,
+  date: yesterday
+});
+```
+
+### Bulk Event Ingestion
+Use batch endpoint for importing historical data:
+```javascript
+const events = historicalActions.map(action => ({
+  action: action.type,
+  occurredAt: action.timestamp,
+  actor: { id: action.userId, type: 'user' },
+  targets: action.targets
+}));
+
+// Process in chunks of 1000
+for (let i = 0; i < events.length; i += 1000) {
+  const batch = events.slice(i, i + 1000);
+  await workos.auditLogs.createEvents({
+    organizationId: 'org_01H...',
+    events: batch
+  });
+  await new Promise(resolve => setTimeout(resolve, 100)); // Rate limit safety
 }
 ```
 
 ## Related Skills
 
-- `workos-api-organizations` - Managing WorkOS organizations for multi-tenant apps
-- `workos-api-events` - Webhook event handling for async audit log processing
-- `workos-authkit-nextjs` - Integrating authentication with audit logging
+- **workos-audit-logs** - Feature overview and implementation guide for Audit Logs
+- **workos-api-organizations** - Managing organizations that own audit logs
+- **workos-api-webhooks** - Receiving real-time notifications for audit log events

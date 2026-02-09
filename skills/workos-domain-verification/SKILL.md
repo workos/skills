@@ -11,308 +11,359 @@ description: Verify organization domains for SSO and directory sync.
 
 **STOP. Do not proceed until complete.**
 
-WebFetch the following docs — they are the source of truth:
-
+WebFetch these URLs:
 - https://workos.com/docs/domain-verification/index
 - https://workos.com/docs/domain-verification/api
 
-If this skill conflicts with the docs, follow the docs.
+The docs are the source of truth. If this skill conflicts with docs, follow the docs.
 
 ## Step 2: Pre-Flight Validation
 
-### Verify WorkOS Setup
+### Environment Variables
 
-Check environment variables:
-
+Check `.env` or `.env.local` for:
 - `WORKOS_API_KEY` - must start with `sk_`
-- `WORKOS_CLIENT_ID` - must start with `client_`
+- `WORKOS_CLIENT_ID` - must start with `client_` (for Admin Portal integration)
 
-**Critical:** Domain Verification requires an existing Organization. Do NOT proceed without one.
+### SDK Installation
 
-### Confirm Organization Exists
-
-Run this to verify Organization is created:
+Verify WorkOS SDK is installed:
 
 ```bash
+# Check package.json contains @workos-inc/node (Node.js)
+grep "@workos-inc/node" package.json
+
+# OR check for other SDK (Python, Ruby, etc.)
+```
+
+**If SDK missing:** Install before proceeding.
+
+### Organization Exists
+
+**CRITICAL:** Domain Verification requires an existing Organization. Check that you have an organization ID.
+
+```bash
+# Test API connectivity and fetch organizations
 curl https://api.workos.com/organizations \
-  -H "Authorization: Bearer $WORKOS_API_KEY" | \
-  grep -q "id" && echo "PASS: Org exists" || echo "FAIL: Create org first"
+  -H "Authorization: Bearer $WORKOS_API_KEY"
 ```
 
-If FAIL: Use `workos-organizations` skill to create one.
-
-### Verify SDK Installation
-
-Check SDK is installed:
-
-```bash
-# Node.js
-npm list @workos-inc/node || echo "FAIL: Install SDK"
-
-# Python
-pip show workos || echo "FAIL: Install SDK"
-
-# Ruby
-gem list workos || echo "FAIL: Install SDK"
-```
+If no organizations exist, you must create one first using the Organizations API.
 
 ## Step 3: Choose Implementation Path (Decision Tree)
 
 ```
-Implementation approach?
+Domain Verification Implementation?
   |
-  +-- Self-serve (recommended) --> Use Admin Portal flow (Step 4)
-  |                                Customer adds DNS TXT themselves
+  +-- Admin Portal (Self-Service) --> Go to Step 4
+  |     - IT admins verify via WorkOS UI
+  |     - DNS TXT record creation
+  |     - Easiest for end users
   |
-  +-- Programmatic --> Use API flow (Step 5)
-                       You manage DNS verification loop
+  +-- Programmatic API --> Go to Step 5
+        - Custom UI in your app
+        - Full control over flow
+        - More implementation work
 ```
 
-**Self-serve is recommended** for production apps — customers verify their own domains through Admin Portal UI.
+Most integrations use Admin Portal (Step 4). Choose API (Step 5) only if you need custom UI.
 
-## Step 4: Self-Serve Flow (Admin Portal)
+## Step 4: Admin Portal Integration (Self-Service Path)
 
-This flow gives IT admins a UI to add DNS TXT records themselves.
+### 4A: Generate Portal Link
 
-### 4A: Generate Admin Portal Link
-
-Create a Portal Link for the Organization:
+Create a Portal Link for the organization that needs to verify a domain:
 
 ```javascript
-// Node.js example
-const { link } = await workos.portal.generateLink({
-  organization: 'org_123',
-  intent: 'domain_verification',
-  return_url: 'https://yourapp.com/settings',
-});
-```
+// Node.js SDK example
+const { WorkOS } = require('@workos-inc/node');
+const workos = new WorkOS(process.env.WORKOS_API_KEY);
 
-**Verify:** `link` starts with `https://id.workos.com/portal/launch?`
-
-### 4B: Redirect Customer
-
-Send the IT admin to the Portal Link. They will:
-
-1. See their organization's existing domains (if any)
-2. Click "Add Domain" to claim a new domain
-3. Get DNS TXT record instructions specific to their domain
-4. Add the TXT record to their DNS provider
-5. Click "Verify" in the Portal
-
-**Important:** Portal links expire after 5 minutes. Generate a new link each time.
-
-### 4C: Monitor Verification Status
-
-Poll domain verification status:
-
-```bash
-curl https://api.workos.com/organization_domains/$DOMAIN_ID \
-  -H "Authorization: Bearer $WORKOS_API_KEY" | \
-  jq '.verification_state'
-```
-
-**States:**
-
-- `pending` - TXT record not found yet
-- `verified` - Domain ownership confirmed
-- `failed` - Verification failed (wrong TXT record or timeout)
-
-You can also listen for `domain.verified` webhook events (recommended).
-
-## Step 5: Programmatic Flow (API Direct)
-
-Use this only if you need to manage the verification loop yourself.
-
-### 5A: Create Organization Domain
-
-```bash
-curl -X POST https://api.workos.com/organization_domains \
-  -H "Authorization: Bearer $WORKOS_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "organization_id": "org_123",
-    "domain": "example.com"
-  }'
-```
-
-**Expected response:**
-
-```json
-{
-  "id": "org_domain_123",
-  "domain": "example.com",
-  "verification_state": "pending",
-  "verification_token": "workos-verification-abc123xyz"
+async function generateDomainVerificationPortal(organizationId) {
+  const portalLink = await workos.portal.generateLink({
+    organization: organizationId,
+    intent: 'domain_verification',
+    return_url: 'https://yourapp.com/admin/domains', // Where to redirect after
+  });
+  
+  return portalLink.link; // Valid for 5 minutes
 }
 ```
 
-### 5B: Display Verification Instructions
+**Portal Link Expiration:** Links expire after 5 minutes. Generate fresh links on-demand, do not cache.
 
-Show the IT admin these exact instructions:
+### 4B: Redirect User to Portal
 
-```
-Add this DNS TXT record to example.com:
+Send the organization admin to the portal link. The WorkOS UI handles:
+- Domain input
+- DNS TXT record generation
+- Verification status polling
+- Success/failure messaging
 
-Name: _workos-challenge.example.com
-Value: workos-verification-abc123xyz
-TTL: 300 (or default)
-```
+### 4C: Handle Return URL
 
-**Critical:** The TXT record name MUST include `_workos-challenge.` prefix.
+When the admin completes the flow, WorkOS redirects to your `return_url`. The domain verification status is updated asynchronously.
 
-### 5C: Trigger Verification Attempt
+**Poll for verification status:**
 
-After the IT admin confirms DNS is updated, trigger verification:
-
-```bash
-curl -X POST https://api.workos.com/organization_domains/$DOMAIN_ID/verify \
-  -H "Authorization: Bearer $WORKOS_API_KEY"
-```
-
-WorkOS will query DNS and update `verification_state`.
-
-### 5D: Poll Verification Status
-
-```bash
-# Check status every 10-30 seconds (don't hammer)
-while true; do
-  STATE=$(curl -s https://api.workos.com/organization_domains/$DOMAIN_ID \
-    -H "Authorization: Bearer $WORKOS_API_KEY" | \
-    jq -r '.verification_state')
+```javascript
+async function checkDomainVerification(organizationId) {
+  const org = await workos.organizations.getOrganization(organizationId);
+  const domains = org.domains; // Array of domain objects
   
-  echo "Status: $STATE"
-  [ "$STATE" = "verified" ] && break
-  sleep 10
-done
+  domains.forEach(domain => {
+    console.log(`${domain.domain}: ${domain.state}`); // "verified" or "pending"
+  });
+}
 ```
 
-**Timeout:** If still `pending` after 5 minutes, DNS propagation may be slow. Check DNS with `dig`:
+**Go to Step 6 for verification.**
+
+## Step 5: Programmatic API Integration (Custom UI Path)
+
+### 5A: Create Organization Domain
+
+```javascript
+async function createDomain(organizationId, domainName) {
+  const domain = await workos.organizationDomains.create({
+    organization_id: organizationId,
+    domain: domainName, // e.g., "example.com"
+  });
+  
+  return {
+    domainId: domain.id,
+    verificationToken: domain.verification_token, // Share this with IT admin
+  };
+}
+```
+
+**Return value structure:**
+
+```json
+{
+  "id": "org_domain_01H...",
+  "domain": "example.com",
+  "state": "pending",
+  "verification_token": "workos-verification=abc123...",
+  "verification_strategy": "dns"
+}
+```
+
+### 5B: Display DNS Instructions
+
+Show the IT admin these instructions in your UI:
+
+```
+Domain: example.com
+Record Type: TXT
+Host: @ (or leave blank)
+Value: workos-verification=abc123...
+TTL: 3600 (or default)
+```
+
+**Critical:** The TXT record value is the `verification_token` from Step 5A.
+
+### 5C: Trigger Verification Check
+
+After the admin adds the DNS record, trigger verification:
+
+```javascript
+async function verifyDomain(domainId) {
+  const domain = await workos.organizationDomains.verify(domainId);
+  return domain.state; // "verified" or "pending"
+}
+```
+
+**DNS propagation note:** Records can take 5-60 minutes to propagate. Implement retry logic with exponential backoff.
+
+### 5D: Polling Pattern (IMPORTANT)
+
+Do NOT poll continuously. Use this pattern:
+
+```javascript
+async function pollDomainVerification(domainId, maxAttempts = 10) {
+  for (let i = 0; i < maxAttempts; i++) {
+    const domain = await workos.organizationDomains.get(domainId);
+    
+    if (domain.state === 'verified') {
+      return { success: true, domain };
+    }
+    
+    // Exponential backoff: 5s, 10s, 20s, 40s...
+    await sleep(5000 * Math.pow(2, i));
+  }
+  
+  return { success: false, message: 'DNS propagation timeout' };
+}
+```
+
+**Go to Step 6 for verification.**
+
+## Step 6: Verification Status Handling
+
+### Check Domain State
 
 ```bash
-dig _workos-challenge.example.com TXT +short
+# Get organization domains via API
+curl https://api.workos.com/organizations/org_01H... \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  | jq '.domains'
 ```
 
-Should return `"workos-verification-abc123xyz"`.
+**Domain states:**
+- `pending` - TXT record not found or not verified yet
+- `verified` - Domain ownership confirmed
 
-## Step 6: List Organization Domains
+### Enable Gated Features
 
-Get all domains for an organization:
+Once `state === "verified"`, enable features that require verified domains:
 
-```bash
-curl "https://api.workos.com/organization_domains?organization_id=org_123" \
-  -H "Authorization: Bearer $WORKOS_API_KEY"
+- **SSO Connections:** Allow creating SSO connections for this domain
+- **Directory Sync:** Allow directory provisioning for this domain
+- **Email Domain Matching:** Auto-assign users with matching email domains to this organization
+
+**Example feature gate:**
+
+```javascript
+async function canEnableSSO(organizationId, domain) {
+  const org = await workos.organizations.getOrganization(organizationId);
+  const verifiedDomain = org.domains.find(
+    d => d.domain === domain && d.state === 'verified'
+  );
+  
+  if (!verifiedDomain) {
+    throw new Error('Domain must be verified before enabling SSO');
+  }
+  
+  // Proceed with SSO setup...
+}
 ```
 
-Use this to show existing verified domains in your UI.
+## Step 7: Handle Unverification (IMPORTANT)
+
+Domains can become unverified if the DNS record is removed. Poll periodically or use webhooks.
+
+**Webhook event:** `dsync.domain.verification_failed`
+
+```javascript
+// Webhook handler
+app.post('/webhooks/workos', async (req, res) => {
+  const event = req.body;
+  
+  if (event.event === 'dsync.domain.verification_failed') {
+    const domainId = event.data.id;
+    // Disable features dependent on this domain
+    await disableFeatures(domainId);
+  }
+  
+  res.sendStatus(200);
+});
+```
 
 ## Verification Checklist (ALL MUST PASS)
 
 ```bash
 # 1. Environment variables set
-[ -n "$WORKOS_API_KEY" ] && echo "PASS: API key set" || echo "FAIL: Missing WORKOS_API_KEY"
+echo $WORKOS_API_KEY | grep "^sk_" && echo "PASS" || echo "FAIL"
 
-# 2. Organization exists
+# 2. SDK installed
+ls node_modules/@workos-inc/node && echo "PASS" || echo "FAIL"
+
+# 3. Can fetch organizations
 curl -s https://api.workos.com/organizations \
-  -H "Authorization: Bearer $WORKOS_API_KEY" | \
-  grep -q '"id"' && echo "PASS: Org exists" || echo "FAIL: Create org first"
-
-# 3. Can create organization domain
-curl -X POST https://api.workos.com/organization_domains \
   -H "Authorization: Bearer $WORKOS_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"organization_id":"org_test","domain":"test.example"}' 2>&1 | \
-  grep -q '"verification_token"' && echo "PASS: API working" || echo "FAIL: Check API key"
+  | jq -e '.data' && echo "PASS" || echo "FAIL"
 
-# 4. SDK imports correctly (Node.js example)
-node -e "const WorkOS = require('@workos-inc/node').WorkOS; console.log('PASS: SDK imports')" || echo "FAIL: Install SDK"
+# 4. Portal link generation works (replace org_id)
+node -e "
+const { WorkOS } = require('@workos-inc/node');
+const workos = new WorkOS(process.env.WORKOS_API_KEY);
+workos.portal.generateLink({
+  organization: 'org_01H...',
+  intent: 'domain_verification',
+  return_url: 'https://example.com'
+}).then(() => console.log('PASS')).catch(() => console.log('FAIL'));
+"
+
+# 5. Application builds
+npm run build
 ```
+
+**Do not mark complete until all pass.**
 
 ## Error Recovery
 
-### "organization not found" on domain creation
+### "API key invalid" or 401 Unauthorized
 
-**Root cause:** Organization ID is invalid or doesn't exist.
+**Root cause:** API key missing, malformed, or wrong environment (test vs. production).
 
-**Fix:**
+Fix:
+1. Check `.env` file has `WORKOS_API_KEY=sk_...`
+2. Verify key starts with `sk_` (not `client_` or `pk_`)
+3. Check key matches environment in WorkOS Dashboard (test keys start with `sk_test_`)
 
+### "Organization not found" (404)
+
+**Root cause:** Organization ID is invalid or belongs to different WorkOS account.
+
+Fix:
 1. List organizations: `curl https://api.workos.com/organizations -H "Authorization: Bearer $WORKOS_API_KEY"`
-2. Use correct `organization_id` from response
-3. If no orgs exist, create one first (see `workos-organizations` skill)
+2. Use correct organization ID from response
+3. If no organizations exist, create one first
 
-### "domain already exists"
+### "Domain already exists" (409 Conflict)
 
-**Root cause:** Domain is already claimed by this or another organization.
+**Root cause:** Domain already registered to this or another organization.
 
-**Fix:**
+Fix:
+1. Check if domain is already in organization's domains list
+2. If domain belongs to wrong organization, delete it from that organization first
+3. Each domain can only belong to one organization at a time
 
-1. Check if domain belongs to your org: `curl https://api.workos.com/organization_domains?organization_id=org_123`
-2. If it's yours, proceed to verification
-3. If it's another org's, you cannot claim it — domains are globally unique
-
-### Verification stays "pending" forever
-
-**Root causes:**
-
-1. TXT record not added to DNS
-2. Wrong DNS record name (missing `_workos-challenge.` prefix)
-3. Wrong TXT record value (typo in verification token)
-4. DNS propagation delay (can take 5-60 minutes)
-
-**Fix:**
-
-```bash
-# Check DNS actually has the record
-dig _workos-challenge.example.com TXT +short
-
-# Expected output:
-# "workos-verification-abc123xyz"
-
-# If missing or wrong:
-# - Verify DNS provider settings
-# - Wait for propagation (check with multiple DNS servers)
-# - Re-check TXT record syntax
-```
-
-### "unauthorized" API errors
-
-**Root cause:** API key is invalid or doesn't have permission.
-
-**Fix:**
-
-1. Check API key starts with `sk_` (not `pk_` — that's publishable key)
-2. Verify key is for correct environment (test vs production)
-3. Regenerate key in WorkOS Dashboard if needed
-
-### Portal Link returns 404
-
-**Root cause:** Link expired (5 minute TTL).
-
-**Fix:** Generate a fresh Portal Link — never cache or reuse them.
-
-### DNS verification fails after TXT record confirmed
+### DNS verification never completes
 
 **Root causes:**
+- DNS record not added correctly
+- DNS record not propagated yet (can take 5-60 minutes)
+- TXT record value incorrect
 
-1. TXT record has quotes when it shouldn't (some DNS providers auto-add)
-2. Multiple TXT records with same name (DNS provider limitation)
-3. TTL is too high causing old cached values
-
-**Fix:**
-
+Debug steps:
 ```bash
-# Check raw DNS response
-dig _workos-challenge.example.com TXT
+# 1. Check DNS propagation (replace example.com)
+dig TXT example.com +short | grep workos-verification
 
-# Value should be EXACTLY:
-# workos-verification-abc123xyz
-# No extra quotes, no spaces, no other records
+# 2. Use Google DNS (sometimes faster to propagate)
+dig @8.8.8.8 TXT example.com +short | grep workos-verification
+
+# 3. Verify token matches
+# Compare dig output with domain.verification_token from API
 ```
 
-If your DNS provider adds quotes, some accept escaped format: `\"workos-verification-abc123xyz\"`. Check provider docs.
+Fix:
+1. Ensure TXT record value exactly matches `verification_token` (no extra quotes or spaces)
+2. Try triggering verification after 10-15 minutes
+3. Check with domain registrar's DNS checker tool
+
+### Portal link expired
+
+**Root cause:** Portal links expire after 5 minutes.
+
+Fix:
+1. Generate fresh portal link on-demand, never cache
+2. Add timestamp check before redirecting: `if (Date.now() - linkCreatedAt > 4 * 60 * 1000) { regenerate }`
+
+### "domain_verification intent not allowed"
+
+**Root cause:** Organization doesn't have Domain Verification enabled in WorkOS settings.
+
+Fix:
+1. Go to WorkOS Dashboard → Organizations
+2. Check organization settings allow Domain Verification
+3. Contact WorkOS support if feature not available for your account tier
 
 ## Related Skills
 
-- **workos-organizations** - Create organizations before adding domains
-- **workos-sso** - SSO requires verified domains for security
-- **workos-directory-sync** - Directory Sync requires verified domains
-- **workos-admin-portal** - Portal Link generation patterns
+- **workos-organizations**: Must create organizations before domains
+- **workos-sso**: SSO connections require verified domains
+- **workos-directory-sync**: Directory Sync requires verified domains
+- **workos-admin-portal**: Domain Verification uses Admin Portal UI

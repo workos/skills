@@ -24,7 +24,11 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "enterprise",
-      "keywords": ["workos", "admin", "portal"]
+      "keywords": [
+        "workos",
+        "admin",
+        "portal"
+      ]
     },
     {
       "name": "workos-api-admin-portal",
@@ -39,7 +43,13 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "api-reference",
-      "keywords": ["workos", "api", "admin", "portal", "api-reference"]
+      "keywords": [
+        "workos",
+        "api",
+        "admin",
+        "portal",
+        "api-reference"
+      ]
     },
     {
       "name": "workos-api-audit-logs",
@@ -54,7 +64,13 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "api-reference",
-      "keywords": ["workos", "api", "audit", "logs", "api-reference"]
+      "keywords": [
+        "workos",
+        "api",
+        "audit",
+        "logs",
+        "api-reference"
+      ]
     },
     {
       "name": "workos-api-authkit",
@@ -90,7 +106,13 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "api-reference",
-      "keywords": ["workos", "api", "directory", "sync", "api-reference"]
+      "keywords": [
+        "workos",
+        "api",
+        "directory",
+        "sync",
+        "api-reference"
+      ]
     },
     {
       "name": "workos-api-events",
@@ -105,7 +127,12 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "api-reference",
-      "keywords": ["workos", "api", "events", "api-reference"]
+      "keywords": [
+        "workos",
+        "api",
+        "events",
+        "api-reference"
+      ]
     },
     {
       "name": "workos-api-organization",
@@ -120,7 +147,12 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "api-reference",
-      "keywords": ["workos", "api", "organization", "api-reference"]
+      "keywords": [
+        "workos",
+        "api",
+        "organization",
+        "api-reference"
+      ]
     },
     {
       "name": "workos-api-roles",
@@ -135,7 +167,12 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "api-reference",
-      "keywords": ["workos", "api", "roles", "api-reference"]
+      "keywords": [
+        "workos",
+        "api",
+        "roles",
+        "api-reference"
+      ]
     },
     {
       "name": "workos-api-sso",
@@ -150,7 +187,14 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "authentication",
-      "keywords": ["workos", "api", "sso", "saml", "oidc", "api-reference"]
+      "keywords": [
+        "workos",
+        "api",
+        "sso",
+        "saml",
+        "oidc",
+        "api-reference"
+      ]
     },
     {
       "name": "workos-api-vault",
@@ -165,7 +209,12 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "api-reference",
-      "keywords": ["workos", "api", "vault", "api-reference"]
+      "keywords": [
+        "workos",
+        "api",
+        "vault",
+        "api-reference"
+      ]
     },
     {
       "name": "workos-api-widgets",
@@ -180,7 +229,12 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "api-reference",
-      "keywords": ["workos", "api", "widgets", "api-reference"]
+      "keywords": [
+        "workos",
+        "api",
+        "widgets",
+        "api-reference"
+      ]
     },
     {
       "name": "workos-audit-logs",
@@ -195,7 +249,11 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "enterprise",
-      "keywords": ["workos", "audit", "logs"]
+      "keywords": [
+        "workos",
+        "audit",
+        "logs"
+      ]
     },
     {
       "name": "workos-authkit-base",
@@ -210,7 +268,12 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "authentication",
-      "keywords": ["workos", "authkit", "base", "authentication"]
+      "keywords": [
+        "workos",
+        "authkit",
+        "base",
+        "authentication"
+      ]
     },
     {
       "name": "workos-authkit-nextjs",
@@ -225,7 +288,12 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "authentication",
-      "keywords": ["workos", "authkit", "nextjs", "authentication"]
+      "keywords": [
+        "workos",
+        "authkit",
+        "nextjs",
+        "authentication"
+      ]
     },
     {
       "name": "workos-authkit-react",
@@ -240,7 +308,12 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "authentication",
-      "keywords": ["workos", "authkit", "react", "authentication"]
+      "keywords": [
+        "workos",
+        "authkit",
+        "react",
+        "authentication"
+      ]
     },
     {
       "name": "workos-authkit-react-router",
@@ -255,7 +328,13 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "authentication",
-      "keywords": ["workos", "authkit", "react", "router", "authentication"]
+      "keywords": [
+        "workos",
+        "authkit",
+        "react",
+        "router",
+        "authentication"
+      ]
     },
     {
       "name": "workos-authkit-tanstack-start",
@@ -270,7 +349,13 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "authentication",
-      "keywords": ["workos", "authkit", "tanstack", "start", "authentication"]
+      "keywords": [
+        "workos",
+        "authkit",
+        "tanstack",
+        "start",
+        "authentication"
+      ]
     },
     {
       "name": "workos-authkit-vanilla-js",
@@ -285,7 +370,13 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "authentication",
-      "keywords": ["workos", "authkit", "vanilla", "js", "authentication"]
+      "keywords": [
+        "workos",
+        "authkit",
+        "vanilla",
+        "js",
+        "authentication"
+      ]
     },
     {
       "name": "workos-custom-domains",
@@ -300,7 +391,11 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "enterprise",
-      "keywords": ["workos", "custom", "domains"]
+      "keywords": [
+        "workos",
+        "custom",
+        "domains"
+      ]
     },
     {
       "name": "workos-directory-sync",
@@ -315,7 +410,11 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "enterprise",
-      "keywords": ["workos", "directory", "sync"]
+      "keywords": [
+        "workos",
+        "directory",
+        "sync"
+      ]
     },
     {
       "name": "workos-domain-verification",
@@ -330,7 +429,11 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "enterprise",
-      "keywords": ["workos", "domain", "verification"]
+      "keywords": [
+        "workos",
+        "domain",
+        "verification"
+      ]
     },
     {
       "name": "workos-email",
@@ -345,7 +448,10 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "enterprise",
-      "keywords": ["workos", "email"]
+      "keywords": [
+        "workos",
+        "email"
+      ]
     },
     {
       "name": "workos-events",
@@ -360,7 +466,10 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "enterprise",
-      "keywords": ["workos", "events"]
+      "keywords": [
+        "workos",
+        "events"
+      ]
     },
     {
       "name": "workos-feature-flags",
@@ -375,22 +484,11 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "enterprise",
-      "keywords": ["workos", "feature", "flags"]
-    },
-    {
-      "name": "workos-fga",
-      "description": "Implement fine-grained authorization with WorkOS FGA.",
-      "version": "0.1.0",
-      "author": {
-        "name": "WorkOS",
-        "email": "support@workos.com"
-      },
-      "source": "./skills/workos-fga",
-      "homepage": "https://workos.com/docs",
-      "repository": "https://github.com/workos/skills",
-      "license": "MIT",
-      "category": "enterprise",
-      "keywords": ["workos", "fga"]
+      "keywords": [
+        "workos",
+        "feature",
+        "flags"
+      ]
     },
     {
       "name": "workos-integrations",
@@ -405,7 +503,10 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "enterprise",
-      "keywords": ["workos", "integrations"]
+      "keywords": [
+        "workos",
+        "integrations"
+      ]
     },
     {
       "name": "workos-magic-link",
@@ -420,7 +521,11 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "authentication",
-      "keywords": ["workos", "magic", "link"]
+      "keywords": [
+        "workos",
+        "magic",
+        "link"
+      ]
     },
     {
       "name": "workos-mfa",
@@ -435,7 +540,10 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "authentication",
-      "keywords": ["workos", "mfa"]
+      "keywords": [
+        "workos",
+        "mfa"
+      ]
     },
     {
       "name": "workos-migrate-auth0",
@@ -450,7 +558,12 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "migration",
-      "keywords": ["workos", "migrate", "auth0", "migration"]
+      "keywords": [
+        "workos",
+        "migrate",
+        "auth0",
+        "migration"
+      ]
     },
     {
       "name": "workos-migrate-aws-cognito",
@@ -465,7 +578,13 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "migration",
-      "keywords": ["workos", "migrate", "aws", "cognito", "migration"]
+      "keywords": [
+        "workos",
+        "migrate",
+        "aws",
+        "cognito",
+        "migration"
+      ]
     },
     {
       "name": "workos-migrate-better-auth",
@@ -480,7 +599,13 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "migration",
-      "keywords": ["workos", "migrate", "better", "auth", "migration"]
+      "keywords": [
+        "workos",
+        "migrate",
+        "better",
+        "auth",
+        "migration"
+      ]
     },
     {
       "name": "workos-migrate-clerk",
@@ -495,7 +620,12 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "migration",
-      "keywords": ["workos", "migrate", "clerk", "migration"]
+      "keywords": [
+        "workos",
+        "migrate",
+        "clerk",
+        "migration"
+      ]
     },
     {
       "name": "workos-migrate-descope",
@@ -510,7 +640,12 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "migration",
-      "keywords": ["workos", "migrate", "descope", "migration"]
+      "keywords": [
+        "workos",
+        "migrate",
+        "descope",
+        "migration"
+      ]
     },
     {
       "name": "workos-migrate-firebase",
@@ -525,7 +660,12 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "migration",
-      "keywords": ["workos", "migrate", "firebase", "migration"]
+      "keywords": [
+        "workos",
+        "migrate",
+        "firebase",
+        "migration"
+      ]
     },
     {
       "name": "workos-migrate-other-services",
@@ -540,7 +680,13 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "migration",
-      "keywords": ["workos", "migrate", "other", "services", "migration"]
+      "keywords": [
+        "workos",
+        "migrate",
+        "other",
+        "services",
+        "migration"
+      ]
     },
     {
       "name": "workos-migrate-stytch",
@@ -555,7 +701,12 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "migration",
-      "keywords": ["workos", "migrate", "stytch", "migration"]
+      "keywords": [
+        "workos",
+        "migrate",
+        "stytch",
+        "migration"
+      ]
     },
     {
       "name": "workos-migrate-supabase-auth",
@@ -570,7 +721,13 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "migration",
-      "keywords": ["workos", "migrate", "supabase", "auth", "migration"]
+      "keywords": [
+        "workos",
+        "migrate",
+        "supabase",
+        "auth",
+        "migration"
+      ]
     },
     {
       "name": "workos-migrate-the-standalone-sso-api",
@@ -610,7 +767,10 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "enterprise",
-      "keywords": ["workos", "pipes"]
+      "keywords": [
+        "workos",
+        "pipes"
+      ]
     },
     {
       "name": "workos-rbac",
@@ -625,11 +785,14 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "enterprise",
-      "keywords": ["workos", "rbac"]
+      "keywords": [
+        "workos",
+        "rbac"
+      ]
     },
     {
       "name": "workos-router",
-      "description": "Route WorkOS requests to the right skill. Load this first for any WorkOS task.",
+      "description": "Identify which WorkOS skill to load based on the user's task — covers AuthKit, SSO, RBAC, FGA, migrations, and all API references.",
       "version": "0.1.0",
       "author": {
         "name": "WorkOS",
@@ -640,7 +803,10 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "enterprise",
-      "keywords": ["workos", "router"]
+      "keywords": [
+        "workos",
+        "router"
+      ]
     },
     {
       "name": "workos-sso",
@@ -655,7 +821,12 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "authentication",
-      "keywords": ["workos", "sso", "saml", "oidc"]
+      "keywords": [
+        "workos",
+        "sso",
+        "saml",
+        "oidc"
+      ]
     },
     {
       "name": "workos-vault",
@@ -670,7 +841,10 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "enterprise",
-      "keywords": ["workos", "vault"]
+      "keywords": [
+        "workos",
+        "vault"
+      ]
     },
     {
       "name": "workos-widgets",
@@ -685,7 +859,10 @@
       "repository": "https://github.com/workos/skills",
       "license": "MIT",
       "category": "enterprise",
-      "keywords": ["workos", "widgets"]
+      "keywords": [
+        "workos",
+        "widgets"
+      ]
     }
   ]
 }

@@ -5,355 +5,277 @@ description: WorkOS Admin Portal API endpoints — generate portal links for cus
 
 <!-- generated -->
 
-# WorkOS Admin Portal API
+# WorkOS Admin Portal API Reference
 
-## Step 1: Fetch Documentation (BLOCKING)
+## Step 1: Fetch Documentation
 
-**STOP. Do not proceed until complete.**
+**STOP. WebFetch the relevant docs for latest implementation details before proceeding.**
 
-WebFetch these URLs for the source of truth:
 - https://workos.com/docs/reference/admin-portal
 - https://workos.com/docs/reference/admin-portal/portal-link
 - https://workos.com/docs/reference/admin-portal/portal-link/generate
 - https://workos.com/docs/reference/admin-portal/provider-icons
 
-If this skill conflicts with fetched docs, follow the docs.
+## Authentication Setup
 
-## Step 2: Pre-Flight Validation
-
-### Environment Variables
-
-Check `.env` or `.env.local` for:
-- `WORKOS_API_KEY` - starts with `sk_`
-- `WORKOS_CLIENT_ID` - starts with `client_` (only needed for OAuth features)
-
-**For server-side only:** `WORKOS_API_KEY` is sufficient. Client ID is for user authentication flows.
-
-### SDK Installation
-
-Verify WorkOS SDK exists:
+All Admin Portal API requests require authentication via API key in the Authorization header:
 
 ```bash
-# Check SDK is installed
-ls node_modules/@workos-inc 2>/dev/null || echo "FAIL: SDK not installed"
+Authorization: Bearer sk_your_api_key_here
 ```
 
-If missing, detect package manager and install:
+Get your API key from the WorkOS Dashboard under API Keys. Use test keys (`sk_test_`) for development and live keys (`sk_live_`) for production.
+
+## Available Endpoints
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/portal_links` | Generate a one-time portal link for an organization |
+| GET | `/portal_links/provider_icons` | Retrieve provider icon URLs for UI customization |
+
+## Operation Decision Tree
+
+**Need to give admins SSO/Directory Sync access?**
+- Call `POST /portal_links` with organization ID and intent
+
+**Need provider logos for custom UI?**
+- Call `GET /portal_links/provider_icons` to get icon URLs
+
+**Need to revoke portal access?**
+- Portal links expire automatically after use or timeout (default 5 minutes)
+
+## Generate Portal Link
+
+### Request Pattern
 
 ```bash
-# Detect and install
-if [ -f "package-lock.json" ]; then
-  npm install @workos-inc/node
-elif [ -f "yarn.lock" ]; then
-  yarn add @workos-inc/node
-elif [ -f "pnpm-lock.yaml" ]; then
-  pnpm add @workos-inc/node
-fi
-```
-
-## Step 3: Use Case Detection (Decision Tree)
-
-```
-What are you building?
-  |
-  +-- Self-serve org settings UI --> Portal Link Generation (Step 4)
-  |
-  +-- Admin management dashboard --> Direct Admin Portal API (Step 5)
-  |
-  +-- Custom provider selector --> Provider Icons API (Step 6)
-```
-
-## Step 4: Portal Link Generation (Self-Serve UI)
-
-**Use case:** End users configure their own org's SSO/Directory Sync settings.
-
-### A. Create Portal Link Endpoint
-
-Create an API route or server function that generates one-time portal URLs:
-
-```typescript
-import { WorkOS } from '@workos-inc/node';
-
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
-
-// Generate link for an organization
-const { link } = await workos.portal.generateLink({
-  organization: 'org_123',  // Required: WorkOS organization ID
-  intent: 'sso',            // Required: 'sso' | 'dsync' | 'log_streams' | 'audit_logs'
-  returnUrl: 'https://yourapp.com/settings', // Optional: where to redirect after
-  successUrl: 'https://yourapp.com/success'  // Optional: override success redirect
-});
-
-// Return link to client
-return { url: link };
-```
-
-**Critical:** Links expire after 5 minutes and are single-use. Generate fresh links on each request.
-
-### B. Intent-Based Routing
-
-Map user actions to intent values:
-
-| Intent | User Action |
-|--------|-------------|
-| `sso` | Configure SAML/OIDC providers |
-| `dsync` | Set up directory sync |
-| `log_streams` | Configure log streaming |
-| `audit_logs` | View audit log settings |
-
-**Validation:** Intent must be one of the exact strings above. SDK will reject invalid values.
-
-### C. Organization ID Resolution
-
-**Decision:** Where does `organization` ID come from?
-
-```
-Organization ID source?
-  |
-  +-- User auth session --> Extract from JWT/session token
-  |
-  +-- Database lookup --> Query by user's company/tenant ID
-  |
-  +-- URL parameter --> Validate ownership before generating link
-```
-
-**Critical security check:** Always verify the requesting user has permission to access the organization before generating a portal link.
-
-### D. Return URL Flow
-
-```typescript
-// User flow with return URL:
-// 1. User clicks "Configure SSO" in your app
-// 2. Your API generates portal link with returnUrl
-// 3. User completes setup in WorkOS Admin Portal
-// 4. Portal redirects to returnUrl with ?success=true
-// 5. Your app shows success message
-```
-
-**Optional vs Required:**
-- `returnUrl` - optional, defaults to WorkOS-hosted success page
-- `successUrl` - optional, overrides return URL specifically for success case
-
-## Step 5: Direct Admin Portal API (Admin Dashboard)
-
-**Use case:** Your internal admin team manages customer orgs without giving customers access.
-
-**NOT RECOMMENDED for production.** Use Portal Links (Step 4) for customer self-serve.
-
-Check fetched documentation for direct API endpoints. These require:
-- Admin-level API key permissions
-- Manual OAuth/SAML configuration handling
-- Complex state management
-
-**Skip to Step 7 unless building internal tooling.**
-
-## Step 6: Provider Icons API
-
-**Use case:** Display SSO provider logos in your custom UI.
-
-Fetch available provider icons:
-
-```typescript
-const providers = await workos.portal.listProviders();
-
-// Returns array of:
-// [
-//   { provider: 'GoogleOAuth', icon_url: 'https://...' },
-//   { provider: 'MicrosoftOAuth', icon_url: 'https://...' },
-//   ...
-// ]
-```
-
-**Integration pattern:**
-
-```typescript
-// In your UI component
-const providerOptions = providers.map(p => ({
-  label: p.provider,
-  icon: p.icon_url
-}));
-```
-
-**Caching:** Icons rarely change. Cache response for 24 hours:
-
-```typescript
-// Example with Next.js
-export const revalidate = 86400; // 24 hours
-```
-
-## Step 7: Error Handling Patterns
-
-### Portal Link Generation Errors
-
-**Organization not found:**
-```typescript
-try {
-  const { link } = await workos.portal.generateLink({
-    organization: 'org_unknown'
-  });
-} catch (error) {
-  if (error.code === 'organization_not_found') {
-    // Organization doesn't exist in WorkOS
-    // Fix: Verify organization ID, check if org was created
-  }
-}
-```
-
-**Invalid intent:**
-```typescript
-// Error: intent must be 'sso' | 'dsync' | 'log_streams' | 'audit_logs'
-// Fix: Use exact string from allowed values
-```
-
-**API key invalid:**
-```typescript
-// Error: Unauthorized (401)
-// Root cause: API key wrong/missing/expired
-// Fix: Check WORKOS_API_KEY starts with 'sk_', verify in Dashboard
-```
-
-### Rate Limiting
-
-WorkOS API has rate limits. Implement retry logic:
-
-```typescript
-async function generateLinkWithRetry(params, maxRetries = 3) {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await workos.portal.generateLink(params);
-    } catch (error) {
-      if (error.status === 429 && i < maxRetries - 1) {
-        // Rate limited, wait and retry
-        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-        continue;
-      }
-      throw error;
-    }
-  }
-}
-```
-
-## Verification Checklist (ALL MUST PASS)
-
-Run these commands to verify integration:
-
-```bash
-# 1. Check SDK installed
-npm list @workos-inc/node || echo "FAIL: SDK missing"
-
-# 2. Check environment variables exist
-grep -q "WORKOS_API_KEY=sk_" .env* 2>/dev/null || echo "FAIL: API key not configured"
-
-# 3. Test API connection (requires valid key)
-curl -X POST https://api.workos.com/portal/generate_link \
-  -H "Authorization: Bearer $WORKOS_API_KEY" \
+curl https://api.workos.com/portal_links \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
   -H "Content-Type: application/json" \
-  -d '{"organization":"org_test","intent":"sso"}' \
-  2>&1 | grep -q "link\|organization_not_found" || echo "FAIL: API unreachable"
-
-# 4. Check for portal link generation code
-grep -r "generateLink\|portal.generate" . --include="*.ts" --include="*.js" || echo "WARN: No portal link code found"
-
-# 5. Verify no hardcoded API keys in code
-grep -r "sk_[a-zA-Z0-9]" . --include="*.ts" --include="*.js" --include="*.tsx" --include="*.jsx" 2>/dev/null && echo "FAIL: Hardcoded API key detected"
-
-# 6. Build succeeds (adjust command for your framework)
-npm run build || echo "FAIL: Build failed"
+  -d '{
+    "organization": "org_01EHQMYV6MBK39QC5PZXHY59C3",
+    "intent": "sso",
+    "return_url": "https://yourapp.com/settings"
+  }'
 ```
 
-**If test #3 returns 401:** API key is invalid or missing from environment.
+### Request Parameters
 
-**If test #5 finds matches:** Move API key to environment variable immediately.
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `organization` | string | Yes | Organization ID (starts with `org_`) |
+| `intent` | string | Yes | Portal purpose: `sso`, `dsync`, or `audit_logs` |
+| `return_url` | string | No | Redirect URL after portal session ends |
+| `success_url` | string | No | Redirect URL after successful configuration |
 
-## Security Checklist
+### Response Pattern
 
-- [ ] API key stored in environment variable, not code
-- [ ] Portal link generation validates user owns organization
-- [ ] Portal links generated server-side only (never expose API key to client)
-- [ ] Return URLs point to your domain (prevent open redirects)
-- [ ] Organization IDs validated against authenticated user's permissions
-
-**Critical:** Never send `WORKOS_API_KEY` to client-side code. Always generate portal links server-side.
-
-## Common Patterns by Framework
-
-### Next.js App Router (13+)
-
-```typescript
-// app/api/admin-portal/route.ts
-import { WorkOS } from '@workos-inc/node';
-import { NextRequest } from 'next/server';
-
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
-
-export async function POST(request: NextRequest) {
-  const { organizationId } = await request.json();
-  
-  // TODO: Verify user owns organizationId
-  
-  const { link } = await workos.portal.generateLink({
-    organization: organizationId,
-    intent: 'sso',
-    returnUrl: `${request.nextUrl.origin}/settings`
-  });
-  
-  return Response.json({ url: link });
+```json
+{
+  "object": "portal_link",
+  "id": "portal_link_01E4ZCR3C56J083X43JQXF3JK5",
+  "link": "https://id.workos.com/portal/launch?secret=...",
+  "organization_id": "org_01EHQMYV6MBK39QC5PZXHY59C3",
+  "intent": "sso",
+  "created_at": "2024-01-15T09:30:00.000Z",
+  "expires_at": "2024-01-15T09:35:00.000Z"
 }
 ```
 
-### Next.js Pages Router
+### Intent-Specific Behavior
 
-```typescript
-// pages/api/admin-portal.ts
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { WorkOS } from '@workos-inc/node';
+**`sso` intent:**
+- Admins configure SAML/OIDC providers
+- Allows connection testing
+- Manages SSO domains
 
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
+**`dsync` intent:**
+- Admins set up Directory Sync
+- Configure directory providers (Okta, Azure AD, Google Workspace)
+- Map user attributes
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+**`audit_logs` intent:**
+- Admins configure Audit Log streaming
+- Set up webhook destinations
+- Test log delivery
+
+## Get Provider Icons
+
+### Request Pattern
+
+```bash
+curl https://api.workos.com/portal_links/provider_icons \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+```
+
+### Response Pattern
+
+```json
+[
+  {
+    "provider": "GoogleOAuth",
+    "icon_url": "https://assets.workos.com/providers/google.svg"
+  },
+  {
+    "provider": "OktaSAML",
+    "icon_url": "https://assets.workos.com/providers/okta.svg"
   }
-  
-  const { organizationId } = req.body;
-  
-  const { link } = await workos.portal.generateLink({
-    organization: organizationId,
-    intent: 'sso',
-    returnUrl: `${req.headers.origin}/settings`
-  });
-  
-  res.json({ url: link });
-}
+]
 ```
 
-### Express
+Use these URLs to display provider logos in your application's settings UI.
 
-```typescript
-import express from 'express';
-import { WorkOS } from '@workos-inc/node';
+## Error Handling
 
-const app = express();
+### HTTP 400 - Bad Request
+
+**Cause:** Invalid organization ID format
+**Fix:** Ensure organization ID starts with `org_` prefix
+
+**Cause:** Invalid intent value
+**Fix:** Use only `sso`, `dsync`, or `audit_logs`
+
+**Cause:** Invalid URL format in return_url/success_url
+**Fix:** Provide fully qualified HTTPS URLs
+
+### HTTP 401 - Unauthorized
+
+**Cause:** Missing or invalid API key
+**Fix:** Verify Authorization header contains `Bearer sk_test_...` or `Bearer sk_live_...`
+
+**Cause:** API key revoked or expired
+**Fix:** Generate new API key in WorkOS Dashboard
+
+### HTTP 404 - Not Found
+
+**Cause:** Organization ID does not exist
+**Fix:** Verify organization exists using List Organizations endpoint
+
+### HTTP 429 - Rate Limit Exceeded
+
+**Cause:** Too many portal link generations in short time window
+**Fix:** Implement exponential backoff with 1s initial delay
+
+WorkOS rate limits: 100 requests per 10 seconds per API key
+
+## Portal Link Lifecycle
+
+1. **Generation:** Link is valid immediately after creation
+2. **Expiration:** Default 5 minutes (300 seconds) from creation
+3. **Single-Use:** Link becomes invalid after first use
+4. **Return Flow:** User redirects to `return_url` or `success_url` when done
+
+**Security Note:** Portal links grant admin-level access. Never expose them in client-side code or logs. Generate them server-side on-demand.
+
+## Verification Commands
+
+### Test Portal Link Generation
+
+```bash
+# Set your API key
+export WORKOS_API_KEY="sk_test_your_key_here"
+
+# Generate a portal link
+curl -X POST https://api.workos.com/portal_links \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "organization": "org_01EHQMYV6MBK39QC5PZXHY59C3",
+    "intent": "sso"
+  }' | jq .
+
+# Expected: 200 status with portal_link object containing "link" field
+```
+
+### Test Provider Icons Retrieval
+
+```bash
+curl https://api.workos.com/portal_links/provider_icons \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}" | jq .
+
+# Expected: 200 status with array of provider icon objects
+```
+
+### SDK Verification (Node.js)
+
+```javascript
+const { WorkOS } = require('@workos-inc/node');
+
 const workos = new WorkOS(process.env.WORKOS_API_KEY);
 
-app.post('/api/admin-portal', async (req, res) => {
-  const { organizationId } = req.body;
-  
-  const { link } = await workos.portal.generateLink({
-    organization: organizationId,
+async function testPortalLink() {
+  const portalLink = await workos.portal.generateLink({
+    organization: 'org_01EHQMYV6MBK39QC5PZXHY59C3',
     intent: 'sso',
-    returnUrl: `${req.protocol}://${req.get('host')}/settings`
   });
   
-  res.json({ url: link });
+  console.log('Portal Link:', portalLink.link);
+  console.log('Expires At:', portalLink.expires_at);
+}
+
+testPortalLink().catch(console.error);
+```
+
+## Common Integration Patterns
+
+### Pattern 1: On-Demand Portal Access
+
+```javascript
+app.post('/api/generate-portal-link', async (req, res) => {
+  const { organizationId } = req.body;
+  
+  const portalLink = await workos.portal.generateLink({
+    organization: organizationId,
+    intent: 'sso',
+    return_url: `https://yourapp.com/settings?org=${organizationId}`,
+  });
+  
+  res.json({ link: portalLink.link });
 });
 ```
+
+### Pattern 2: Embedded Portal Button
+
+```javascript
+async function launchAdminPortal(organizationId) {
+  const response = await fetch('/api/generate-portal-link', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ organizationId }),
+  });
+  
+  const { link } = await response.json();
+  window.location.href = link;
+}
+```
+
+### Pattern 3: Multi-Intent Portal Menu
+
+```javascript
+function showPortalMenu(organizationId) {
+  return [
+    { label: 'Configure SSO', intent: 'sso' },
+    { label: 'Set Up Directory Sync', intent: 'dsync' },
+    { label: 'Configure Audit Logs', intent: 'audit_logs' },
+  ].map(item => ({
+    ...item,
+    action: () => generateAndRedirect(organizationId, item.intent),
+  }));
+}
+```
+
+## Best Practices
+
+1. **Generate links server-side only** — Never expose API keys to client applications
+2. **Set return URLs** — Guide users back to your app after portal session
+3. **Handle expiration** — Links expire after 5 minutes; regenerate if user returns later
+4. **Log portal access** — Track when admins access portal for audit trails
+5. **Validate organization ownership** — Verify requesting user belongs to organization before generating link
+6. **Use intent-specific success URLs** — Redirect users to relevant settings page after configuration
+7. **Cache provider icons** — Icons change rarely; cache them to reduce API calls
 
 ## Related Skills
 
-- `workos-directory-sync` - For implementing directory sync with generated portal links
-- `workos-sso` - For implementing SSO authentication alongside portal configuration
-- `workos-organizations` - For managing organizations that portal links reference
+- `workos-feature-admin-portal` — Feature overview and integration patterns
+- `workos-api-sso` — SSO API reference for user authentication
+- `workos-api-directory-sync` — Directory Sync API reference

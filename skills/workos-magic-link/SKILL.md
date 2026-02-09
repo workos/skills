@@ -12,301 +12,372 @@ description: Implement passwordless authentication via Magic Link.
 **STOP. Do not proceed until complete.**
 
 WebFetch these URLs — they are the source of truth:
+
 - https://workos.com/docs/magic-link/launch-checklist
 - https://workos.com/docs/magic-link/index
 - https://workos.com/docs/magic-link/example-apps
 
-If this skill conflicts with documentation, follow documentation.
+If this skill conflicts with the fetched docs, follow the docs.
 
-**IMPORTANT DEPRECATION NOTICE:** Check docs for current recommendation. Magic Link may be deprecated in favor of Magic Auth due to email client security software invalidating links. If docs recommend Magic Auth instead, use the `workos-magic-auth` skill.
+**CRITICAL DEPRECATION NOTICE:** Check the fetched docs for deprecation warnings. As of last update, WorkOS recommends Magic Auth over Magic Link due to email client security software pre-visiting links. If the docs show Magic Link is deprecated, use the `workos-magic-auth` skill instead.
 
 ## Step 2: Pre-Flight Validation
 
-### WorkOS Account Setup
-
-- Confirm WorkOS Dashboard access at https://dashboard.workos.com/
-- Confirm Production environment is unlocked (billing info added) if deploying to production
-
 ### Environment Variables
 
-Check for these secrets (names may vary by framework):
+Check `.env` or `.env.local` for:
 
-- `WORKOS_API_KEY` - starts with `sk_`
-- `WORKOS_CLIENT_ID` - starts with `client_`
+- `WORKOS_API_KEY` - must start with `sk_`
+- `WORKOS_CLIENT_ID` - must start with `client_`
+- Optional: `WORKOS_REDIRECT_URI` - the callback URL for your app
 
-**Verify immediately:**
+**Verify API key validity:**
+
 ```bash
-# Check secrets exist (adjust for your env var loading method)
-printenv | grep WORKOS_API_KEY | grep -q "^WORKOS_API_KEY=sk_" && echo "PASS: API key" || echo "FAIL: API key missing or invalid"
-printenv | grep WORKOS_CLIENT_ID | grep -q "^WORKOS_CLIENT_ID=client_" && echo "PASS: Client ID" || echo "FAIL: Client ID missing or invalid"
+curl -H "Authorization: Bearer $WORKOS_API_KEY" \
+  https://api.workos.com/user_management/users?limit=1
+# Should return 200 OK, not 401 Unauthorized
 ```
 
-## Step 3: Install SDK
+### WorkOS Dashboard Configuration
 
-Detect package manager and language from project structure:
+Confirm in WorkOS Dashboard:
+
+1. Production environment is unlocked (billing info added) if deploying to prod
+2. Redirect URI matches your callback endpoint
+3. Magic Link connection exists or will auto-create on first use
+
+## Step 3: Install WorkOS SDK
+
+Detect package manager from lockfile:
 
 ```
-Project structure?
+Lockfile present?
   |
-  +-- package.json exists --> Node.js
-  |     |
-  |     +-- Detect: npm, yarn, pnpm, or bun
-  |     +-- Install: @workos-inc/node
+  +-- package-lock.json --> npm install @workos-inc/node
   |
-  +-- requirements.txt exists --> Python
-  |     |
-  |     +-- Install: workos
+  +-- yarn.lock         --> yarn add @workos-inc/node
   |
-  +-- go.mod exists --> Go
-  |     |
-  |     +-- Install: github.com/workos/workos-go/v4
+  +-- pnpm-lock.yaml    --> pnpm add @workos-inc/node
   |
-  +-- Gemfile exists --> Ruby
-        |
-        +-- Install: workos
+  +-- bun.lockb         --> bun add @workos-inc/node
 ```
-
-**Check SDK docs for exact package names** — above are examples only.
 
 **Verify installation:**
+
 ```bash
-# Node.js example
-ls node_modules/@workos-inc/node 2>/dev/null && echo "PASS: SDK installed" || echo "FAIL: SDK not found"
+ls node_modules/@workos-inc/node 2>/dev/null || echo "FAIL: SDK not installed"
 ```
 
-## Step 4: SDK Configuration
+Check fetched docs for latest SDK package name — it may differ by language (Node.js, Python, Ruby, etc.).
 
-Initialize SDK with credentials. Pattern varies by language:
+## Step 4: SDK Initialization
 
-**Node.js example pattern** (check docs for exact syntax):
-```javascript
+Create SDK client with environment variables. Pattern varies by language:
+
+**Node.js example structure:**
+
+```typescript
 import { WorkOS } from '@workos-inc/node';
 
 const workos = new WorkOS(process.env.WORKOS_API_KEY);
 const clientId = process.env.WORKOS_CLIENT_ID;
 ```
 
-**Critical:** Never hardcode credentials. Always load from environment.
+**CRITICAL:** Never initialize SDK at module level in serverless environments — wrap in request handler to avoid stale connections.
 
-## Step 5: Create Callback Endpoint
+## Step 5: Create Callback Route
 
-### Determine Framework Pattern
+Determine framework and create appropriate callback endpoint:
 
 ```
 Framework?
   |
-  +-- Express.js --> app.get('/auth/callback', ...)
-  |
   +-- Next.js (App Router) --> app/auth/callback/route.ts
   |
-  +-- Next.js (Pages) --> pages/api/auth/callback.ts
+  +-- Next.js (Pages)      --> pages/api/auth/callback.ts
   |
-  +-- Flask --> @app.route('/auth/callback')
+  +-- Express              --> app.get('/auth/callback', ...)
   |
-  +-- Rails --> routes.rb + controller
+  +-- Other                --> Check docs for routing pattern
 ```
 
-### Callback Logic (Universal Pattern)
-
-The callback endpoint must:
+**Callback logic (pseudo-code):**
 
 1. Extract `code` parameter from query string
-2. Call SDK method to exchange code for user profile (code valid 10 minutes)
-3. Create/update user session (YOUR session management)
-4. Redirect to application route
+2. Exchange code for user profile: `workos.userManagement.authenticateWithCode({ code, clientId })`
+3. Extract user info from profile response
+4. Create session (your own session management)
+5. Redirect to authenticated area
 
-**Check docs** for SDK method name — typically `getUserProfile`, `authenticateWithCode`, or similar.
+**Code exchange timeout:** Authorization code expires in **10 minutes**. Handle `invalid_grant` errors.
 
-**Example verification:**
+**Verify callback route exists:**
+
 ```bash
-# Check callback endpoint exists (adjust path for your framework)
-grep -r "code.*query\|params" app/auth/callback pages/api/auth/callback 2>/dev/null && echo "PASS: Callback extracts code" || echo "FAIL: Callback missing"
+# Adjust path based on your framework
+find . -path "*/auth/callback*" -o -path "*/api/auth/callback*" | head -1
 ```
 
 ## Step 6: Create Passwordless Session Endpoint
 
-### Endpoint Requirements
-
-This endpoint generates the magic link. Must accept:
-
-- `email` (required) - user email address
-- `redirect_uri` (optional) - override default from dashboard
-- `state` (optional) - encode application state for restoration
+Create endpoint that generates magic link and sends it to user.
 
 ### Email Delivery Decision Tree
 
 ```
-Who sends email?
+Who sends the email?
   |
-  +-- WorkOS --> Use SDK method with send_email: true
-  |              WorkOS-branded email sent automatically
-  |              No SMTP configuration needed
+  +-- WorkOS (simple, WorkOS-branded)
+  |     |
+  |     +--> Use workos.userManagement.createPasswordlessSession()
+  |          with 'send_email: true'
+  |          Done - WorkOS handles delivery
   |
-  +-- Custom --> Use SDK method with send_email: false
-                 Extract link from response
-                 Send via your email service (SendGrid, etc.)
-                 Use your branded template
+  +-- Custom email service (branded, your SMTP)
+        |
+        +--> Use workos.userManagement.createPasswordlessSession()
+             with 'send_email: false'
+        |
+        +--> Extract 'link' from response
+        |
+        +--> Send via your email service (SendGrid, SES, etc.)
 ```
 
-**Check docs** for SDK method name — typically `createPasswordlessSession` or similar.
+**Key parameters:**
 
-**Critical:** Magic Link connection auto-created for email domain if none exists.
+- `email` (required) - User's email address
+- `type: 'MagicLink'` (required)
+- `redirect_uri` (optional) - Override default callback URL
+- `state` (optional) - Preserve app state across redirect
+- `send_email` - `true` for WorkOS delivery, `false` for custom
 
-## Step 7: Configure Redirect URI
+**Magic Link validity:** Links expire in **15 minutes** and are **single-use**.
 
-### In WorkOS Dashboard
+### Session Endpoint Pattern (pseudo-code)
 
-1. Navigate to Configuration > Redirect URIs
-2. Add your callback URL (e.g., `https://yourdomain.com/auth/callback`)
-3. For local dev, add `http://localhost:3000/auth/callback` (adjust port)
+```typescript
+POST /auth/magic-link
+Body: { email: string, redirectTo?: string }
 
-**Production checklist:**
-- Production redirect URI configured
-- Uses HTTPS (not HTTP)
-- Matches your deployed callback endpoint exactly
+1. Validate email format
+2. Call workos.userManagement.createPasswordlessSession({
+     email,
+     type: 'MagicLink',
+     redirect_uri: redirectTo || DEFAULT_CALLBACK,
+     send_email: USE_WORKOS_EMAIL // true or false
+   })
+3. If send_email=false, extract link and send via your email service
+4. Return success response (do not leak link in response)
+```
 
-## Step 8: Session Management (YOUR RESPONSIBILITY)
+**Security:** Never return the magic link in the API response — email only.
 
-**Critical:** WorkOS authenticates users but does NOT manage sessions. You must:
+## Step 7: Session Management Integration
 
-1. Store user identifier from profile in session/JWT/cookie
-2. Set session expiration policy
-3. Implement session validation middleware
-4. Handle session invalidation/logout
+Magic Link is **authentication only** — you must implement session management.
 
-**Common patterns:**
-- Signed cookies with expiration
-- JWT tokens with refresh strategy
-- Server-side session store (Redis, database)
+After successful callback (Step 5), implement:
+
+1. **Create session:** Set secure HTTP-only cookie or JWT
+2. **Session duration:** Define your own timeout (e.g., 7 days, 30 days)
+3. **Session validation:** Middleware to check session on protected routes
+4. **Logout:** Clear session cookie/token
+
+**Example session creation:**
+
+```typescript
+// After authenticating with code
+const { user } = await workos.userManagement.authenticateWithCode({ code, clientId });
+
+// Your session logic
+const sessionToken = createSecureToken(user.id);
+response.setCookie('session', sessionToken, {
+  httpOnly: true,
+  secure: true,
+  sameSite: 'lax',
+  maxAge: 60 * 60 * 24 * 7, // 7 days
+});
+```
+
+## Step 8: UI Integration
+
+Add magic link sign-in form to your login page:
+
+1. Email input field
+2. Submit button triggers POST to your session endpoint (Step 6)
+3. Show "Check your email" success message
+4. Handle error states (invalid email, rate limits, API errors)
+
+**Do NOT:**
+
+- Display the magic link in the UI
+- Allow unauthenticated users to generate links without rate limiting
+
+## Step 9: Email Client Security Workaround
+
+**CRITICAL ISSUE:** Email security software may pre-visit links, expiring them before users click.
+
+### Mitigation Strategies
+
+1. **User education:** Document that users should allowlist your magic link emails
+2. **Link design:** Use obvious "Sign In" buttons, not naked URLs
+3. **Logging:** Track link visits to detect pre-fetching patterns
+4. **Consider Magic Auth:** Check docs — WorkOS now recommends Magic Auth over Magic Link
+
+**Detection pattern:**
+
+```typescript
+// In callback handler
+const timestamp = Date.now();
+const codeAge = timestamp - extractTimestampFromCode(code);
+
+if (codeAge < 1000) {
+  // Code used within 1 second - likely pre-fetch
+  logger.warn('Possible email security pre-fetch detected');
+}
+```
 
 ## Verification Checklist (ALL MUST PASS)
 
-Run these commands to confirm integration:
-
 ```bash
-# 1. Check SDK installed
-ls node_modules/@workos-inc/node 2>/dev/null || echo "FAIL: SDK missing"
+# 1. Environment variables exist
+[ -n "$WORKOS_API_KEY" ] && echo "✓ API key set" || echo "✗ API key missing"
+[ -n "$WORKOS_CLIENT_ID" ] && echo "✓ Client ID set" || echo "✗ Client ID missing"
 
-# 2. Check environment variables set
-printenv | grep -E "WORKOS_(API_KEY|CLIENT_ID)" | wc -l | grep -q "2" && echo "PASS: Env vars set" || echo "FAIL: Missing env vars"
+# 2. SDK installed
+npm list @workos-inc/node 2>/dev/null && echo "✓ SDK installed" || echo "✗ SDK missing"
 
-# 3. Check callback endpoint exists (adjust path)
-find . -type f \( -name "*callback*" -o -path "*/auth/callback/*" \) | grep -v node_modules | head -1 || echo "FAIL: No callback endpoint"
+# 3. Callback route exists (adjust path for your framework)
+find . -type f -name "*callback*" | grep -q . && echo "✓ Callback found" || echo "✗ No callback"
 
-# 4. Check callback extracts code parameter
-grep -r "code.*query\|code.*params" --include="*.js" --include="*.ts" --include="*.py" app pages src 2>/dev/null | head -1 || echo "FAIL: Code extraction missing"
+# 4. API key valid
+curl -sf -H "Authorization: Bearer $WORKOS_API_KEY" \
+  https://api.workos.com/user_management/users?limit=1 >/dev/null \
+  && echo "✓ API key valid" || echo "✗ API key invalid"
 
 # 5. Build succeeds
-npm run build || python -m py_compile app.py || go build || bundle exec rake assets:precompile
+npm run build && echo "✓ Build passed" || echo "✗ Build failed"
 ```
 
 **Manual verification:**
-- [ ] WorkOS Dashboard shows correct redirect URI
-- [ ] Test magic link flow end-to-end in development
-- [ ] Email delivery works (WorkOS or custom)
-- [ ] Session persists across page loads
-- [ ] Logout invalidates session
+
+- [ ] Can generate magic link via your endpoint
+- [ ] Email delivers (WorkOS or custom)
+- [ ] Clicking link redirects to callback
+- [ ] Callback exchanges code successfully
+- [ ] Session is created after auth
+- [ ] Protected routes require session
 
 ## Error Recovery
 
-### "Invalid authorization code" / 401 on callback
+### "Invalid authorization code" / "invalid_grant"
 
-**Root cause:** Code already used (single-use) or expired (10 min).
-
-**Common trigger:** Email security software pre-clicks links before user sees email.
+**Root cause:** Code expired (10min timeout) or already used.
 
 **Fix:**
-1. Check if this is production: Add Magic Link sender to email allowlist in corporate email settings
-2. Consider migrating to Magic Auth (check Step 1 docs for recommendation)
-3. Verify callback isn't being called twice (check middleware/logging)
 
-**Diagnostic:**
-```bash
-# Check for duplicate callback invocations
-grep "auth/callback" logs/*.log | wc -l
+1. Check code is exchanged immediately in callback, not stored/delayed
+2. Check for email security pre-fetching (see Step 9)
+3. Implement expiration handling: prompt user to request new link
+
+**Code:**
+
+```typescript
+try {
+  await workos.userManagement.authenticateWithCode({ code, clientId });
+} catch (error) {
+  if (error.code === 'invalid_grant') {
+    return redirect('/login?error=link_expired');
+  }
+  throw error;
+}
 ```
 
-### "Missing or invalid API key"
+### "Unauthorized" (401) on API calls
 
-**Root cause:** `WORKOS_API_KEY` not set or wrong format.
+**Root cause:** Invalid API key or wrong environment.
 
 **Fix:**
-```bash
-# Verify key format
-echo $WORKOS_API_KEY | grep -q "^sk_" && echo "Format OK" || echo "Key should start with sk_"
 
-# Check key in Dashboard
-# 1. Go to WorkOS Dashboard > API Keys
-# 2. Verify key matches and is not revoked
-# 3. Regenerate if necessary
-```
+1. Verify `WORKOS_API_KEY` starts with `sk_`
+2. Check using correct environment key (test vs. prod)
+3. Regenerate key in WorkOS Dashboard if compromised
+
+### Magic link expires immediately
+
+**Root cause:** Email security software pre-visiting links.
+
+**Fix:**
+
+1. Advise users to allowlist sending domain
+2. Check WorkOS docs for Magic Auth migration (better security model)
+3. Implement detection logging (see Step 9)
 
 ### "Redirect URI mismatch"
 
-**Root cause:** Callback URL doesn't match Dashboard configuration.
+**Root cause:** Callback URL doesn't match WorkOS Dashboard configuration.
 
 **Fix:**
-1. Print actual callback URL from request in your logs
-2. Compare exact string to Dashboard Redirect URI setting
-3. Check for trailing slashes, HTTP vs HTTPS, port numbers
 
-**Diagnostic:**
+1. Check `redirect_uri` parameter matches Dashboard exactly (including protocol, port)
+2. Ensure no trailing slashes mismatch
+3. For localhost testing, add `http://localhost:3000/auth/callback` in Dashboard
+
+**Verify configuration:**
+
 ```bash
-# Log full callback URL
-# Add this temporarily to callback handler:
-# console.log("Callback URL:", req.protocol + "://" + req.get("host") + req.originalUrl)
+echo $WORKOS_REDIRECT_URI
+# Should match WorkOS Dashboard Redirect URI field exactly
 ```
 
-### "Session not persisting"
+### Emails not sending (WorkOS delivery)
 
-**Root cause:** Session management not implemented or misconfigured.
-
-**Fix:**
-1. Verify session creation code runs after successful authentication
-2. Check cookie settings (httpOnly, secure, sameSite)
-3. Test cookie storage in browser DevTools > Application > Cookies
-4. For JWT: verify token is in Authorization header or cookie
-
-### Magic link expires before user clicks
-
-**Root cause:** Email security system visits link (15 min expiration, single use).
-
-**Fixes in priority order:**
-1. **Immediate:** Add sender to email allowlist (corporate IT)
-2. **Short term:** Increase user instructions: "Click link immediately, don't forward"
-3. **Long term:** Migrate to Magic Auth with code input (not link-based)
-
-### SDK import fails
-
-**Root cause:** Package not installed or wrong import path.
+**Root cause:** Connection not created or email provider issues.
 
 **Fix:**
-```bash
-# Reinstall SDK
-npm install @workos-inc/node  # or appropriate package
 
-# Check SDK version in package.json matches docs
-grep "@workos-inc/node" package.json
+1. Check WorkOS Dashboard for Magic Link connection status
+2. Verify email domain doesn't block WorkOS sender
+3. Check WorkOS status page for service issues
+4. Review API response for error details
 
-# Verify import path from SDK docs (may use subpath exports)
-```
+### Session not persisting after login
 
-## Production Deployment Checklist
+**Root cause:** Session logic not implemented (Magic Link is auth only).
+
+**Fix:**
+
+1. Implement session creation in callback handler (Step 7)
+2. Verify session cookie is secure, HTTP-only, and has correct domain
+3. Check session middleware is applied to protected routes
+
+### Rate limiting errors
+
+**Root cause:** Too many passwordless session requests.
+
+**Fix:**
+
+1. Implement client-side rate limiting (e.g., 1 request per 60 seconds per email)
+2. Add backend rate limiting by IP or email
+3. Show user-friendly "Please wait" message
+
+## Production Checklist
 
 Before going live:
 
-- [ ] Production environment unlocked in WorkOS Dashboard (billing added)
-- [ ] Production redirect URI configured (HTTPS)
-- [ ] Production API key secured (not in version control)
-- [ ] HTTPS enforced on callback endpoint
-- [ ] Session expiration policy implemented
-- [ ] Error logging configured for failed authentications
-- [ ] Rate limiting on passwordless session creation endpoint
-- [ ] Email allowlist instructions documented for enterprise users
+- [ ] Billing information added to WorkOS Dashboard (unlocks Production environment)
+- [ ] Production `WORKOS_API_KEY` replaced (not test key)
+- [ ] Production redirect URI configured in Dashboard
+- [ ] Production API key stored in secure secrets manager (not committed to git)
+- [ ] IP allowlist configured if needed (Cloudflare IP ranges)
+- [ ] Email deliverability tested with production email service
+- [ ] Session security reviewed (secure cookies, HTTPS only)
+- [ ] Error handling covers all API failure modes
+- [ ] Monitoring added for link expiration rates
 
 ## Related Skills
 
-- **workos-magic-auth**: Recommended alternative to Magic Link (code input vs link click)
-- **workos-sso**: Add SSO alongside passwordless auth
-- **workos-mfa**: Add MFA requirement to authenticated sessions
-- **workos-authkit-nextjs**: Full auth solution for Next.js (includes Magic Auth)
+- **workos-magic-auth**: Recommended replacement for Magic Link (better security)
+- **workos-sso**: Share same redirect URI / profile handling pattern
+- **workos-mfa**: Add MFA to passwordless authentication flows

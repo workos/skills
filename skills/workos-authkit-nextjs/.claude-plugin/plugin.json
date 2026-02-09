@@ -10,5 +10,10 @@
   "repository": "https://github.com/workos/skills",
   "license": "MIT",
   "category": "authentication",
-  "keywords": ["workos", "authkit", "nextjs", "authentication"]
+  "keywords": [
+    "workos",
+    "authkit",
+    "nextjs",
+    "authentication"
+  ]
 }

@@ -10,5 +10,12 @@
   "repository": "https://github.com/workos/skills",
   "license": "MIT",
   "category": "authentication",
-  "keywords": ["workos", "api", "sso", "saml", "oidc", "api-reference"]
+  "keywords": [
+    "workos",
+    "api",
+    "sso",
+    "saml",
+    "oidc",
+    "api-reference"
+  ]
 }

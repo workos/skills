@@ -5,302 +5,280 @@ description: WorkOS Events/Webhooks API endpoints — list events, manage webhoo
 
 <!-- generated -->
 
-# WorkOS Events API Integration
+# WorkOS Events API Reference
 
-## Step 1: Fetch SDK Documentation (BLOCKING)
+## Step 1: Fetch Documentation
 
-**STOP. Do not proceed until complete.**
+**STOP. WebFetch the relevant docs for latest implementation details before proceeding.**
 
-WebFetch these URLs in order:
-- `https://workos.com/docs/reference/events`
-- `https://workos.com/docs/reference/events/list`
+- https://workos.com/docs/reference/events
+- https://workos.com/docs/reference/events/list
 
-The WorkOS docs are the source of truth. If this skill conflicts with official docs, follow the docs.
+## Authentication Setup
 
-## Step 2: Pre-Flight Validation
-
-### Project Structure
-
-Run these checks:
+All Events API calls require authentication via API key:
 
 ```bash
-# Confirm WorkOS SDK exists
-ls node_modules/@workos-inc/node 2>/dev/null || echo "FAIL: SDK not installed"
-
-# Confirm environment variables exist
-grep -q "WORKOS_API_KEY" .env* || echo "FAIL: WORKOS_API_KEY not found"
+Authorization: Bearer sk_live_xxxxx
 ```
 
-### Environment Variables
-
-Check `.env` or `.env.local` for:
-
-- `WORKOS_API_KEY` - starts with `sk_` (required for API calls)
-- `WORKOS_WEBHOOK_SECRET` - starts with `wh_` (required if consuming webhooks)
-
-**Note:** Events API does NOT require `WORKOS_CLIENT_ID` - that's only for OAuth/SSO flows.
-
-## Step 3: SDK Installation (If Missing)
-
-Detect package manager, install WorkOS Node SDK:
+Set your API key in environment variables:
 
 ```bash
-# Detect and install
+export WORKOS_API_KEY="sk_live_xxxxx"
+```
+
+## Endpoint Catalog
+
+| Method | Endpoint | Purpose | Pagination |
+|--------|----------|---------|------------|
+| GET | `/events` | List all events | Yes (cursor) |
+
+## Operation Decision Tree
+
+**When to use Events API:**
+
+- **List recent events** → `GET /events` (default: last 30 days)
+- **Filter by event type** → `GET /events?events[]=dsync.activated`
+- **Filter by date range** → `GET /events?range_start=2024-01-01&range_end=2024-01-31`
+- **Paginate results** → Use `after` cursor from response
+- **Filter by organization** → `GET /events?organization_id=org_xxx`
+
+**You cannot:**
+- Create, update, or delete events (read-only API)
+- Modify event history
+- Subscribe to webhooks via this endpoint (use Webhooks API instead)
+
+## Request Patterns
+
+### List Events (Basic)
+
+```bash
+curl https://api.workos.com/events \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+```
+
+### List Events with Filters
+
+```bash
+curl "https://api.workos.com/events?events[]=dsync.activated&events[]=dsync.deleted&limit=20" \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+```
+
+### List Events by Date Range
+
+```bash
+curl "https://api.workos.com/events?range_start=2024-01-01T00:00:00Z&range_end=2024-01-31T23:59:59Z" \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+```
+
+### List Events by Organization
+
+```bash
+curl "https://api.workos.com/events?organization_id=org_01H5K8PB8CJ8QH4K3T2NXJR8XS" \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+```
+
+## Response Pattern
+
+Successful response (200 OK):
+
+```json
+{
+  "data": [
+    {
+      "id": "event_01H5K8PB8CJ8QH4K3T2NXJR8XS",
+      "event": "dsync.activated",
+      "created_at": "2024-01-15T10:30:00.000Z",
+      "data": {
+        "id": "directory_01H5K8PB8CJ8QH4K3T2NXJR8XS",
+        "name": "Example Directory",
+        "organization_id": "org_01H5K8PB8CJ8QH4K3T2NXJR8XS",
+        "state": "active",
+        "type": "okta scim v2.0"
+      }
+    }
+  ],
+  "list_metadata": {
+    "before": null,
+    "after": "event_01H5K8PB8CJ8QH4K3T2NXJR8XT"
+  }
+}
+```
+
+## Pagination Handling
+
+Events API uses cursor-based pagination:
+
+1. First request returns up to `limit` events (default: 10, max: 100)
+2. Response includes `list_metadata.after` cursor if more results exist
+3. Pass cursor to `after` parameter for next page
+
+```bash
+# Page 1
+curl "https://api.workos.com/events?limit=50" \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+
+# Page 2 (use cursor from previous response)
+curl "https://api.workos.com/events?limit=50&after=event_01H5K8PB8CJ8QH4K3T2NXJR8XT" \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+```
+
+Stop paginating when `list_metadata.after` is `null`.
+
+## Error Code Mapping
+
+| Status | Cause | Fix |
+|--------|-------|-----|
+| 401 | Missing or invalid API key | Verify `WORKOS_API_KEY` starts with `sk_` and is active in dashboard |
+| 403 | API key lacks permission | Check API key has "Events" read permission in WorkOS Dashboard |
+| 422 | Invalid parameter format | Check `range_start`/`range_end` are ISO 8601 format; `limit` is 1-100 |
+| 429 | Rate limit exceeded | Implement exponential backoff starting at 1 second |
+| 500 | WorkOS server error | Retry with exponential backoff; contact support if persists |
+
+### Error Response Format
+
+```json
+{
+  "message": "Invalid parameter: range_start must be in ISO 8601 format",
+  "code": "invalid_parameter",
+  "error": "validation_error"
+}
+```
+
+## SDK Usage (Node.js)
+
+### Installation
+
+```bash
 npm install @workos-inc/node
-# or
-pnpm add @workos-inc/node
-# or
-yarn add @workos-inc/node
 ```
 
-**Verify:** SDK package directory exists before writing code:
+### List Events
 
-```bash
-ls node_modules/@workos-inc/node/dist/index.js || echo "Installation failed"
-```
-
-## Step 4: Initialize WorkOS Client
-
-Create or verify WorkOS client initialization:
-
-```typescript
-import { WorkOS } from '@workos-inc/node';
+```javascript
+const { WorkOS } = require('@workos-inc/node');
 
 const workos = new WorkOS(process.env.WORKOS_API_KEY);
-```
 
-**Location decision tree:**
-
-```
-Project type?
-  |
-  +-- Next.js API route --> Initialize inside route handler
-  |
-  +-- Express/Node app --> Initialize in config/workos.ts, export singleton
-  |
-  +-- Serverless function --> Initialize per-invocation (cold starts)
-```
-
-**Critical:** Never commit API key to git. Always use environment variables.
-
-## Step 5: Implement Events List Endpoint
-
-Events API supports pagination and filtering. See fetched docs for query parameters.
-
-### Basic Pattern (Framework-Agnostic)
-
-```typescript
-// List recent events
-const events = await workos.events.listEvents({
-  limit: 10,
-  order: 'desc',
-  // Optional filters - see docs for available options
-  events: ['connection.activated', 'connection.deleted'],
-  organization_id: 'org_123',
-});
-
-// Response structure
-events.data.forEach((event) => {
-  console.log(event.id);       // evt_xxx
-  console.log(event.event);    // event type string
-  console.log(event.data);     // event payload
-  console.log(event.created_at); // ISO timestamp
-});
-
-// Pagination cursor
-if (events.listMetadata?.after) {
-  const nextPage = await workos.events.listEvents({
-    after: events.listMetadata.after,
-    limit: 10,
+async function listEvents() {
+  const events = await workos.events.listEvents({
+    events: ['dsync.activated', 'dsync.deleted'],
+    limit: 50,
   });
-}
-```
 
-### Framework Integration (Decision Tree)
-
-```
-Framework?
-  |
-  +-- Next.js App Router --> app/api/events/route.ts
-  |                          export async function GET(request: Request)
-  |
-  +-- Next.js Pages --> pages/api/events.ts
-  |                     export default async function handler(req, res)
-  |
-  +-- Express --> app.get('/api/events', async (req, res) => {})
-  |
-  +-- Fastify --> fastify.get('/api/events', async (request, reply) => {})
-```
-
-**Implementation steps:**
-
-1. Parse query parameters (after, limit, events filter, etc.)
-2. Call `workos.events.listEvents()` with validated params
-3. Return paginated response with `listMetadata` for cursor
-4. Handle errors with appropriate HTTP status codes
-
-## Step 6: Event Type Filtering (Optional)
-
-Events API supports filtering by event types. Common patterns:
-
-```typescript
-// SSO events only
-const ssoEvents = await workos.events.listEvents({
-  events: ['connection.activated', 'connection.deleted', 'connection.deactivated'],
-});
-
-// Directory Sync events only
-const dsyncEvents = await workos.events.listEvents({
-  events: ['dsync.activated', 'dsync.deleted', 'group.created', 'user.created'],
-});
-
-// Organization events only
-const orgEvents = await workos.events.listEvents({
-  events: ['organization.created', 'organization.updated', 'organization.deleted'],
-});
-```
-
-**Check fetched docs for complete event type list** - types vary by WorkOS product.
-
-## Step 7: Pagination Implementation
-
-Events API uses cursor-based pagination. **Never use offset/page numbers.**
-
-```typescript
-async function getAllEvents(filters = {}) {
-  const allEvents = [];
-  let after = undefined;
-
-  while (true) {
-    const response = await workos.events.listEvents({
-      ...filters,
-      after,
-      limit: 100, // Max per page
+  console.log(events.data);
+  
+  // Handle pagination
+  if (events.listMetadata.after) {
+    const nextPage = await workos.events.listEvents({
+      after: events.listMetadata.after,
+      limit: 50,
     });
-
-    allEvents.push(...response.data);
-
-    // Check if more pages exist
-    if (!response.listMetadata?.after) {
-      break;
-    }
-
-    after = response.listMetadata.after;
   }
-
-  return allEvents;
 }
 ```
 
-**Warning:** Fetching all events can be slow for large datasets. Use pagination cursors in UI instead.
+### Filter by Date Range
 
-## Step 8: Webhook Integration (If Applicable)
+```javascript
+async function listEventsByDate() {
+  const events = await workos.events.listEvents({
+    rangeStart: '2024-01-01T00:00:00Z',
+    rangeEnd: '2024-01-31T23:59:59Z',
+  });
 
-If consuming events via webhooks instead of polling:
-
+  return events.data;
+}
 ```
-Delivery method?
-  |
-  +-- Polling API --> Use listEvents() on schedule (Step 5)
-  |
-  +-- Webhooks --> Implement webhook handler (see workos-webhooks skill)
+
+### Filter by Organization
+
+```javascript
+async function listOrgEvents(organizationId) {
+  const events = await workos.events.listEvents({
+    organizationId: organizationId,
+  });
+
+  return events.data;
+}
 ```
 
-**Decision factors:**
+## Rate Limits
 
-- Real-time needed? --> Webhooks
-- Batch processing? --> Polling
-- Event replay needed? --> Polling (events stored 90 days)
+- Default: 100 requests per 10 seconds per API key
+- Implement exponential backoff on 429 responses
+- Cache event data when possible to reduce API calls
 
-## Verification Checklist (ALL MUST PASS)
+Retry strategy:
 
-Run these commands to confirm integration:
+```javascript
+async function listEventsWithRetry(params, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await workos.events.listEvents(params);
+    } catch (error) {
+      if (error.status === 429 && i < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+```
+
+## Runnable Verification
+
+### Step 1: Verify API Key
 
 ```bash
-# 1. Verify WorkOS client initialization
-grep -r "new WorkOS" --include="*.ts" --include="*.js" . || echo "FAIL: WorkOS not initialized"
-
-# 2. Verify API key is in environment
-grep "WORKOS_API_KEY" .env* || echo "FAIL: API key not configured"
-
-# 3. Test API call (replace with your endpoint)
-curl -X GET "http://localhost:3000/api/events?limit=5" \
-  -H "Accept: application/json" \
-  | grep -q '"data"' && echo "PASS: API returns events" || echo "FAIL: API error"
-
-# 4. Check for hardcoded API keys (security)
-grep -r "sk_[a-zA-Z0-9]" --include="*.ts" --include="*.js" . \
-  && echo "FAIL: Hardcoded API key found" || echo "PASS: No hardcoded keys"
-
-# 5. Build succeeds
-npm run build
+curl https://api.workos.com/events?limit=1 \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
 ```
 
-## Error Recovery
+Expected: 200 response with event array (may be empty if no events exist).
 
-### "Unauthorized" (401)
+### Step 2: Verify Event Filtering
 
-**Root cause:** Invalid or missing API key.
-
-Fixes:
-1. Verify `WORKOS_API_KEY` exists in environment: `echo $WORKOS_API_KEY`
-2. Check key starts with `sk_`: `echo $WORKOS_API_KEY | grep "^sk_"`
-3. Regenerate key in WorkOS Dashboard if compromised
-4. Restart dev server after changing .env files
-
-### "Rate limit exceeded" (429)
-
-**Root cause:** Too many API calls in short window.
-
-Fixes:
-1. Implement exponential backoff for retries
-2. Cache events locally if read-heavy
-3. Use webhooks instead of polling for real-time needs
-4. Contact WorkOS support for rate limit increase
-
-### "Invalid cursor" error in pagination
-
-**Root cause:** Cursor expired or invalid after value.
-
-Fixes:
-1. Check `listMetadata.after` exists before using: `if (events.listMetadata?.after)`
-2. Cursors expire after 90 days - don't store long-term
-3. Reset to first page if cursor invalid: `after: undefined`
-
-### Empty response but events exist in Dashboard
-
-**Root cause:** Event type filter too restrictive.
-
-Fixes:
-1. Remove `events` filter to see all event types
-2. Check fetched docs for correct event type strings (case-sensitive)
-3. Verify `organization_id` filter if used (must match exactly)
-
-### TypeScript errors on event.data access
-
-**Root cause:** Event payload shape varies by event type.
-
-Fixes:
-1. Use type guards: `if (event.event === 'connection.activated') { ... }`
-2. Check fetched docs for event-specific payload schemas
-3. Use optional chaining: `event.data?.connection?.id`
-
-### SDK import fails
-
-**Root cause:** Package not installed or wrong import path.
-
-Fixes:
 ```bash
-# Reinstall SDK
-rm -rf node_modules/@workos-inc package-lock.json
-npm install @workos-inc/node
-
-# Verify import path
-grep "from '@workos-inc/node'" --include="*.ts" -r .
+curl "https://api.workos.com/events?events[]=dsync.activated&limit=5" \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
 ```
+
+Expected: 200 response with filtered events.
+
+### Step 3: Verify Pagination
+
+```bash
+# List first page
+curl "https://api.workos.com/events?limit=2" \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}" | jq '.list_metadata.after'
+
+# Use cursor for next page
+curl "https://api.workos.com/events?limit=2&after=event_CURSOR_FROM_ABOVE" \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+```
+
+Expected: Different events in second response.
+
+## Common Event Types
+
+Reference the fetched documentation for complete event catalog. Common types:
+
+- `dsync.activated` - Directory sync activated
+- `dsync.deleted` - Directory sync deleted
+- `dsync.group.created` - Group created
+- `dsync.group.deleted` - Group deleted
+- `dsync.group.updated` - Group updated
+- `dsync.user.created` - User created
+- `dsync.user.deleted` - User deleted
+- `dsync.user.updated` - User updated
+- `connection.activated` - SSO connection activated
+- `connection.deleted` - SSO connection deleted
 
 ## Related Skills
 
-- `workos-webhooks` - Consume events via webhooks instead of polling
-- `workos-directory-sync` - Process Directory Sync events (dsync.*, group.*, user.*)
-- `workos-sso` - Process SSO connection events (connection.*)
+- **workos-events** - Feature overview and webhook setup
+- **workos-api-directory-sync** - Directory Sync API operations
+- **workos-api-sso** - SSO authentication flows

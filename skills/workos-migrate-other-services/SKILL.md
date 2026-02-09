@@ -13,404 +13,350 @@ description: Migrate to WorkOS from other services.
 
 WebFetch: `https://workos.com/docs/migrate/other-services`
 
-The migration guide is the source of truth. If this skill conflicts with the guide, follow the guide.
+This document contains the latest migration patterns and API endpoints. If this skill conflicts with the docs, follow the docs.
 
-## Step 2: Pre-Flight Validation
+## Step 2: Pre-Migration Assessment (Decision Tree)
 
-### WorkOS Configuration
+Map your current auth system to determine migration path:
 
-- Confirm WorkOS account exists with access to dashboard
-- Verify environment variables:
-  - `WORKOS_API_KEY` - starts with `sk_`
-  - `WORKOS_CLIENT_ID` - starts with `client_`
-- Confirm WorkOS SDK installed in project
+```
+Current auth system?
+  |
+  +-- Custom password auth with exportable hashes --> Section 3: Full Migration
+  |
+  +-- Custom password auth (cannot export hashes) --> Section 4: Reset-Based Migration
+  |
+  +-- Social auth only (Google, Microsoft, etc.) --> Section 5: Social Auth Migration
+  |
+  +-- Mixed (passwords + social) --> Combine Section 3/4 + Section 5
+```
 
-**Verify SDK:**
+### Signup Timing Strategy
+
+Decide how to handle users who sign up during migration:
+
+```
+Can you disable signups temporarily?
+  |
+  YES --> Use "big-bang" migration (Section 6A)
+  |
+  NO  --> Use dual-write strategy (Section 6B)
+```
+
+## Step 3: Full Migration (With Password Hashes)
+
+### Prerequisites Check
+
+Verify you can export password hashes in one of these formats:
+- bcrypt
+- scrypt
+- firebase-scrypt
+- ssha
+- pbkdf2
+- argon2
+
+**If none supported:** Skip to Section 4 (reset-based migration).
+
+### Export Current Users
+
+Extract from your database:
+- Email address (primary key for matching)
+- Password hash + algorithm parameters
+- Any existing OAuth provider links
+- Email verification status
+
+### Create Users in WorkOS
+
+For each user, call Create User API with password hash:
+
 ```bash
-npm list @workos-inc/node || yarn list @workos-inc/node || pnpm list @workos-inc/node
+# Example using curl (replace with SDK call in production)
+curl https://api.workos.com/user_management/users \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password_hash": "$2b$10$...",
+    "password_hash_type": "bcrypt"
+  }'
 ```
 
-### Existing User Store
+**CRITICAL:** Store the returned `user_01E4ZCR3C56J083X43JQXF3JK5` ID alongside your local user record. This links your user to WorkOS.
 
-Determine your current authentication system:
-- Custom database (PostgreSQL, MySQL, MongoDB, etc.)
-- Auth0, Firebase Auth, Supabase Auth, Clerk, or other provider
-- Self-hosted solution (Keycloak, Ory, etc.)
+### Verification Command
 
-**Critical:** You need read access to:
-1. User IDs and email addresses
-2. Password hashes (if using password auth)
-3. Social auth provider links (if using OAuth)
+```bash
+# Check user was created (requires WORKOS_API_KEY in env)
+curl -s https://api.workos.com/user_management/users/user_01E4ZCR3C56J083X43JQXF3JK5 \
+  -H "Authorization: Bearer $WORKOS_API_KEY" | jq '.email'
+```
 
-## Step 3: Migration Strategy Decision Tree (REQUIRED)
+Should return the user's email address.
+
+## Step 4: Reset-Based Migration (Without Password Hashes)
+
+Use this if you cannot export password hashes.
+
+### Create Users Without Passwords
+
+Call Create User API with email only (no password_hash):
+
+```bash
+curl https://api.workos.com/user_management/users \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com"}'
+```
+
+Store returned WorkOS user ID.
+
+### Trigger Password Reset Flow
+
+For each user, send password reset email via WorkOS:
+
+```bash
+curl https://api.workos.com/user_management/password_reset \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password_reset_url": "https://yourapp.com/reset-password"
+  }'
+```
+
+**Timing:** This can happen immediately after user creation OR later (e.g., batch email campaign).
+
+### Communication Strategy
+
+Send users an email explaining:
+1. Your app is upgrading authentication
+2. They need to set a new password via the reset link
+3. Their account data is unchanged
+
+## Step 5: Social Auth Migration
+
+### Configure OAuth Providers in WorkOS
+
+For each provider you currently support (Google, Microsoft, GitHub, etc.):
+
+1. Go to WorkOS Dashboard → Authentication → Social Connections
+2. Add provider and enter client credentials
+3. Test OAuth flow
+
+Check WorkOS docs for provider-specific setup: WebFetch integrations page from docs.
+
+### Email Matching Behavior
+
+**CRITICAL:** WorkOS links OAuth logins to existing users by email address.
 
 ```
-Can you disable signups during migration?
+User signs in with Google OAuth
   |
-  +-- YES --> Simple Migration Path (go to Step 4A)
-  |           - Schedule maintenance window
-  |           - Export all users at once
-  |           - Import to WorkOS
-  |           - Switch to WorkOS auth
+  +-- Email matches existing WorkOS user --> Auto-link (no new user created)
   |
-  +-- NO  --> Dual-Write Strategy (go to Step 4B)
-              - Implement dual-write for new signups
-              - Migrate historical users in background
-              - Handle deduplication
+  +-- Email is new --> Create new user
 ```
 
-**Choose based on:**
-- User base size (< 10k users = simple path usually feasible)
-- Downtime tolerance (can you disable signups for 1-4 hours?)
-- Engineering resources (dual-write requires more code)
+**Email verification note:** If your WorkOS environment requires email verification, some users may need to verify even after OAuth login. This depends on provider trust level:
+- `gmail.com` via Google OAuth → No verification needed
+- Custom domain via Google OAuth → May need verification
+- Check WorkOS Dashboard → Authentication → Settings for current rules
 
-## Step 4A: Simple Migration Path
+### No Action Required for Users
 
-### Phase 1: Export Users
+Unlike password migration, social auth requires NO user action. They simply:
+1. Click "Sign in with Google" (or other provider)
+2. Authorize WorkOS app
+3. Get logged in and linked to existing WorkOS user record
 
-Write a script to extract from your user store:
+## Step 6A: Big-Bang Migration (Disable Signups)
+
+Best for: Smaller apps, or those that can tolerate brief signup downtime.
+
+### Timeline
+
+```
+T-0: Begin migration
+  |
+  +-- Deploy code to disable signups (feature flag recommended)
+  |
+  +-- Export all users from current system
+  |
+  +-- Import users into WorkOS (Section 3 or 4)
+  |
+  +-- Switch auth flow to WorkOS
+  |
+  +-- Re-enable signups (now using WorkOS)
+```
+
+### Disable Signups Pattern
 
 ```javascript
-// Required fields per user:
-{
-  email: string,           // REQUIRED
-  email_verified: boolean, // REQUIRED - affects first login flow
-  first_name?: string,
-  last_name?: string,
-  password_hash?: string,  // Only if migrating passwords
-  password_algorithm?: 'bcrypt' | 'scrypt' | 'firebase-scrypt' | 'ssha' | 'pbkdf2' | 'argon2'
+// Example feature flag check
+if (process.env.MIGRATION_IN_PROGRESS === 'true') {
+  return res.status(503).json({
+    error: 'Signups temporarily disabled during system upgrade'
+  });
 }
 ```
 
-**Output format:** JSONL (one user per line) for streaming import.
+**Verify:** Attempt signup during migration — should fail with 503.
 
-**Verify export:**
-```bash
-# Check user count matches your database
-wc -l users_export.jsonl
-# Spot check first 5 users have required fields
-head -5 users_export.jsonl | jq '.email, .email_verified'
+## Step 6B: Dual-Write Strategy (Keep Signups Active)
+
+Best for: Larger apps, or those on critical path for customers.
+
+### Implementation Flow
+
+```
+New user signs up
+  |
+  +-- Create user in CURRENT system (existing logic)
+  |
+  +-- ALSO create user in WorkOS (dual-write)
+      |
+      +-- Store WorkOS user ID alongside local user
 ```
 
-### Phase 2: Import to WorkOS
-
-Use the [Create User API](https://workos.com/docs/reference/authkit/user/create) for each user:
+### Example Code Pattern
 
 ```javascript
-const { WorkOS } = require('@workos-inc/node');
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
-
-async function importUser(userData) {
-  const user = await workos.userManagement.createUser({
-    email: userData.email,
-    emailVerified: userData.email_verified,
-    firstName: userData.first_name,
-    lastName: userData.last_name,
-    ...(userData.password_hash && {
-      passwordHash: userData.password_hash,
-      passwordHashType: userData.password_algorithm
-    })
+async function createUser(email, password) {
+  // 1. Create in existing system
+  const localUser = await db.users.create({ email, password });
+  
+  // 2. ALSO create in WorkOS
+  const workosUser = await workos.userManagement.createUser({
+    email,
+    password,
   });
   
-  // CRITICAL: Save WorkOS user ID to your database
-  await saveWorkOSUserId(userData.id, user.id);
-  
-  return user.id;
-}
-```
-
-**Rate limiting:** WorkOS API has rate limits. Batch imports in chunks:
-- Start with 10 requests/second
-- Monitor for 429 responses
-- Add exponential backoff if needed
-
-**Progress tracking:**
-```bash
-# Log each successful import
-echo "user_local_123,user_01ABC123" >> migration_mapping.csv
-```
-
-### Phase 3: Switch Authentication
-
-1. Update login endpoints to use WorkOS AuthKit
-2. Map existing user IDs to WorkOS user IDs using saved mappings
-3. Disable old auth system
-
-## Step 4B: Dual-Write Strategy
-
-### Phase 1: Implement Dual-Write for New Users
-
-Modify signup endpoint to create users in BOTH systems:
-
-```javascript
-async function createNewUser(signupData) {
-  // 1. Create in existing system (unchanged)
-  const localUser = await yourUserDB.create(signupData);
-  
-  // 2. Also create in WorkOS
-  try {
-    const workosUser = await workos.userManagement.createUser({
-      email: signupData.email,
-      emailVerified: false, // They'll verify via WorkOS flow
-      firstName: signupData.firstName,
-      lastName: signupData.lastName
-    });
-    
-    // 3. Link the two IDs
-    await yourUserDB.update(localUser.id, {
-      workos_user_id: workosUser.id
-    });
-  } catch (error) {
-    // Log but don't fail signup - you'll backfill later
-    console.error('WorkOS dual-write failed:', error);
-  }
+  // 3. Link them
+  await db.users.update(localUser.id, {
+    workos_user_id: workosUser.id
+  });
   
   return localUser;
 }
 ```
 
-**Deploy this change BEFORE starting historical migration.**
+### Migration Process With Dual-Write
 
-### Phase 2: Backfill Historical Users
+1. Deploy dual-write code (new signups go to both systems)
+2. Wait for code to be live in production
+3. Export historical users (those created before dual-write)
+4. Import historical users to WorkOS
+   - **Handle collisions:** Some users may already exist from dual-write
+   - Use "list users" API to check before creating
+5. Switch auth flow to WorkOS-only
+6. Remove dual-write code
 
-Same as Step 4A Phase 1-2, but add deduplication:
+**Collision handling:**
 
-```javascript
-async function importUserWithDedup(userData) {
-  // Check if user already exists from dual-write
-  const existing = await workos.userManagement.listUsers({
-    email: userData.email
-  });
-  
-  if (existing.data.length > 0) {
-    console.log(`User ${userData.email} already exists, skipping`);
-    await saveWorkOSUserId(userData.id, existing.data[0].id);
-    return existing.data[0].id;
-  }
-  
-  // Otherwise create
-  return await importUser(userData);
-}
-```
-
-### Phase 3: Handle Updates During Migration
-
-If users can update email/password during migration, dual-write those too:
-
-```javascript
-async function updateUserEmail(userId, newEmail) {
-  // 1. Update in existing system
-  await yourUserDB.updateEmail(userId, newEmail);
-  
-  // 2. Also update in WorkOS if linked
-  const workosId = await getWorkOSUserId(userId);
-  if (workosId) {
-    await workos.userManagement.updateUser({
-      userId: workosId,
-      email: newEmail
-    });
-  }
-}
-```
-
-## Step 5: Password Migration Decision
-
-```
-Do you have access to password hashes?
-  |
-  +-- YES --> Import password hashes (go to 5A)
-  |
-  +-- NO  --> Trigger password resets (go to 5B)
-  |
-  +-- N/A --> Removing password auth entirely (skip to Step 6)
-```
-
-### Step 5A: Import Password Hashes
-
-**Supported algorithms:** bcrypt, scrypt, firebase-scrypt, ssha, pbkdf2, argon2
-
-Include in Create User API call:
-```javascript
-{
-  passwordHash: "hashedPasswordString",
-  passwordHashType: "bcrypt" // or other supported algorithm
-}
-```
-
-**Verify algorithm compatibility:**
 ```bash
-# Check your current hashing algorithm
-grep -r "bcrypt\|scrypt\|argon2" your-auth-code/
+# Check if user exists before creating
+curl -s "https://api.workos.com/user_management/users?email=user@example.com" \
+  -H "Authorization: Bearer $WORKOS_API_KEY" | jq '.data | length'
+
+# If returns 0 --> Create user
+# If returns 1 --> User already exists from dual-write, skip
 ```
 
-If unsupported algorithm: Use Step 5B instead.
+### Complexity Tradeoff
 
-### Step 5B: Trigger Password Resets
+Dual-write adds complexity:
+- Email changes must update both systems
+- Password changes must update both systems
+- Auth method changes must update both systems
 
-Use [Password Reset API](https://workos.com/docs/reference/authkit/password-reset) to email users:
-
-```javascript
-async function triggerPasswordReset(email) {
-  await workos.userManagement.sendPasswordResetEmail({
-    email: email,
-    passwordResetUrl: 'https://yourapp.com/reset-password'
-  });
-}
-```
-
-**Timing options:**
-1. **Immediate:** Send resets during import (users get email right away)
-2. **On first login:** Send reset when user tries old password
-3. **Bulk later:** Send resets in batches after migration complete
-
-## Step 6: Social Auth Provider Migration
-
-If users sign in with Google, Microsoft, GitHub, etc.:
-
-### Configure Providers in WorkOS
-
-1. Go to WorkOS Dashboard → Authentication → Social Connections
-2. Add each provider you currently support
-3. Get OAuth credentials from provider (Google Cloud Console, etc.)
-4. Configure redirect URIs
-
-**Verify provider setup:**
-```bash
-# Test OAuth flow manually before migration
-# Visit: https://your-workos-env.authkit.com/sign-in
-# Click each social provider button
-```
-
-### Email Matching Behavior
-
-WorkOS automatically links social auth users by email address:
-
-- User signs in with Google → WorkOS checks email → Matches existing user
-- **Email must match exactly** (case-insensitive)
-- Verified email domains (gmail.com, etc.) skip extra verification
-
-**Critical:** If your existing system allows multiple auth methods per email (e.g., user has both password and Google), verify the WorkOS user record has all methods after first social login.
-
-## Step 7: Handle Email Verification
-
-WorkOS may require email verification on first login if:
-- User's email was not verified in old system (`email_verified: false`)
-- Social provider doesn't auto-verify (non-gmail.com Google accounts, etc.)
-
-**Configure verification behavior:**
-1. WorkOS Dashboard → Authentication → Settings
-2. Set "Email Verification" policy:
-   - Required: All users must verify
-   - Optional: Only unverified emails
-   - Disabled: Skip verification (not recommended)
+This complexity ONLY lasts until migration is complete. After switching to WorkOS-only auth, remove dual-write logic.
 
 ## Verification Checklist (ALL MUST PASS)
 
 Run these checks to confirm migration success:
 
 ```bash
-# 1. Count users in WorkOS matches export
-# Expected: Same count as users_export.jsonl
-curl -H "Authorization: Bearer $WORKOS_API_KEY" \
-  "https://api.workos.com/user_management/users" | jq '.data | length'
+# 1. Verify WorkOS API key is set and valid
+echo $WORKOS_API_KEY | grep -q '^sk_' && echo "PASS" || echo "FAIL: Invalid API key format"
 
-# 2. Spot check user mapping exists
-grep "user_01ABC123" migration_mapping.csv || echo "FAIL: Mapping missing"
+# 2. Check sample user was migrated (replace user_id)
+curl -s https://api.workos.com/user_management/users/user_01EXAMPLE \
+  -H "Authorization: Bearer $WORKOS_API_KEY" | jq -e '.id' && echo "PASS" || echo "FAIL"
 
-# 3. Test login with migrated user
-# Manual: Try logging in at https://your-app.com/login
-# Expected: User can authenticate via WorkOS
+# 3. Verify user count matches (replace N with expected count)
+WORKOS_COUNT=$(curl -s https://api.workos.com/user_management/users?limit=1 \
+  -H "Authorization: Bearer $WORKOS_API_KEY" | jq '.list_metadata.total')
+echo "WorkOS has $WORKOS_COUNT users (expect N)"
 
-# 4. Check social auth providers configured
-curl -H "Authorization: Bearer $WORKOS_API_KEY" \
-  "https://api.workos.com/user_management/authentication_providers" | jq '.data[].name'
+# 4. Test password authentication (if using password migration)
+# Attempt login via WorkOS with known user credentials - should succeed
 
-# 5. Verify no users left behind
-# Compare user counts: old DB vs WorkOS vs mapping file
-wc -l migration_mapping.csv
+# 5. Test social auth linking (if using OAuth providers)
+# Sign in with Google/Microsoft - should link to existing user by email
+
+# 6. Check your app no longer queries old auth system
+grep -r "old_user_table" app/ && echo "FAIL: Still referencing old system" || echo "PASS"
 ```
-
-**If any check fails:** Do not proceed to production cutover.
-
-## Production Cutover Steps
-
-1. **Announce maintenance window** (if using simple migration path)
-2. **Disable old authentication endpoints** (return 503 or maintenance page)
-3. **Deploy WorkOS AuthKit integration** (see related skill: workos-authkit-nextjs)
-4. **Update environment variables** in production
-5. **Enable new authentication endpoints**
-6. **Monitor error logs** for auth failures
-
-**Rollback plan:** Keep old auth system deployable for 24-48 hours in case of issues.
 
 ## Error Recovery
 
-### "User already exists with email"
+### "User already exists" (409 Conflict)
 
-**Cause:** Duplicate import or email conflict.
+**Cause:** Attempting to create user with email that's already in WorkOS.
 
-**Fix:**
-```javascript
-// Use listUsers to find existing user, then update instead
-const existing = await workos.userManagement.listUsers({ email });
-if (existing.data.length > 0) {
-  await workos.userManagement.updateUser({
-    userId: existing.data[0].id,
-    ...updateData
-  });
-}
-```
+**Fix:** 
+- Query existing user: `GET /user_management/users?email=user@example.com`
+- Store returned user ID if this is expected (dual-write collision)
+- OR investigate duplicate migration if unexpected
 
-### "Invalid password hash format"
+### "Invalid password_hash_type"
 
-**Cause:** Password hash doesn't match expected format for algorithm.
+**Cause:** Unsupported hash algorithm.
 
 **Fix:**
-- Verify hash extraction from database is correct (no truncation)
-- Check algorithm type matches actual hashing method
-- If unsure, fall back to password reset flow (Step 5B)
+- Check supported algorithms: bcrypt, scrypt, firebase-scrypt, ssha, pbkdf2, argon2
+- If your algorithm isn't supported, use reset-based migration (Section 4)
 
-### "Rate limit exceeded" (429 response)
+### "Email verification required" after OAuth login
 
-**Cause:** Importing too fast.
+**Cause:** OAuth provider domain not in WorkOS trusted list.
 
-**Fix:**
-```javascript
-// Add exponential backoff
-async function importWithBackoff(user, retries = 3) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await importUser(user);
-    } catch (err) {
-      if (err.status === 429 && i < retries - 1) {
-        await sleep(Math.pow(2, i) * 1000); // 1s, 2s, 4s
-        continue;
-      }
-      throw err;
-    }
-  }
-}
-```
+**Expected behavior:** User receives verification email after OAuth login.
 
-### "Email verification required" blocks users
+**Fix:** 
+- Check WorkOS Dashboard → Authentication → Email Verification settings
+- Either: Add domain to trusted list OR let users complete verification flow
 
-**Cause:** Users imported with `email_verified: false` must verify before access.
+### Password reset email not sent
+
+**Cause 1:** Invalid password_reset_url parameter.
+
+**Fix:** Ensure URL is HTTPS and points to valid route in your app.
+
+**Cause 2:** User doesn't exist in WorkOS yet.
+
+**Fix:** Verify user was created first (check user_management/users API).
+
+### Social auth not linking to existing user
+
+**Cause:** Email mismatch between OAuth provider and WorkOS user record.
 
 **Fix:**
-- Re-import with `email_verified: true` if you trust your old system's verification
-- OR communicate to users they'll receive verification email on first login
-- OR disable email verification in WorkOS Dashboard (not recommended for production)
+- Check exact email stored in WorkOS: `GET /user_management/users/{user_id}`
+- OAuth provider emails are case-sensitive - ensure exact match
+- Check for typos in original user import
 
-### Social auth user creates duplicate account
+### Dual-write creating duplicate users
 
-**Cause:** Email mismatch between old system and OAuth provider.
+**Cause:** Race condition between signup and migration import.
 
 **Fix:**
-- Check for email aliases (user+tag@gmail.com vs user@gmail.com)
-- WorkOS uses exact email match - normalize emails before import
-- Manually merge accounts via WorkOS API if needed
+- Before creating user in WorkOS, query: `GET /user_management/users?email=...`
+- If user exists, just store the existing WorkOS user ID
+- Use database transactions to ensure atomic create-or-link operation
 
 ## Related Skills
 
-- **workos-authkit-nextjs** - Integrate WorkOS AuthKit with Next.js after migration
-- **workos-directory-sync** - Set up SSO/SCIM for enterprise customers post-migration
+- `workos-authkit-nextjs` - Implementing WorkOS auth in Next.js after migration
+- `workos-user-management` - Managing users post-migration
+- `workos-magic-auth` - Adding passwordless auth as alternative to passwords

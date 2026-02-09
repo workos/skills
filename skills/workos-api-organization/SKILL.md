@@ -5,13 +5,11 @@ description: WorkOS Organizations API endpoints — create, update, list, and ma
 
 <!-- generated -->
 
-# WorkOS Organizations API
+# WorkOS Organizations API Reference
 
-## Step 1: Fetch Documentation (BLOCKING)
+## Step 1: Fetch Documentation
 
-**STOP. Do not proceed until complete.**
-
-WebFetch these docs — they are the source of truth for API contracts:
+**STOP. WebFetch the relevant docs for latest implementation details before proceeding.**
 
 - https://workos.com/docs/reference/organization
 - https://workos.com/docs/reference/organization/create
@@ -21,398 +19,405 @@ WebFetch these docs — they are the source of truth for API contracts:
 - https://workos.com/docs/reference/organization/list
 - https://workos.com/docs/reference/organization/update
 
-If this skill conflicts with the fetched docs, follow the docs.
+## Authentication Setup
 
-## Step 2: Pre-Flight Validation
+All requests require an API key in the Authorization header:
 
-### Environment Variables
-
-Check for `WORKOS_API_KEY` in environment:
-
-```bash
-# Must start with sk_ (production) or sk_test_ (development)
-grep -E "WORKOS_API_KEY=sk_(test_)?" .env .env.local 2>/dev/null || echo "FAIL: API key missing"
+```
+Authorization: Bearer sk_your_api_key
 ```
 
-**If missing:** Get API key from WorkOS Dashboard → API Keys section.
+Your API key must start with `sk_` and have organization management permissions enabled in the WorkOS Dashboard.
 
-### SDK Installation
+## Endpoint Catalog
 
-Detect if WorkOS SDK is installed:
+| Method | Endpoint | Operation | Use When |
+|--------|----------|-----------|----------|
+| POST | `/organizations` | Create | Adding a new organization to WorkOS |
+| GET | `/organizations/{id}` | Get by ID | Fetching organization by WorkOS ID |
+| GET | `/organizations/external-id/{external_id}` | Get by external ID | Fetching organization by your system's ID |
+| GET | `/organizations` | List | Retrieving multiple organizations with filtering |
+| PUT | `/organizations/{id}` | Update | Modifying organization properties |
+| DELETE | `/organizations/{id}` | Delete | Removing an organization |
+
+## Operation Decision Tree
+
+**Creating an organization:**
+- Use `POST /organizations` with `name` (required)
+- Include `external_id` to link to your system's identifier
+- Set `domains` array if managing domain-based organization routing
+
+**Fetching a single organization:**
+- Have WorkOS org ID? → `GET /organizations/{id}`
+- Have your system's ID? → `GET /organizations/external-id/{external_id}`
+- Don't know ID but have domain? → `GET /organizations?domain={domain}`
+
+**Listing organizations:**
+- Unfiltered list → `GET /organizations`
+- Filter by domain → `GET /organizations?domain={domain}`
+- Paginate results → Use `before` or `after` cursor with `limit`
+
+**Updating an organization:**
+- Use `PUT /organizations/{id}` (not PATCH)
+- Send complete organization object with changes
+- Update `domains` array to manage domain associations
+
+**Deleting an organization:**
+- Use `DELETE /organizations/{id}`
+- This is permanent and removes all directory connections
+
+## Request/Response Patterns
+
+### Create Organization
 
 ```bash
-# Node.js
-npm list @workos-inc/node || echo "SDK not installed"
-
-# Other runtimes - check fetched docs for SDK package name
+curl https://api.workos.com/organizations \
+  -X POST \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Acme Corporation",
+    "external_id": "org_12345",
+    "domains": ["acme.com"]
+  }'
 ```
 
-**If not installed:** Install SDK per docs before continuing.
+**Response (201 Created):**
+```json
+{
+  "object": "organization",
+  "id": "org_01H7ZKWV9KBF93K9A5R8YXJ5T1",
+  "external_id": "org_12345",
+  "name": "Acme Corporation",
+  "domains": [
+    {
+      "object": "organization_domain",
+      "id": "org_domain_01H7ZKWVB2K8X9P3M4N5Q6R7S8",
+      "domain": "acme.com"
+    }
+  ],
+  "created_at": "2024-01-15T10:30:00.000Z",
+  "updated_at": "2024-01-15T10:30:00.000Z"
+}
+```
 
-## Step 3: SDK Initialization
+### Get Organization by ID
 
-Initialize WorkOS client with API key. Pattern varies by language/SDK — check fetched docs for exact syntax.
+```bash
+curl https://api.workos.com/organizations/org_01H7ZKWV9KBF93K9A5R8YXJ5T1 \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+```
 
-**Node.js example pattern:**
+### Get Organization by External ID
 
-```typescript
-import { WorkOS } from '@workos-inc/node';
+```bash
+curl https://api.workos.com/organizations/external-id/org_12345 \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+```
+
+### List Organizations
+
+```bash
+# Basic list
+curl https://api.workos.com/organizations?limit=10 \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+
+# Filter by domain
+curl https://api.workos.com/organizations?domain=acme.com \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+
+# Paginate with cursor
+curl "https://api.workos.com/organizations?limit=10&after=org_01H7ZKWV9KBF93K9A5R8YXJ5T1" \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+```
+
+**Response (200 OK):**
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "organization",
+      "id": "org_01H7ZKWV9KBF93K9A5R8YXJ5T1",
+      "name": "Acme Corporation",
+      "domains": [...],
+      "created_at": "2024-01-15T10:30:00.000Z",
+      "updated_at": "2024-01-15T10:30:00.000Z"
+    }
+  ],
+  "list_metadata": {
+    "before": null,
+    "after": "org_01H7ZKWV9KBF93K9A5R8YXJ5T1"
+  }
+}
+```
+
+### Update Organization
+
+```bash
+curl https://api.workos.com/organizations/org_01H7ZKWV9KBF93K9A5R8YXJ5T1 \
+  -X PUT \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Acme Corp (Updated)",
+    "domains": ["acme.com", "acmecorp.com"]
+  }'
+```
+
+### Delete Organization
+
+```bash
+curl https://api.workos.com/organizations/org_01H7ZKWV9KBF93K9A5R8YXJ5T1 \
+  -X DELETE \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+```
+
+**Response (202 Accepted):**
+```json
+{
+  "deleted": true
+}
+```
+
+## Pagination Handling
+
+The List Organizations endpoint uses cursor-based pagination:
+
+1. First request: `GET /organizations?limit=10`
+2. Response includes `list_metadata.after` cursor if more results exist
+3. Next request: `GET /organizations?limit=10&after={cursor}`
+4. Continue until `list_metadata.after` is null
+
+**Backward pagination:**
+Use `before` parameter instead of `after` to paginate in reverse.
+
+## Error Code Mapping
+
+| Status | Error Type | Cause | Fix |
+|--------|-----------|-------|-----|
+| 400 | `invalid_request` | Missing required field (e.g., `name`) | Add required field to request body |
+| 401 | `authentication_error` | Missing or invalid API key | Check `Authorization: Bearer sk_...` header |
+| 403 | `insufficient_permissions` | API key lacks organization management scope | Enable organization permissions in Dashboard |
+| 404 | `not_found` | Organization ID or external ID doesn't exist | Verify ID is correct; use List to find valid IDs |
+| 409 | `duplicate_external_id` | `external_id` already exists | Use different `external_id` or fetch existing org |
+| 422 | `invalid_domain` | Domain format invalid or already claimed | Check domain format; verify not claimed by another org |
+| 429 | `rate_limit_exceeded` | Too many requests in time window | Wait 60 seconds and retry with exponential backoff |
+| 500 | `server_error` | WorkOS internal error | Retry with exponential backoff; contact support if persists |
+
+**Example error response:**
+```json
+{
+  "error": "invalid_request",
+  "error_description": "The 'name' field is required",
+  "code": "missing_required_field"
+}
+```
+
+## Rate Limiting
+
+- **Limit:** 100 requests per minute per API key
+- **Headers:** Check `X-RateLimit-Remaining` header in responses
+- **Retry strategy:** When you receive 429, wait 60 seconds before retrying
+- **Best practice:** Implement exponential backoff (1s, 2s, 4s, 8s)
+
+## Verification Commands
+
+### 1. Test Authentication
+```bash
+curl https://api.workos.com/organizations?limit=1 \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+```
+**Expected:** 200 OK with organization list
+
+### 2. Create Test Organization
+```bash
+curl https://api.workos.com/organizations \
+  -X POST \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Test Org",
+    "external_id": "test_'$(date +%s)'"
+  }'
+```
+**Expected:** 201 Created with organization object
+
+### 3. Fetch by External ID
+```bash
+# Replace test_1234567890 with external_id from step 2
+curl https://api.workos.com/organizations/external-id/test_1234567890 \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+```
+**Expected:** 200 OK with matching organization
+
+### 4. Test Error Handling
+```bash
+# Should return 400 - missing required field
+curl https://api.workos.com/organizations \
+  -X POST \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+**Expected:** 400 Bad Request with error message
+
+### 5. Cleanup Test Organization
+```bash
+# Replace org_id with ID from step 2
+curl https://api.workos.com/organizations/org_01H7ZKWV9KBF93K9A5R8YXJ5T1 \
+  -X DELETE \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+```
+**Expected:** 202 Accepted with `{"deleted": true}`
+
+## SDK Usage Examples
+
+### Node.js
+```javascript
+import WorkOS from '@workos-inc/node';
 
 const workos = new WorkOS(process.env.WORKOS_API_KEY);
-```
 
-**Verify initialization:**
-
-```bash
-# Check client instantiation exists in codebase
-grep -r "new WorkOS\|WorkOS(" . --include="*.ts" --include="*.js" || echo "FAIL: WorkOS client not initialized"
-```
-
-## Step 4: Operation Decision Tree
-
-Determine which organization operation to implement:
-
-```
-Organization operation?
-  |
-  +-- CREATE   --> Use workos.organizations.createOrganization()
-  |                Required: name
-  |                Optional: domains, externalId, allowProfilesOutsideOrganization
-  |
-  +-- GET      --> Use workos.organizations.getOrganization(id)
-  |                Required: organization ID
-  |
-  +-- GET BY EXTERNAL ID --> Use workos.organizations.getOrganizationByExternalId()
-  |                          Required: externalId that was set during creation
-  |
-  +-- LIST     --> Use workos.organizations.listOrganizations()
-  |                Optional: domains, externalIds, limit, before, after, order
-  |                Returns paginated results
-  |
-  +-- UPDATE   --> Use workos.organizations.updateOrganization(id, data)
-  |                Required: organization ID
-  |                Optional: name, domains, allowProfilesOutsideOrganization
-  |
-  +-- DELETE   --> Use workos.organizations.deleteOrganization(id)
-                   Required: organization ID
-                   CRITICAL: This is permanent - no soft delete
-```
-
-**Implementation order recommendation:**
-
-1. LIST (validate API key works)
-2. CREATE (generate test data)
-3. GET (verify creation)
-4. UPDATE (test modification)
-5. DELETE (cleanup - do last)
-
-## Step 5: Implement Core Operations
-
-### For CREATE Operations
-
-**Required fields:**
-
-- `name` - Organization display name
-
-**Optional fields:**
-
-- `domains` - Array of verified domains (e.g., `["example.com"]`)
-- `externalId` - Your system's organization identifier
-- `allowProfilesOutsideOrganization` - Boolean, default false
-
-**Error handling:**
-
-- `400` - Validation error (check field formats)
-- `409` - Conflict (duplicate external_id or domain)
-- `401` - Invalid API key
-
-### For GET Operations
-
-**By ID:**
-
-- Requires UUID from CREATE response or LIST results
-- Returns 404 if organization not found
-
-**By External ID:**
-
-- Only works if `externalId` was set during creation
-- More efficient for syncing with your database
-
-### For LIST Operations
-
-**Pagination pattern:**
-
-- Default limit: 10
-- Max limit: Check docs (typically 100)
-- Use `after` cursor from `listMetadata.after` for next page
-- Use `before` cursor for previous page
-
-**Filtering:**
-
-- `domains` - Filter by specific domains (array)
-- `externalIds` - Filter by your IDs (array)
-
-### For UPDATE Operations
-
-**Updatable fields:**
-
-- `name` - Change display name
-- `domains` - Replace entire domain list (not append)
-- `allowProfilesOutsideOrganization` - Toggle setting
-
-**Non-updatable:**
-
-- `externalId` - Cannot change after creation
-- `id` - Immutable UUID
-
-### For DELETE Operations
-
-**CRITICAL WARNING:**
-
-- Deletion is permanent and immediate
-- Deletes all associated SSO connections
-- Deletes all organization memberships
-- No recovery mechanism
-
-**Always confirm before deletion** in production code.
-
-## Step 6: Error Response Handling
-
-Map API error codes to recovery actions:
-
-```
-HTTP Status --> Root Cause --> Fix
-  |
-  +-- 401 --> Invalid API key --> Check WORKOS_API_KEY format (sk_test_ or sk_)
-  |                           --> Verify key exists in WorkOS Dashboard
-  |
-  +-- 404 --> Organization not found --> Check organization ID is valid UUID
-  |                                  --> Verify organization wasn't deleted
-  |
-  +-- 409 --> Conflict --> external_id already exists --> Use different externalId or GET existing
-  |                    --> domain already claimed --> Remove domain or update existing org
-  |
-  +-- 422 --> Invalid parameters --> Check fetched docs for field requirements
-  |                              --> Verify domain format (no http://, no paths)
-  |
-  +-- 429 --> Rate limited --> Implement exponential backoff (start 1s, max 60s)
-  |                       --> Cache LIST results instead of repeated calls
-  |
-  +-- 500 --> WorkOS service error --> Retry with exponential backoff
-                                    --> Check WorkOS status page
-```
-
-**Rate limit specifics:**
-
-- Check docs for current limits (typically 600 requests/minute)
-- Response includes `Retry-After` header
-- Implement retry logic BEFORE hitting limit
-
-## Step 7: Response Handling
-
-**Organization object structure** (verify against fetched docs):
-
-```typescript
-{
-  id: string;              // UUID
-  name: string;            // Display name
-  domains: Array<{         // Verified domains
-    id: string;
-    domain: string;
-  }>;
-  allowProfilesOutsideOrganization: boolean;
-  externalId?: string;     // Your identifier
-  createdAt: string;       // ISO 8601
-  updatedAt: string;       // ISO 8601
-}
-```
-
-**List response structure:**
-
-```typescript
-{
-  data: Organization[];    // Array of organization objects
-  listMetadata: {
-    before: string | null; // Cursor for previous page
-    after: string | null;  // Cursor for next page
-  };
-}
-```
-
-**Store these fields:**
-
-- `id` - Required for GET/UPDATE/DELETE operations
-- `externalId` - For syncing with your database
-- `domains` - For SSO configuration
-
-## Verification Checklist (ALL MUST PASS)
-
-Run these commands to verify implementation:
-
-```bash
-# 1. API key configured correctly
-grep -E "WORKOS_API_KEY=sk_(test_)?" .env* && echo "PASS" || echo "FAIL: API key missing or malformed"
-
-# 2. SDK imported in code
-grep -r "from '@workos-inc/node'\|require('@workos-inc/node')" . --include="*.ts" --include="*.js" && echo "PASS" || echo "FAIL: SDK not imported"
-
-# 3. WorkOS client initialized
-grep -r "new WorkOS\|WorkOS(" . --include="*.ts" --include="*.js" && echo "PASS" || echo "FAIL: Client not initialized"
-
-# 4. Error handling implemented
-grep -r "catch\|\.catch\|try" . --include="*.ts" --include="*.js" | grep -i "workos\|organization" && echo "PASS" || echo "FAIL: No error handling"
-
-# 5. Application builds
-npm run build || yarn build || echo "FAIL: Build errors"
-```
-
-**Manual verification:**
-
-Test API calls in this order:
-
-1. LIST organizations (should return empty array or existing orgs)
-2. CREATE test organization with unique name
-3. GET created organization by ID
-4. UPDATE organization name
-5. DELETE test organization
-
-Each operation should return 2xx status. Save response objects for inspection.
-
-## Testing Patterns
-
-### Local Testing
-
-Use test API key (`sk_test_*`) from WorkOS Dashboard → API Keys → Test mode.
-
-**Create test organization:**
-
-```typescript
-const testOrg = await workos.organizations.createOrganization({
-  name: `Test Org ${Date.now()}`, // Unique name
-  externalId: `test_${Date.now()}`, // Track for cleanup
-});
-```
-
-**Cleanup test data:**
-
-```typescript
-// List organizations with test external IDs
-const orgs = await workos.organizations.listOrganizations({
-  externalIds: ['test_*'], // Your test prefix
+// Create organization
+const org = await workos.organizations.createOrganization({
+  name: 'Acme Corporation',
+  externalId: 'org_12345',
+  domains: ['acme.com']
 });
 
-// Delete each test org
-for (const org of orgs.data) {
-  await workos.organizations.deleteOrganization(org.id);
-}
-```
+// Get by ID
+const orgById = await workos.organizations.getOrganization(org.id);
 
-### Production Deployment
+// Get by external ID
+const orgByExtId = await workos.organizations.getOrganizationByExternalId('org_12345');
 
-**Pre-flight checklist:**
-
-- [ ] Switch to production API key (`sk_*` without `test_`)
-- [ ] Remove test data creation code
-- [ ] Implement idempotency (check existing before CREATE)
-- [ ] Add monitoring for 401/429/500 errors
-- [ ] Set up alerts for elevated error rates
-
-## Common Pitfalls
-
-### "409 Conflict" on CREATE
-
-**Root cause:** `externalId` or domain already exists.
-
-**Fix:**
-
-```typescript
-// Check if organization exists before creating
-const existing = await workos.organizations.listOrganizations({
-  externalIds: [yourExternalId],
+// List organizations
+const { data, listMetadata } = await workos.organizations.listOrganizations({
+  limit: 10,
+  domain: 'acme.com'
 });
 
-if (existing.data.length > 0) {
-  // Use existing organization
-  return existing.data[0];
-} else {
-  // Create new
-  return await workos.organizations.createOrganization({
-    name: orgName,
-    externalId: yourExternalId,
-  });
-}
+// Update organization
+const updated = await workos.organizations.updateOrganization(org.id, {
+  name: 'Acme Corp (Updated)',
+  domains: ['acme.com', 'acmecorp.com']
+});
+
+// Delete organization
+await workos.organizations.deleteOrganization(org.id);
 ```
 
-### "404 Not Found" on GET
+### Python
+```python
+import workos
 
-**Root cause:** Organization ID is incorrect or org was deleted.
+workos.api_key = os.getenv('WORKOS_API_KEY')
 
-**Fix:**
+# Create organization
+org = workos.client.organizations.create_organization(
+    name='Acme Corporation',
+    external_id='org_12345',
+    domains=['acme.com']
+)
 
-- Verify ID is valid UUID format
-- Check if organization exists via LIST
-- Update stale ID references in your database
+# Get by ID
+org_by_id = workos.client.organizations.get_organization(org.id)
 
-### Pagination Not Working
+# Get by external ID
+org_by_ext_id = workos.client.organizations.get_organization_by_external_id('org_12345')
 
-**Root cause:** Using wrong cursor or not checking `listMetadata.after`.
+# List organizations
+orgs = workos.client.organizations.list_organizations(
+    limit=10,
+    domain='acme.com'
+)
 
-**Fix:**
+# Update organization
+updated = workos.client.organizations.update_organization(
+    organization_id=org.id,
+    name='Acme Corp (Updated)',
+    domains=['acme.com', 'acmecorp.com']
+)
 
-```typescript
-let allOrgs = [];
-let after = null;
-
-do {
-  const response = await workos.organizations.listOrganizations({
-    limit: 100, // Max per page
-    after: after, // Cursor from previous response
-  });
-
-  allOrgs.push(...response.data);
-  after = response.listMetadata.after; // Next cursor
-} while (after !== null); // Continue if more pages
+# Delete organization
+workos.client.organizations.delete_organization(org.id)
 ```
 
-### Rate Limit Errors (429)
+## Common Patterns
 
-**Root cause:** Too many API calls in short time window.
+### Sync Organizations from Your System
+```javascript
+// Fetch organizations from your database
+const localOrgs = await db.organizations.findAll();
 
-**Fix - Exponential backoff:**
-
-```typescript
-async function withRetry(apiCall, maxRetries = 3) {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await apiCall();
-    } catch (error) {
-      if (error.status === 429 && i < maxRetries - 1) {
-        const delay = Math.min(1000 * Math.pow(2, i), 60000); // Max 60s
-        await new Promise((resolve) => setTimeout(resolve, delay));
-        continue;
-      }
+for (const localOrg of localOrgs) {
+  try {
+    // Try to fetch existing WorkOS org by external_id
+    const workosOrg = await workos.organizations.getOrganizationByExternalId(
+      localOrg.id
+    );
+    
+    // Update if it exists
+    await workos.organizations.updateOrganization(workosOrg.id, {
+      name: localOrg.name,
+      domains: localOrg.domains
+    });
+  } catch (error) {
+    if (error.code === 'not_found') {
+      // Create if it doesn't exist
+      await workos.organizations.createOrganization({
+        name: localOrg.name,
+        externalId: localOrg.id,
+        domains: localOrg.domains
+      });
+    } else {
       throw error;
     }
   }
 }
 ```
 
-### Domain Format Errors (422)
+### Domain-Based Organization Lookup
+```javascript
+async function getOrgByDomain(email) {
+  const domain = email.split('@')[1];
+  
+  const { data } = await workos.organizations.listOrganizations({
+    domain: domain,
+    limit: 1
+  });
+  
+  if (data.length === 0) {
+    throw new Error(`No organization found for domain ${domain}`);
+  }
+  
+  return data[0];
+}
+```
 
-**Root cause:** Domain includes protocol or path.
-
-**Fix:**
-
-```typescript
-// WRONG
-domains: ['https://example.com/path'];
-
-// CORRECT
-domains: ['example.com'];
+### Bulk Operations with Pagination
+```javascript
+async function getAllOrganizations() {
+  const allOrgs = [];
+  let after = null;
+  
+  do {
+    const { data, listMetadata } = await workos.organizations.listOrganizations({
+      limit: 100,
+      after: after
+    });
+    
+    allOrgs.push(...data);
+    after = listMetadata.after;
+  } while (after !== null);
+  
+  return allOrgs;
+}
 ```
 
 ## Related Skills
 
-- `workos-authkit-nextjs` - User authentication with organizations
-- `workos-directory-sync` - Sync users from organization directories
-- `workos-sso` - Configure SSO connections per organization
+- **workos-feature-organizations** — Feature overview and use cases for Organizations
+- **workos-api-directory-sync** — Directory Sync API for automatic user/group provisioning
+- **workos-api-sso** — SSO API for organization-specific authentication flows

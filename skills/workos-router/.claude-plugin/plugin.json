@@ -1,6 +1,6 @@
 {
   "name": "workos-router",
-  "description": "Route WorkOS requests to the right skill. Load this first for any WorkOS task.",
+  "description": "Identify which WorkOS skill to load based on the user's task — covers AuthKit, SSO, RBAC, FGA, migrations, and all API references.",
   "version": "0.1.0",
   "author": {
     "name": "WorkOS",
@@ -10,5 +10,8 @@
   "repository": "https://github.com/workos/skills",
   "license": "MIT",
   "category": "enterprise",
-  "keywords": ["workos", "router"]
+  "keywords": [
+    "workos",
+    "router"
+  ]
 }

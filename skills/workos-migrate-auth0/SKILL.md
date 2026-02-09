@@ -13,383 +13,442 @@ description: Migrate to WorkOS from Auth0.
 
 WebFetch: `https://workos.com/docs/migrate/auth0`
 
-The official migration guide is the source of truth. If this skill conflicts with the docs, follow the docs.
+The migration docs are the source of truth. If this skill conflicts with docs, follow docs.
 
-## Step 2: Pre-Migration Assessment
+## Step 2: Pre-Flight Assessment
 
-### Inventory Current Auth0 Setup
+### Project Validation
 
-Run these checks in Auth0 Dashboard or Management API:
+- Confirm WorkOS SDK already installed (see `workos-authkit-nextjs` skill)
+- Confirm AuthKit integration complete and working
+- Confirm you have dashboard access with admin permissions
 
-1. **Count total users**: Check Users section or GET `/api/v2/users`
-2. **List authentication methods**: Password, social (Google, Microsoft, etc.), enterprise SSO
-3. **Check organizations**: Count Auth0 Organizations and membership mappings
-4. **MFA status**: Identify users with SMS MFA (requires migration)
+### Environment Variables
 
-Document findings before proceeding.
+Check `.env.local` or `.env` for:
 
-### WorkOS Prerequisites Validation
+- `WORKOS_API_KEY` - starts with `sk_` (production) or `sk_test_` (development)
+- `WORKOS_CLIENT_ID` - starts with `client_`
 
-```bash
-# 1. Check environment variables exist
-grep -E "WORKOS_API_KEY|WORKOS_CLIENT_ID" .env.local || echo "FAIL: Missing WorkOS keys"
+**CRITICAL:** Use test keys for migration dry-run, production keys for final import.
 
-# 2. Verify API key format
-grep "^WORKOS_API_KEY=sk_" .env.local || echo "FAIL: Invalid API key format"
+### Auth0 Access
 
-# 3. Check WorkOS SDK installed
-npm list @workos-inc/node || yarn list --pattern @workos-inc/node
+- Confirm you have Auth0 admin access
+- Confirm you can access Auth0 Management API
+- Confirm you can open Auth0 support tickets (for password export)
+
+## Step 3: Data Export Strategy (Decision Tree)
+
+```
+Auth0 user authentication method?
+  |
+  +-- Password-based only
+  |     |
+  |     +-- Open Auth0 support ticket NOW
+  |     |   (1-2 week lead time for password hash export)
+  |     |
+  |     +-- Continue with bulk user export below
+  |
+  +-- Social auth only (Google, Microsoft, etc.)
+  |     |
+  |     +-- Bulk user export (no password ticket needed)
+  |     +-- Configure matching OAuth providers in WorkOS
+  |
+  +-- Mixed (password + social)
+        |
+        +-- Open Auth0 support ticket NOW
+        +-- Bulk user export
+        +-- Configure OAuth providers in WorkOS
 ```
 
-All checks must pass before export.
+### Export Users from Auth0
 
-## Step 3: Export Auth0 User Data
-
-### Export User Profiles (REQUIRED)
-
-**Method:** Use Auth0's User Import/Export Extension
+**Method 1: Auth0 Dashboard (Recommended for <1000 users)**
 
 1. Navigate to Auth0 Dashboard → Extensions
 2. Install "User Import / Export" extension if not present
-3. Click "Export Users" → Select target connection
-4. Download NDJSON file (newline-delimited JSON)
+3. Run "Export Users" job
+4. Download newline-delimited JSON (NDJSON) file
+5. Save as `auth0-users.ndjson`
 
-**Verify export:**
-
-```bash
-# Check file exists and is valid JSON-per-line
-cat auth0_users.ndjson | head -1 | jq . || echo "FAIL: Invalid JSON format"
-
-# Count exported users
-wc -l < auth0_users.ndjson
-```
-
-### Export Password Hashes (CONDITIONAL)
-
-**Only if:** Users authenticate with passwords (not just social/SSO)
-
-**BLOCKING STEP:** Contact Auth0 Support to request password hash export. This takes 5-10 business days.
-
-Support ticket must include:
-
-- Tenant domain
-- Connection name(s) needing password export
-- Justification: "Migrating to WorkOS AuthKit"
-
-Auth0 provides separate NDJSON file with `passwordHash` field (bcrypt format).
-
-**Verify password export:**
+**Method 2: Auth0 Management API (For >1000 users)**
 
 ```bash
-# Check password hashes exist in export
-cat auth0_passwords.ndjson | head -1 | jq -r '.passwordHash' || echo "FAIL: No password hashes"
+# Get Auth0 Management API token first
+# Then paginate through users
+curl -X GET \
+  'https://YOUR_DOMAIN.auth0.com/api/v2/users?per_page=100&page=0' \
+  -H 'Authorization: Bearer YOUR_MGMT_TOKEN' > auth0-users-page0.json
 ```
 
-## Step 4: Data Mapping (Decision Tree)
+Repeat with `page=1`, `page=2`, etc. until all users exported.
 
-```
-User data export ready?
-  |
-  +-- Passwords included
-  |   |
-  |   +-- Import with password_hash (Step 5A)
-  |
-  +-- Passwords NOT included
-  |   |
-  |   +-- Users must reset passwords via Magic Auth
-  |
-  +-- Social auth users (Google, Microsoft, etc.)
-      |
-      +-- Configure OAuth providers in WorkOS first (Step 6)
-      +-- Import users without passwords
-      +-- Auto-link on first sign-in
-```
+### Export Organizations (If Using Auth0 Organizations)
 
-### Field Mapping Reference
-
-| Auth0 Field      | WorkOS API Parameter |
-| ---------------- | -------------------- |
-| `email`          | `email`              |
-| `email_verified` | `email_verified`     |
-| `given_name`     | `first_name`         |
-| `family_name`    | `last_name`          |
-| `passwordHash`   | `password_hash`      |
-
-## Step 5: Import Users into WorkOS
-
-### Option A: Using WorkOS Import Tool (RECOMMENDED)
+Use Auth0 Management API to export organizations:
 
 ```bash
-# 1. Clone migration tool
+curl -X GET \
+  'https://YOUR_DOMAIN.auth0.com/api/v2/organizations' \
+  -H 'Authorization: Bearer YOUR_MGMT_TOKEN' > auth0-orgs.json
+```
+
+For each org, export memberships:
+
+```bash
+curl -X GET \
+  'https://YOUR_DOMAIN.auth0.com/api/v2/organizations/{org_id}/members' \
+  -H 'Authorization: Bearer YOUR_MGMT_TOKEN' > auth0-org-{org_id}-members.json
+```
+
+### Password Hash Export (Only If Password Auth Used)
+
+1. Open Auth0 support ticket requesting password hash export
+2. Wait 1-2 weeks for Auth0 to process
+3. Receive second NDJSON file with `passwordHash` field
+4. Save as `auth0-passwords.ndjson`
+
+**IMPORTANT:** Auth0 uses `bcrypt` algorithm. WorkOS supports bcrypt import.
+
+## Step 4: Configure OAuth Providers (If Using Social Auth)
+
+**Skip this step if only using password authentication.**
+
+For each social provider your Auth0 users authenticate with:
+
+1. Navigate to WorkOS Dashboard → Authentication → Social Providers
+2. Enable the provider (Google, Microsoft, GitHub, etc.)
+3. Configure OAuth client credentials (see provider-specific WorkOS docs)
+4. Save configuration
+
+**User matching:** WorkOS auto-links social auth users by email address.
+
+**Email verification note:** Some users may need to verify email if:
+- Provider doesn't guarantee verified emails (e.g., GitHub)
+- Email domain doesn't match verified provider domain (e.g., Google OAuth with non-gmail.com)
+
+## Step 5: Import Users (Choose One Method)
+
+```
+Import method?
+  |
+  +-- Small migration (<500 users) --> Manual API calls (Method A)
+  |
+  +-- Large migration (>500 users) --> WorkOS import tool (Method B)
+```
+
+### Method A: Manual API Import (Small Scale)
+
+**Field mapping from Auth0 export to WorkOS Create User API:**
+
+```
+Auth0 field        --> WorkOS parameter
+email              --> email
+email_verified     --> email_verified
+given_name         --> first_name
+family_name        --> last_name
+```
+
+**Import script template:**
+
+```javascript
+// import-users.js
+const { WorkOS } = require('@workos-inc/node');
+const fs = require('fs');
+const readline = require('readline');
+
+const workos = new WorkOS(process.env.WORKOS_API_KEY);
+
+async function importUsers() {
+  const fileStream = fs.createReadStream('auth0-users.ndjson');
+  const rl = readline.createInterface({ input: fileStream });
+
+  for await (const line of rl) {
+    const auth0User = JSON.parse(line);
+    
+    try {
+      await workos.userManagement.createUser({
+        email: auth0User.email,
+        emailVerified: auth0User.email_verified,
+        firstName: auth0User.given_name,
+        lastName: auth0User.family_name,
+      });
+      console.log(`✓ Imported: ${auth0User.email}`);
+    } catch (error) {
+      console.error(`✗ Failed: ${auth0User.email}`, error.message);
+    }
+  }
+}
+
+importUsers();
+```
+
+**Import passwords (if applicable):**
+
+```javascript
+// Add to createUser call above:
+{
+  // ... existing fields
+  passwordHash: auth0User.passwordHash, // from auth0-passwords.ndjson
+  passwordHashType: 'bcrypt',
+}
+```
+
+**Run import:**
+
+```bash
+node import-users.js
+```
+
+### Method B: WorkOS Import Tool (Large Scale)
+
+**RECOMMENDED for >500 users.**
+
+1. Clone WorkOS migration tool:
+
+```bash
 git clone https://github.com/workos/migrate-auth0-users.git
 cd migrate-auth0-users
-
-# 2. Install dependencies
 npm install
-
-# 3. Set environment variables
-export WORKOS_API_KEY="sk_..."
-export AUTH0_USERS_FILE="./auth0_users.ndjson"
-export AUTH0_PASSWORDS_FILE="./auth0_passwords.ndjson"  # Optional
-
-# 4. Run import (dry-run first)
-npm run import -- --dry-run
-
-# 5. Execute actual import
-npm run import
 ```
 
-**Verify import:**
+2. Follow tool's README for configuration
+
+3. Run import with dry-run first:
 
 ```bash
-# Check WorkOS Dashboard user count matches Auth0 export
-# Expected: User count in WorkOS = line count in NDJSON
+WORKOS_API_KEY=sk_test_... npm run import -- --dry-run
 ```
 
-### Option B: Custom Import Script
+4. Review output, fix any errors
 
-If writing custom import code, use WorkOS SDK:
+5. Run production import:
+
+```bash
+WORKOS_API_KEY=sk_... npm run import
+```
+
+**Tool advantages:** Automatic retry logic, rate limiting, progress tracking.
+
+## Step 6: Import Organizations (If Applicable)
+
+**Skip if not using Auth0 Organizations feature.**
+
+### Create Organizations in WorkOS
+
+For each Auth0 org, call WorkOS Create Organization API:
 
 ```javascript
-// Example: Import single user with password
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
-
-const user = await workos.userManagement.createUser({
-  email: auth0User.email,
-  email_verified: auth0User.email_verified,
-  first_name: auth0User.given_name,
-  last_name: auth0User.family_name,
-  password_hash: auth0User.passwordHash, // bcrypt format
-  password_hash_type: 'bcrypt', // REQUIRED when password_hash provided
+const org = await workos.organizations.createOrganization({
+  name: auth0Org.display_name,
+  // Optional: map auth0Org.metadata to WorkOS domains/settings
 });
 ```
 
-**CRITICAL:** Set `password_hash_type: 'bcrypt'` when importing Auth0 passwords. This is Auth0's hashing algorithm.
+### Add Organization Memberships
 
-**Error handling pattern:**
-
-```javascript
-try {
-  await workos.userManagement.createUser({...});
-} catch (error) {
-  if (error.code === 'user_already_exists') {
-    // Update existing user instead
-    await workos.userManagement.updateUser(userId, {...});
-  } else {
-    throw error;
-  }
-}
-```
-
-## Step 6: Configure Social Auth Providers
-
-**Only if:** Users sign in with Google, Microsoft, GitHub, etc.
-
-### Provider Setup Checklist
-
-For each social provider in Auth0:
-
-1. **In WorkOS Dashboard:**
-   - Navigate to Authentication → Social Connections
-   - Enable provider (e.g., Google OAuth)
-   - Add OAuth client credentials from provider console
-
-2. **Provider configuration:**
-   - Add WorkOS callback URL to provider's allowed redirects
-   - WorkOS callback: `https://api.workos.com/sso/oauth/callback`
-
-3. **Email verification settings:**
-   - Check WorkOS environment settings
-   - Google/Microsoft users with matching domain may skip verification
-   - Other providers require email verification if enabled
-
-**Verify provider:**
-
-```bash
-# Test sign-in flow in WorkOS Dashboard
-# Authentication → Social Connections → [Provider] → Test Connection
-```
-
-### Auto-Linking Behavior
-
-When social auth users sign in via WorkOS:
-
-- WorkOS matches by **email address**
-- If imported user has matching email, automatically links accounts
-- User sees seamless sign-in experience
-
-**No code changes needed** — linking is automatic.
-
-## Step 7: Migrate Organizations (CONDITIONAL)
-
-**Only if:** Using Auth0 Organizations feature
-
-### Export Auth0 Organizations
+For each user-org relationship from Auth0:
 
 ```javascript
-// Use Auth0 Management API to export orgs
-const auth0 = new ManagementClient({
-  domain: 'your-domain.auth0.com',
-  clientId: process.env.AUTH0_CLIENT_ID,
-  clientSecret: process.env.AUTH0_CLIENT_SECRET,
+await workos.userManagement.createOrganizationMembership({
+  userId: workosUserId,  // from Step 5 import
+  organizationId: org.id, // from organization creation above
+  // Optional: roleSlug if you have RBAC configured
 });
-
-const organizations = await auth0.organizations.getAll();
 ```
 
-### Create WorkOS Organizations
+## Step 7: MFA Migration Considerations
 
-```javascript
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
+**CRITICAL:** WorkOS does not support SMS-based MFA (security reasons).
 
-for (const auth0Org of organizations) {
-  const workosOrg = await workos.organizations.createOrganization({
-    name: auth0Org.name,
-    domains: auth0Org.domains?.map((d) => d.name) || [],
-    // Optional: Store Auth0 org ID for reference
-    externalId: auth0Org.id,
-  });
+### MFA Strategy
 
-  // Add organization memberships
-  for (const member of auth0Org.members) {
-    await workos.userManagement.createOrganizationMembership({
-      organization_id: workosOrg.id,
-      user_id: workosUserId, // Mapped from Auth0 user ID
-    });
-  }
-}
+```
+Auth0 MFA type?
+  |
+  +-- SMS only
+  |     |
+  |     +-- Users MUST re-enroll using TOTP authenticator app
+  |     +-- Alternative: Use WorkOS Magic Auth (email-based)
+  |
+  +-- TOTP (authenticator app)
+  |     |
+  |     +-- Users MUST re-enroll (cannot export TOTP secrets from Auth0)
+  |
+  +-- No MFA
+        |
+        +-- Enable WorkOS MFA in Dashboard → Authentication → MFA
+        +-- Users enroll on next sign-in (if required)
 ```
 
-**Verify organization import:**
+**Communication plan:** Notify users before migration that SMS MFA will be disabled and they need to re-enroll.
+
+## Step 8: Post-Migration Validation
+
+### Verify Import Success
+
+Run these commands to check import completion:
 
 ```bash
-# Check WorkOS Dashboard: Org count matches Auth0
-# Check user memberships in WorkOS match Auth0 export
+# 1. Check total user count in WorkOS (via API)
+curl -X GET 'https://api.workos.com/user_management/users' \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  | jq '.data | length'
+
+# 2. Spot-check specific user exists
+curl -X GET 'https://api.workos.com/user_management/users' \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  -G --data-urlencode "email=test@example.com" \
+  | jq '.data[0].email'
+
+# 3. If using orgs, check org count
+curl -X GET 'https://api.workos.com/organizations' \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  | jq '.data | length'
 ```
 
-## Step 8: Handle MFA Migration
+### Test Authentication Flows
 
-### SMS MFA Users (BREAKING CHANGE)
+**Password auth test:**
 
-**WorkOS does not support SMS MFA** due to security vulnerabilities.
+1. Use WorkOS test login form or your app's login page
+2. Sign in with migrated user credentials
+3. Confirm successful authentication
+4. Confirm session works (check `getUser()` returns data)
 
-Users with SMS MFA must:
+**Social auth test (if configured):**
 
-1. **Re-enroll in MFA** using TOTP authenticator app (Google Authenticator, 1Password, etc.)
-2. **OR switch to email-based Magic Auth** (passwordless)
+1. Use WorkOS test login form or your app's login page
+2. Click social provider button
+3. Authenticate with provider
+4. Confirm WorkOS links to existing user by email
+5. Check no duplicate users created
 
-### Communication Plan
+**Organization test (if applicable):**
 
-1. Email users with SMS MFA before migration
-2. Provide enrollment instructions: Link to WorkOS MFA setup guide
-3. Offer grace period where MFA is optional
-4. Enforce MFA after grace period
+1. Sign in as user with organization membership
+2. Confirm organization context is available in session
+3. Verify RBAC permissions work (if configured)
+
+### Rollback Plan
+
+**If migration fails validation:**
+
+```bash
+# 1. Delete all imported users (TEST ENVIRONMENT ONLY)
+# WorkOS does not have bulk delete - use with extreme caution
+curl -X GET 'https://api.workos.com/user_management/users' \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  | jq -r '.data[].id' \
+  | xargs -I {} curl -X DELETE "https://api.workos.com/user_management/users/{}" \
+       -H "Authorization: Bearer $WORKOS_API_KEY"
+
+# 2. Re-run import with fixes
+```
+
+**For production:** Keep Auth0 active until WorkOS validation complete.
 
 ## Verification Checklist (ALL MUST PASS)
 
 ```bash
-# 1. User count matches
-echo "Auth0 users: $(wc -l < auth0_users.ndjson)"
-echo "WorkOS users: [Check Dashboard]"
-# Expected: Counts match within margin of error
+# 1. Auth0 export files exist
+ls auth0-users.ndjson auth0-passwords.ndjson 2>/dev/null
 
-# 2. Password authentication works
-# Test: Sign in with email/password in your app
-# Expected: Users can authenticate with existing passwords
+# 2. WorkOS API reachable
+curl -X GET 'https://api.workos.com/user_management/users?limit=1' \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  --fail
 
-# 3. Social auth configured
-# Test: Sign in with Google/Microsoft
-# Expected: Users auto-link to existing accounts
+# 3. User count matches (adjust expected count)
+EXPECTED=1000
+ACTUAL=$(curl -s 'https://api.workos.com/user_management/users' \
+  -H "Authorization: Bearer $WORKOS_API_KEY" | jq '.data | length')
+[ "$ACTUAL" -eq "$EXPECTED" ] && echo "PASS" || echo "FAIL: Expected $EXPECTED, got $ACTUAL"
 
-# 4. Organizations migrated (if applicable)
-# Check: WorkOS Dashboard → Organizations
-# Expected: Org count matches Auth0
+# 4. Test user can authenticate
+# (Manual test via login form)
 
-# 5. MFA status
-# Check: Users with TOTP MFA can sign in
-# Expected: SMS MFA users prompted to re-enroll
-
-# 6. Application builds
-npm run build
+# 5. Application builds and starts
+npm run build && npm start
 ```
 
 ## Error Recovery
 
-### "user_already_exists" during import
+### "User already exists" during import
 
-**Cause:** User with email already exists in WorkOS (likely from test imports)
-
-**Fix:** Use Update User API instead of Create:
-
-```javascript
-await workos.userManagement.updateUser(existingUserId, {
-  first_name: auth0User.given_name,
-  password_hash: auth0User.passwordHash,
-  password_hash_type: 'bcrypt',
-});
-```
-
-### "invalid_password_hash" error
-
-**Cause:** Wrong `password_hash_type` or malformed hash
+**Cause:** Duplicate email in import file or running import twice.
 
 **Fix:**
 
-1. Verify `password_hash_type: 'bcrypt'` (Auth0's algorithm)
-2. Check password hash format: Should start with `$2a$`, `$2b$`, or `$2y$`
-3. Ensure hash is full string from Auth0 export (no truncation)
+1. Check WorkOS Dashboard for existing user by email
+2. If duplicate in file: deduplicate NDJSON before import
+3. If re-running import: use Update User API instead of Create User API
 
-### Social auth users cannot sign in
+### "Invalid password hash" error
 
-**Cause:** Provider not configured or callback URL mismatch
-
-**Fix:**
-
-1. Check WorkOS Dashboard → Authentication → Social Connections → [Provider] is enabled
-2. Verify OAuth credentials are correct
-3. Add WorkOS callback URL to provider's allowed redirects: `https://api.workos.com/sso/oauth/callback`
-4. Test connection in WorkOS Dashboard
-
-### Users not auto-linking to social accounts
-
-**Cause:** Email mismatch or email verification required
+**Cause:** Password hash format mismatch or missing `passwordHashType`.
 
 **Fix:**
 
-1. Verify imported user email matches social provider email exactly
-2. Check email verification settings in WorkOS environment
-3. If verification required, user must verify email before linking
+1. Verify `passwordHashType: 'bcrypt'` is set in API call
+2. Check Auth0 export has `passwordHash` field (not `password`)
+3. Verify hash starts with `$2a$`, `$2b$`, or `$2y$` (bcrypt prefixes)
 
-### Organization memberships missing
+### Social auth user creates duplicate account
 
-**Cause:** User IDs not mapped correctly from Auth0 to WorkOS
-
-**Fix:**
-
-1. Store Auth0 user ID → WorkOS user ID mapping during import
-2. Use mapping when creating organization memberships
-3. Double-check `user_id` parameter in `createOrganizationMembership` calls
-
-### Migration taking too long (>1 hour for 10k users)
-
-**Cause:** Serial API calls, no batching/parallelization
+**Cause:** Email mismatch between Auth0 and social provider.
 
 **Fix:**
 
-1. Use Promise.all() with batches of 50-100 concurrent requests
-2. Add retry logic with exponential backoff
-3. Consider using WorkOS bulk import tool (handles rate limiting)
+1. Check Auth0 user's `email` matches their social provider email exactly
+2. In WorkOS Dashboard, manually merge duplicate users if created
+3. Ensure `email_verified: true` for social auth users in import
 
-## Post-Migration Tasks
+### "Rate limit exceeded" during bulk import
 
-1. **Update application code:** Replace Auth0 SDK calls with WorkOS AuthKit SDK
-2. **Test authentication flows:** Password, social, MFA, password reset
-3. **Monitor error logs:** Check for authentication failures in first 48 hours
-4. **Deprecate Auth0:** After validation period, disable Auth0 tenant
-5. **Update documentation:** Internal docs, onboarding guides, support articles
+**Cause:** Hitting WorkOS API rate limits (varies by plan).
+
+**Fix:**
+
+1. Add delay between API calls: `await new Promise(r => setTimeout(r, 100))`
+2. Use WorkOS import tool (Method B) which handles rate limiting
+3. Contact WorkOS support for temporary rate limit increase
+
+### Users cannot sign in after migration
+
+**Checklist:**
+
+1. Verify AuthKit integration complete (`workos-authkit-nextjs` skill)
+2. Check middleware/proxy file exists and routes to callback
+3. Verify callback route uses `handleAuth()` correctly
+4. Check `WORKOS_CLIENT_ID` matches Dashboard Application
+5. Test with WorkOS test login form first (isolate app vs. migration issue)
+
+### Organization memberships not working
+
+**Cause:** Users imported before organizations created, or membership API calls failed.
+
+**Fix:**
+
+1. Create organizations first, then add memberships
+2. Check WorkOS Dashboard → Organizations for membership list
+3. Re-run membership import script if needed
+4. Verify organization ID in membership API call is correct
+
+### MFA users locked out
+
+**Cause:** SMS MFA no longer supported, TOTP secrets not transferred.
+
+**Fix:**
+
+1. User must reset MFA enrollment
+2. Provide clear instructions: "Sign in → Profile → Security → Re-enroll MFA"
+3. Alternative: Temporarily disable MFA requirement in WorkOS Dashboard
+4. Communicate migration plan to users BEFORE migration
 
 ## Related Skills
 
-- `workos-authkit-nextjs` - Integrate WorkOS AuthKit with Next.js after migration
-- `workos-sso-setup` - Configure enterprise SSO connections in WorkOS
-- `workos-organizations` - Manage organizations and memberships programmatically
+- `workos-authkit-nextjs` - Complete AuthKit integration (prerequisite)
+- `workos-organizations` - Advanced organization management
+- `workos-directory-sync` - Automate user provisioning post-migration

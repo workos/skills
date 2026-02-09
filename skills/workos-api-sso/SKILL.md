@@ -5,399 +5,348 @@ description: WorkOS SSO API endpoints — connections, profiles, authorization U
 
 <!-- generated -->
 
-# WorkOS SSO API Integration
+# WorkOS SSO API Reference
 
-## Step 1: Fetch Documentation (BLOCKING)
+## Step 1: Fetch Documentation
 
-**STOP. Do not proceed until complete.**
+**STOP. WebFetch the relevant docs for latest implementation details before proceeding.**
 
-WebFetch these docs in order — they are the source of truth:
+- https://workos.com/docs/reference/sso
+- https://workos.com/docs/reference/sso/connection
+- https://workos.com/docs/reference/sso/connection/delete
+- https://workos.com/docs/reference/sso/connection/get
+- https://workos.com/docs/reference/sso/connection/list
+- https://workos.com/docs/reference/sso/get-authorization-url
+- https://workos.com/docs/reference/sso/get-authorization-url/error-codes
+- https://workos.com/docs/reference/sso/get-authorization-url/redirect-uri
 
-1. https://workos.com/docs/reference/sso
-2. https://workos.com/docs/reference/sso/get-authorization-url
-3. https://workos.com/docs/reference/sso/profile/get-profile-and-token
-4. https://workos.com/docs/reference/sso/connection/list
+## Authentication Setup
 
-If this skill conflicts with docs, follow docs.
+All API requests require authentication via API key in the Authorization header:
 
-## Step 2: Pre-Flight Validation
+```
+Authorization: Bearer sk_your_api_key_here
+```
 
-### Environment Variables
+Your API key starts with `sk_` and is found in the WorkOS Dashboard under API Keys.
 
-Check environment for WorkOS credentials:
+## Endpoint Catalog
+
+| Method | Endpoint | Operation | Use When |
+|--------|----------|-----------|----------|
+| GET | `/sso/authorize` | Start SSO flow | Redirecting user to IdP login |
+| GET | `/sso/token` | Exchange code for profile | Handling OAuth callback |
+| GET | `/user_management/users/:id/sso_profile` | Get user SSO profile | Fetching linked SSO identity |
+| GET | `/sso/connections` | List connections | Displaying available SSO providers |
+| GET | `/sso/connections/:id` | Get connection details | Fetching specific connection config |
+| POST | `/sso/connections` | Create connection | Setting up new SSO provider |
+| PUT | `/sso/connections/:id` | Update connection | Modifying connection settings |
+| DELETE | `/sso/connections/:id` | Delete connection | Removing SSO provider |
+
+## Operation Decision Tree
+
+**Starting SSO authentication?**
+→ Use `GET /sso/authorize` to redirect user to IdP
+
+**Handling callback from IdP?**
+→ Use `GET /sso/token` to exchange authorization code for user profile
+
+**Need to list available providers for a user?**
+→ Use `GET /sso/connections` with organization filter
+
+**Checking specific connection config?**
+→ Use `GET /sso/connections/:id`
+
+**Managing connection lifecycle?**
+- Creating new provider → `POST /sso/connections`
+- Updating existing → `PUT /sso/connections/:id`
+- Removing provider → `DELETE /sso/connections/:id`
+
+## Request/Response Patterns
+
+### Start SSO Authorization Flow
 
 ```bash
-# Verify API key exists and has correct prefix
-grep "WORKOS_API_KEY" .env* | grep -q "sk_" || echo "FAIL: Invalid or missing API key"
-
-# Verify client ID exists
-grep "WORKOS_CLIENT_ID" .env* | grep -q "client_" || echo "FAIL: Missing client ID"
+GET https://api.workos.com/sso/authorize
+  ?client_id=client_01H7EXAMPLE
+  &redirect_uri=https://yourapp.com/callback
+  &response_type=code
+  &organization=org_01H7EXAMPLE
+  &state=random_state_string
 ```
 
-**Required variables:**
-- `WORKOS_API_KEY` - starts with `sk_`
-- `WORKOS_CLIENT_ID` - starts with `client_`
-- `WORKOS_REDIRECT_URI` or callback URL configured in dashboard
+**Response:** HTTP 302 redirect to IdP login page
 
-### WorkOS Dashboard Setup
+**Required parameters:**
+- `client_id` - Your WorkOS Client ID
+- `redirect_uri` - Callback URL (must match Dashboard config)
+- `response_type` - Always "code" for authorization code flow
+- `organization` - Organization ID or domain for SSO lookup
 
-Verify in WorkOS Dashboard (workos.com):
+**Optional parameters:**
+- `state` - CSRF protection token
+- `connection` - Specific connection ID to bypass provider selection
 
-1. **Redirect URI configured** - Must match your callback route exactly
-2. **SSO connections exist** - At least one connection for testing
-3. **Environment** - Using correct environment (staging vs production)
-
-## Step 3: SDK Detection and Installation
-
-Detect if WorkOS SDK is already installed:
+### Exchange Authorization Code
 
 ```bash
-# Check for SDK in package.json
-grep -q '"@workos-inc/' package.json && echo "SDK found" || echo "SDK missing"
-```
+POST https://api.workos.com/sso/token
+Content-Type: application/json
+Authorization: Bearer sk_your_api_key
 
-If missing, install SDK for your platform:
-
-```
-Language/Framework?
-  |
-  +-- Node.js/Express --> npm install @workos-inc/node
-  |
-  +-- Next.js --> npm install @workos-inc/node (server-side)
-  |
-  +-- Python --> pip install workos
-  |
-  +-- Ruby --> gem install workos
-  |
-  +-- Go --> go get github.com/workos/workos-go/v4
-```
-
-**Verify:** SDK package exists before writing integration code.
-
-## Step 4: Initialize WorkOS Client
-
-Create SDK client initialization based on your framework:
-
-### Node.js/Next.js Pattern
-
-```typescript
-import { WorkOS } from '@workos-inc/node';
-
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
-const clientId = process.env.WORKOS_CLIENT_ID;
-```
-
-**Location decision tree:**
-
-```
-Project structure?
-  |
-  +-- Next.js App Router --> lib/workos.ts (import in route handlers)
-  |
-  +-- Next.js Pages Router --> lib/workos.ts (import in API routes)
-  |
-  +-- Express --> config/workos.js (import in routes)
-  |
-  +-- Standalone script --> Initialize at top of file
-```
-
-**Critical:** Never initialize client in client-side code. API keys are server-only.
-
-## Step 5: Implement SSO Authorization Flow
-
-### 5a: Generate Authorization URL (Login Initiation)
-
-Create endpoint that redirects users to SSO provider:
-
-```typescript
-// GET /auth/sso or similar endpoint
-const authorizationUrl = workos.sso.getAuthorizationUrl({
-  clientId,
-  redirectUri: process.env.WORKOS_REDIRECT_URI,
-  // ONE of these is required:
-  connection: 'conn_123',        // Specific connection
-  organization: 'org_123',       // Organization selector
-  provider: 'GoogleOAuth',       // Generic provider
-});
-
-// Redirect user to authorizationUrl
-```
-
-**Decision tree for SSO target:**
-
-```
-How to select SSO provider?
-  |
-  +-- Single organization/connection known --> Use connection or organization ID
-  |
-  +-- Multi-tenant (user selects org) --> Use organization parameter
-  |
-  +-- Generic social login --> Use provider parameter
-  |
-  +-- Domain-based routing --> Call listConnections, match domain, use connection ID
-```
-
-**State parameter (IMPORTANT):** Include `state` parameter for CSRF protection and post-login routing:
-
-```typescript
-const state = generateRandomString(); // Store in session/cookie
-const authorizationUrl = workos.sso.getAuthorizationUrl({
-  clientId,
-  redirectUri: process.env.WORKOS_REDIRECT_URI,
-  state,
-  organization: req.query.org,
-});
-```
-
-### 5b: Handle Callback (Critical Security Step)
-
-Create callback endpoint matching `WORKOS_REDIRECT_URI`:
-
-```typescript
-// GET /auth/callback or matching redirect URI path
-const { code, state } = req.query;
-
-// CRITICAL: Verify state matches (CSRF protection)
-if (state !== storedState) {
-  throw new Error('Invalid state parameter');
-}
-
-// Exchange code for profile
-const { profile } = await workos.sso.getProfileAndToken({
-  code,
-  clientId,
-});
-
-// profile contains:
-// - id (WorkOS user ID)
-// - email
-// - firstName, lastName
-// - connectionId, organizationId
-// - rawAttributes (provider-specific data)
-```
-
-**Error handling (REQUIRED):**
-
-```typescript
-try {
-  const { profile } = await workos.sso.getProfileAndToken({ code, clientId });
-  // Create session, set cookie, redirect to app
-} catch (error) {
-  if (error.code === 'invalid_grant') {
-    // Code expired or already used - redirect to login
-  }
-  if (error.code === 'invalid_client') {
-    // Check WORKOS_CLIENT_ID is correct
-  }
-  // Log error, show user-friendly message
+{
+  "client_id": "client_01H7EXAMPLE",
+  "client_secret": "sk_your_api_key",
+  "code": "01H7AUTHORIZATION_CODE",
+  "grant_type": "authorization_code"
 }
 ```
 
-## Step 6: Connection Management (Optional)
-
-If building admin UI for SSO configuration:
+**Response:**
+```json
+{
+  "access_token": "01H7ACCESS_TOKEN",
+  "profile": {
+    "id": "prof_01H7EXAMPLE",
+    "connection_id": "conn_01H7EXAMPLE",
+    "connection_type": "OktaSAML",
+    "organization_id": "org_01H7EXAMPLE",
+    "email": "user@example.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "idp_id": "00u1a2b3c4d5e6f7g8h9",
+    "raw_attributes": {}
+  }
+}
+```
 
 ### List Connections
 
-```typescript
-const { data: connections } = await workos.sso.listConnections({
-  organizationId: 'org_123', // Optional filter
-  limit: 10,
-});
-
-// Each connection has:
-// - id, name, type (SAML, GoogleOAuth, etc.)
-// - state ('active', 'inactive', 'draft')
-// - organizationId
+```bash
+GET https://api.workos.com/sso/connections
+  ?organization_id=org_01H7EXAMPLE
+  &limit=10
+Authorization: Bearer sk_your_api_key
 ```
 
-### Get Single Connection
-
-```typescript
-const connection = await workos.sso.getConnection('conn_123');
-```
-
-### Delete Connection (Use with caution)
-
-```typescript
-await workos.sso.deleteConnection('conn_123');
-```
-
-**IMPORTANT:** Deleting a connection breaks login for users. Confirm before deletion.
-
-## Step 7: Domain Verification (Multi-Tenant Apps)
-
-For apps where users enter email to determine SSO:
-
-```typescript
-// 1. User enters email
-const email = req.body.email;
-const domain = email.split('@')[1];
-
-// 2. Find connection by domain
-const { data: connections } = await workos.sso.listConnections({
-  domains: [domain],
-});
-
-if (connections.length > 0) {
-  // Use connection.id for getAuthorizationUrl
-  const authUrl = workos.sso.getAuthorizationUrl({
-    clientId,
-    connection: connections[0].id,
-    redirectUri: process.env.WORKOS_REDIRECT_URI,
-  });
-  // Redirect to SSO
-} else {
-  // Fall back to password login or show error
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "conn_01H7EXAMPLE",
+      "name": "Acme Corp Okta",
+      "connection_type": "OktaSAML",
+      "organization_id": "org_01H7EXAMPLE",
+      "state": "active",
+      "domains": [{"domain": "acme.com"}]
+    }
+  ],
+  "list_metadata": {
+    "after": "conn_01H7NEXT",
+    "before": null
+  }
 }
 ```
 
-## Step 8: Session Management
+### Get Connection Details
 
-After successful SSO, create application session:
-
-```
-Session storage?
-  |
-  +-- Express/Node --> express-session with secure cookie
-  |
-  +-- Next.js --> iron-session or encrypted JWT in httpOnly cookie
-  |
-  +-- API-only --> Return JWT, client stores securely
+```bash
+GET https://api.workos.com/sso/connections/conn_01H7EXAMPLE
+Authorization: Bearer sk_your_api_key
 ```
 
-**Minimal secure session (Next.js example):**
+**Response:**
+```json
+{
+  "id": "conn_01H7EXAMPLE",
+  "name": "Acme Corp Okta",
+  "connection_type": "OktaSAML",
+  "organization_id": "org_01H7EXAMPLE",
+  "state": "active",
+  "domains": [{"domain": "acme.com"}],
+  "created_at": "2024-01-15T10:30:00.000Z",
+  "updated_at": "2024-01-15T10:30:00.000Z"
+}
+```
 
-```typescript
-import { cookies } from 'next/headers';
+### Delete Connection
 
-// After getProfileAndToken succeeds
-const sessionData = {
-  userId: profile.id,
-  email: profile.email,
-  organizationId: profile.organizationId,
-};
+```bash
+DELETE https://api.workos.com/sso/connections/conn_01H7EXAMPLE
+Authorization: Bearer sk_your_api_key
+```
 
-// Encrypt and set httpOnly cookie
-cookies().set('session', encrypt(sessionData), {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax',
-  maxAge: 60 * 60 * 24 * 7, // 7 days
+**Response:** HTTP 204 No Content (successful deletion)
+
+## Pagination Pattern
+
+List endpoints use cursor-based pagination:
+
+1. Initial request returns `list_metadata.after` cursor
+2. Include cursor in next request: `?after=conn_01H7NEXT`
+3. Continue until `after` is null
+
+```bash
+# Page 1
+GET /sso/connections?limit=10
+
+# Page 2  
+GET /sso/connections?limit=10&after=conn_01H7NEXT
+```
+
+## Error Code Mapping
+
+### Authorization Flow Errors
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `invalid_request` | Missing required parameter | Verify `client_id`, `redirect_uri`, `response_type` are present |
+| `invalid_client` | Invalid Client ID | Check `client_id` matches WorkOS Dashboard value |
+| `invalid_redirect_uri` | Redirect URI not whitelisted | Add URI to Redirect URIs in WorkOS Dashboard |
+| `invalid_organization` | Organization not found or has no connections | Verify organization exists and has active connections |
+| `invalid_connection` | Connection ID not found | Check connection exists and belongs to organization |
+
+### Token Exchange Errors
+
+| Status | Error | Cause | Fix |
+|--------|-------|-------|-----|
+| 400 | `invalid_grant` | Authorization code expired or already used | Codes expire in 10 minutes; request new authorization |
+| 401 | `invalid_client` | Invalid API key or Client ID | Verify `client_secret` is correct API key |
+| 403 | `insufficient_permissions` | API key lacks SSO permissions | Enable SSO scope in Dashboard API key settings |
+
+### Connection Management Errors
+
+| Status | Error | Cause | Fix |
+|--------|-------|-------|-----|
+| 401 | `unauthorized` | Missing or invalid API key | Include `Authorization: Bearer sk_...` header |
+| 403 | `forbidden` | API key lacks admin permissions | Use admin-scoped API key for connection management |
+| 404 | `connection_not_found` | Connection ID doesn't exist | Verify connection ID is correct |
+| 409 | `domain_conflict` | Domain already claimed by another connection | Remove domain from existing connection first |
+| 422 | `invalid_configuration` | SAML metadata or OIDC config invalid | Check IdP configuration values |
+
+## Rate Limiting
+
+- **Default limit:** 100 requests per second per API key
+- **Burst allowance:** 200 requests in a 10-second window
+- **Headers returned:**
+  - `X-RateLimit-Limit` - Request limit
+  - `X-RateLimit-Remaining` - Requests remaining
+  - `X-RateLimit-Reset` - Unix timestamp when limit resets
+
+**Rate limit exceeded response:**
+```json
+{
+  "error": "rate_limit_exceeded",
+  "error_description": "Too many requests",
+  "retry_after": 5
+}
+```
+
+**Retry strategy:** Wait `retry_after` seconds before next request, or implement exponential backoff starting at 1 second.
+
+## Verification Commands
+
+### Test API Key
+
+```bash
+curl https://api.workos.com/sso/connections \
+  -H "Authorization: Bearer sk_your_api_key"
+```
+
+**Expected:** HTTP 200 with connections list (or empty array)
+
+### Verify Authorization URL Generation
+
+```bash
+curl -i "https://api.workos.com/sso/authorize?client_id=client_01H7EXAMPLE&redirect_uri=https://yourapp.com/callback&response_type=code&organization=org_01H7EXAMPLE"
+```
+
+**Expected:** HTTP 302 redirect to IdP login page
+
+### Test Token Exchange (after receiving code)
+
+```bash
+curl https://api.workos.com/sso/token \
+  -X POST \
+  -H "Authorization: Bearer sk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_id": "client_01H7EXAMPLE",
+    "client_secret": "sk_your_api_key",
+    "code": "01H7AUTHORIZATION_CODE",
+    "grant_type": "authorization_code"
+  }'
+```
+
+**Expected:** HTTP 200 with access token and user profile
+
+### List Active Connections
+
+```bash
+curl "https://api.workos.com/sso/connections?state=active" \
+  -H "Authorization: Bearer sk_your_api_key"
+```
+
+**Expected:** HTTP 200 with active connections array
+
+## SDK Usage Pattern
+
+```javascript
+import { WorkOS } from '@workos-inc/node';
+
+const workos = new WorkOS(process.env.WORKOS_API_KEY);
+
+// Start authorization flow
+const authUrl = workos.sso.getAuthorizationUrl({
+  clientId: process.env.WORKOS_CLIENT_ID,
+  redirectUri: 'https://yourapp.com/callback',
+  organization: 'org_01H7EXAMPLE',
+  state: crypto.randomUUID()
 });
+
+// Exchange code for profile
+const { profile } = await workos.sso.getProfileAndToken({
+  clientId: process.env.WORKOS_CLIENT_ID,
+  code: authorizationCode
+});
+
+// List connections
+const { data: connections } = await workos.sso.listConnections({
+  organizationId: 'org_01H7EXAMPLE'
+});
+
+// Get specific connection
+const connection = await workos.sso.getConnection('conn_01H7EXAMPLE');
+
+// Delete connection
+await workos.sso.deleteConnection('conn_01H7EXAMPLE');
 ```
 
-**CRITICAL:** Never store full `profile.rawAttributes` in session — it may contain sensitive data. Store only what you need.
+## Common Integration Issues
 
-## Verification Checklist (ALL MUST PASS)
+**Redirect URI mismatch:**
+- Symptom: `invalid_redirect_uri` error
+- Cause: Callback URL not in Dashboard whitelist
+- Fix: Add exact URL (including protocol and path) to Redirect URIs in WorkOS Dashboard
 
-```bash
-# 1. Environment variables exist with correct prefixes
-grep "WORKOS_API_KEY=sk_" .env* && grep "WORKOS_CLIENT_ID=client_" .env*
+**Organization has no connections:**
+- Symptom: User sees "No SSO provider available"
+- Cause: Organization exists but no active SSO connections
+- Fix: Create connection for organization via Dashboard or API
 
-# 2. SDK installed
-npm list @workos-inc/node 2>/dev/null || pip list | grep workos
+**State parameter validation failure:**
+- Symptom: CSRF error on callback
+- Cause: State mismatch between authorize and callback
+- Fix: Store state in session/cookie, verify matches callback state parameter
 
-# 3. Redirect URI matches callback route
-# (Manual check: compare .env WORKOS_REDIRECT_URI to route path)
-
-# 4. Authorization URL endpoint exists
-grep -r "getAuthorizationUrl" . --include="*.ts" --include="*.js" --include="*.py"
-
-# 5. Callback handler exists
-grep -r "getProfileAndToken" . --include="*.ts" --include="*.js" --include="*.py"
-
-# 6. State parameter used (CSRF protection)
-grep -r "state.*getAuthorizationUrl" . --include="*.ts" --include="*.js"
-
-# 7. Test auth flow (manual)
-# - Visit /auth/sso endpoint
-# - Redirects to WorkOS/SSO provider
-# - Callback returns profile
-# - Session created
-```
-
-**If check #6 fails:** Add state parameter for CSRF protection (see Step 5a).
-
-## Error Recovery
-
-### "invalid_grant" during callback
-
-**Root cause:** Authorization code expired (10 min TTL) or already used.
-
-**Fix:**
-1. Check callback handler isn't being called twice (dev server hot reload, duplicate requests)
-2. Ensure code is exchanged immediately on callback
-3. Redirect user to login if code is invalid
-
-### "invalid_client" error
-
-**Root causes:**
-1. `WORKOS_CLIENT_ID` doesn't match WorkOS Dashboard
-2. Using staging key with production endpoint (or vice versa)
-
-**Fix:**
-```bash
-# Verify client ID format
-echo $WORKOS_CLIENT_ID | grep -q "^client_" || echo "Invalid format"
-
-# Check API key environment matches
-# - sk_test_* = staging
-# - sk_live_* = production
-```
-
-### "redirect_uri_mismatch" error
-
-**Root cause:** Callback URL not configured in WorkOS Dashboard.
-
-**Fix:**
-1. Go to WorkOS Dashboard → Configuration → Redirect URIs
-2. Add exact URL (including protocol, domain, path)
-3. **Must match exactly** — `http://localhost:3000/callback` ≠ `http://localhost:3000/callback/`
-
-### "No connections found for domain"
-
-**Root cause:** User's email domain not linked to SSO connection.
-
-**Fix:**
-1. Check WorkOS Dashboard → Connections → Domains
-2. Add domain to existing connection, or
-3. Fall back to password authentication for this user
-
-### SDK import fails
-
-**Check:**
-```bash
-# Node.js - verify in node_modules
-ls node_modules/@workos-inc/node 2>/dev/null || echo "Package missing"
-
-# Python - verify installed
-python -c "import workos" 2>/dev/null || echo "Package missing"
-```
-
-**Fix:** Reinstall SDK, check package manager logs for errors.
-
-### "code was called outside a request scope" (Next.js)
-
-**Root cause:** Calling `getProfileAndToken` at module level or in React component.
-
-**Fix:** Move SSO logic to API route handler or server action, never in client components.
-
-### Profile missing expected fields
-
-**Check:** Different SSO providers return different attributes.
-
-**Pattern:**
-```typescript
-const { profile } = await workos.sso.getProfileAndToken({ code, clientId });
-
-// Safe access with fallbacks
-const email = profile.email; // Always present
-const firstName = profile.firstName || profile.rawAttributes?.given_name || '';
-const lastName = profile.lastName || profile.rawAttributes?.family_name || '';
-```
+**Profile missing expected attributes:**
+- Symptom: `first_name` or `last_name` is null
+- Cause: IdP not configured to send those SAML/OIDC attributes
+- Fix: Configure attribute mapping in IdP settings or use `raw_attributes` for custom parsing
 
 ## Related Skills
 
-- `workos-authkit-nextjs` - Pre-built auth UI for Next.js (simpler than raw SSO API)
-- `workos-directory-sync` - If implementing user provisioning with SSO
+- **workos-sso** - High-level SSO feature implementation guide
+- **workos-api-organizations** - Organization management API reference
+- **workos-api-directory-sync** - Directory Sync API for automated user provisioning

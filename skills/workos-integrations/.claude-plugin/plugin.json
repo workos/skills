@@ -10,5 +10,8 @@
   "repository": "https://github.com/workos/skills",
   "license": "MIT",
   "category": "enterprise",
-  "keywords": ["workos", "integrations"]
+  "keywords": [
+    "workos",
+    "integrations"
+  ]
 }

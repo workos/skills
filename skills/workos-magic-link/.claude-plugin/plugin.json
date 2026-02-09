@@ -10,5 +10,9 @@
   "repository": "https://github.com/workos/skills",
   "license": "MIT",
   "category": "authentication",
-  "keywords": ["workos", "magic", "link"]
+  "keywords": [
+    "workos",
+    "magic",
+    "link"
+  ]
 }

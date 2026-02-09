@@ -10,5 +10,10 @@
   "repository": "https://github.com/workos/skills",
   "license": "MIT",
   "category": "api-reference",
-  "keywords": ["workos", "api", "events", "api-reference"]
+  "keywords": [
+    "workos",
+    "api",
+    "events",
+    "api-reference"
+  ]
 }

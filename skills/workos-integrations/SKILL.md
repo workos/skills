@@ -141,13 +141,39 @@ Most OAuth providers require:
 
 ## Verification
 
-- [ ] Connection appears in WorkOS Dashboard
+```bash
+# Check connection status via WorkOS API
+curl -s -H "Authorization: Bearer $WORKOS_API_KEY" \
+  https://api.workos.com/connections | jq '.data[] | {id, name, state}'
+
+# Verify SSO connection is active
+curl -s -H "Authorization: Bearer $WORKOS_API_KEY" \
+  https://api.workos.com/connections | jq '.data[] | select(.state == "active") | .name'
+
+# Check directory sync connections
+curl -s -H "Authorization: Bearer $WORKOS_API_KEY" \
+  https://api.workos.com/directories | jq '.data[] | {id, name, state}'
+```
+
+Checklist:
+- [ ] Connection appears in WorkOS Dashboard with "Active" state
 - [ ] Test SSO login succeeds with a test user
-- [ ] User profile attributes map correctly
+- [ ] User profile attributes map correctly (email, name, groups)
 - [ ] (If SCIM) Directory sync shows users from provider
+
+## Error Recovery
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| Connection stuck in "Draft" | Missing IdP metadata | Upload IdP metadata XML or enter metadata URL in Dashboard |
+| SAML assertion error | ACS URL mismatch | Copy exact ACS URL from WorkOS Dashboard to IdP config |
+| SCIM provisioning fails | Invalid bearer token | Regenerate SCIM token in Dashboard, update IdP config |
+| OAuth redirect error | Redirect URI mismatch | Ensure redirect URI in provider console matches WorkOS exactly |
+| "Organization not found" | No org linked | Create organization in Dashboard, then link connection to it |
 
 ## Related Skills
 
 - **workos-sso**: General SSO implementation and configuration
 - **workos-directory-sync**: Directory Sync setup and management
 - **workos-domain-verification**: Domain verification required for SSO
+- **workos-admin-portal**: Let customers configure their own connections

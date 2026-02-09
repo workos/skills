@@ -13,336 +13,374 @@ description: Configure email delivery for WorkOS authentication flows.
 
 WebFetch: `https://workos.com/docs/email`
 
-The documentation is the source of truth. If this skill conflicts with docs, follow docs.
+The WorkOS docs are the source of truth. If this skill conflicts with docs, follow docs.
 
-## Step 2: Choose Email Strategy (Decision Tree)
+## Step 2: Pre-Flight Validation
 
-WorkOS offers three email delivery patterns. Select based on your requirements:
+### Environment Variables
+
+Check `.env.local` or `.env` for:
+
+- `WORKOS_API_KEY` - starts with `sk_`
+- `WORKOS_CLIENT_ID` - starts with `client_`
+
+**Verify:** Both keys present before continuing. If missing, user must obtain from WorkOS dashboard.
+
+### SDK Installation
+
+Confirm WorkOS SDK is installed:
+
+```bash
+# Check package.json for WorkOS SDK
+grep -E '"@workos-inc/(node|nextjs|react)"' package.json
+```
+
+If not found, install appropriate SDK:
+- Node.js backend: `@workos-inc/node`
+- Next.js: `@workos-inc/authkit-nextjs`
+- React (client): `@workos-inc/react`
+
+**Verify:** SDK package exists in node_modules before continuing.
+
+## Step 3: Email Delivery Strategy (Decision Tree)
+
+WorkOS offers three email delivery options. Choose based on requirements:
 
 ```
 Email delivery strategy?
   |
-  +-- Quick start / prototype
-  |   --> Option A: WorkOS email domain (workos-mail.com)
-  |       - Zero DNS setup
-  |       - Limited customization
-  |       - Adequate for testing
+  +-- A) WorkOS email domain (workos-mail.com)
+  |     └--> Fastest setup, lowest customization
+  |     └--> Go to Step 4A
   |
-  +-- Production app with brand control
-  |   --> Option B: Your email domain
-  |       - Requires DNS configuration
-  |       - Better deliverability
-  |       - Users see your brand
+  +-- B) Your own email domain
+  |     └--> Better UX, more control over deliverability
+  |     └--> Requires DNS configuration
+  |     └--> Go to Step 4B
   |
-  +-- Full control / custom provider
-      --> Option C: Event-driven custom email
-          - Listen to WorkOS webhooks
-          - Use own email provider (SendGrid, Postmark, etc.)
-          - Maximum flexibility
+  +-- C) Send your own email (event-driven)
+        └--> Maximum control, use your own provider
+        └--> Requires webhook listener + email provider
+        └--> Go to Step 4C
 ```
 
-**For most production apps:** Choose Option B (your email domain).
+**Decision factors:**
 
-## Step 3: Configuration by Strategy
+- **Use A** if: Prototyping, internal tools, fast MVP
+- **Use B** if: Production app, branded experience, domain reputation matters
+- **Use C** if: Existing email infrastructure, need custom templates/logic, compliance requirements
 
-### Option A: WorkOS Email Domain (Default)
+## Step 4A: WorkOS Email Domain Setup
 
-**No setup required.** WorkOS sends from `workos-mail.com` automatically.
+**This option requires no code changes.** WorkOS automatically sends emails from `workos-mail.com`.
 
-**Constraints:**
-- Do NOT send unsolicited email (no bulk invites from marketing lists)
-- Use professional team/organization names (avoid spam trigger words)
-- See [spam word list](https://mailtrap.io/blog/email-spam-words/) for reference
+### Anti-Spam Requirements (CRITICAL)
 
-**Verification:**
+To prevent deliverability issues:
+
+1. **Validate invitation sources** - Only send invitations when users explicitly request access
+2. **No bulk imports** - Never send unsolicited invites from marketing lists
+3. **Clean organization names** - Avoid [spam trigger words](https://mailtrap.io/blog/email-spam-words/) in:
+   - WorkOS team name (dashboard settings)
+   - Organization names (passed in API calls)
+
+**Bad examples:** "FREE", "URGENT", "Click here", "$$$", "Limited time"
+
+### Verification
+
+Test email delivery with a sandbox invitation:
+
 ```bash
-# Test email sending works (example with Magic Auth)
-curl -X POST https://api.workos.com/user_management/magic_auth/send \
+# Example: Send test magic auth email
+curl https://api.workos.com/user_management/magic_auth/send \
   -H "Authorization: Bearer $WORKOS_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com"}'
-
-# Check response for 201 status
 ```
 
-### Option B: Your Email Domain (Recommended for Production)
+Check recipient inbox. If delivered, skip to Step 5.
 
-#### Step 3.1: Domain Verification
+## Step 4B: Your Own Email Domain Setup
 
-Navigate to WorkOS Dashboard → Email Settings.
+### Dashboard Configuration
 
-Add your domain and WorkOS will provide 3 CNAME records:
+1. Navigate to: https://dashboard.workos.com/configuration/email
+2. Click "Add Email Domain"
+3. Enter your domain (e.g., `app.example.com`)
 
-1. **Domain verification** - Proves you own the domain
-2. **SPF authentication** - Via SendGrid automated security
-3. **DKIM authentication** - Via SendGrid automated security
+### DNS Configuration (BLOCKING)
 
-#### Step 3.2: DNS Configuration
+**STOP. DNS changes required before WorkOS can send email.**
 
-Add these CNAME records with your DNS provider (exact values from dashboard):
+WorkOS dashboard will display 3 CNAME records. Add these to your DNS provider:
 
 ```
-# Example structure (your actual values will differ)
-CNAME _workos-verification.yourdomain.com → verify.workos.com
-CNAME em1234.yourdomain.com → u1234.wl.sendgrid.net
-CNAME s1._domainkey.yourdomain.com → s1.domainkey.u1234.wl.sendgrid.net
+# 1. Domain verification
+CNAME: <unique-id>.workos.<your-domain>
+Target: verify.workos.com
+
+# 2. SPF authentication (SendGrid)
+CNAME: em<random>.<your-domain>
+Target: u<id>.wl<id>.sendgrid.net
+
+# 3. DKIM authentication (SendGrid)
+CNAME: s1._domainkey.<your-domain>
+Target: s1.domainkey.u<id>.wl<id>.sendgrid.net
 ```
 
-**Propagation time:** 15 minutes to 48 hours depending on DNS provider.
-
-#### Step 3.3: Verify DNS Records
+**Verify DNS propagation:**
 
 ```bash
-# Check CNAME propagation (replace with your actual records)
-dig _workos-verification.yourdomain.com CNAME +short
-dig em1234.yourdomain.com CNAME +short
-dig s1._domainkey.yourdomain.com CNAME +short
+# Check verification record
+dig CNAME <unique-id>.workos.<your-domain>
 
-# All should return non-empty results matching dashboard values
+# Check SPF record
+dig CNAME em<random>.<your-domain>
+
+# Check DKIM record
+dig CNAME s1._domainkey.<your-domain>
 ```
 
-Return to WorkOS Dashboard and click "Verify Domain". Must show green checkmark.
+All three must resolve before proceeding. DNS propagation typically takes 5-60 minutes.
 
-#### Step 3.4: Create Email Inboxes (REQUIRED)
+### Email Inbox Setup (REQUIRED)
 
-Email providers verify sender addresses exist. Create these inboxes:
+WorkOS sends from two addresses on your domain:
 
-- `welcome@yourdomain.com` - For signup/invitation emails
-- `access@yourdomain.com` - For auth-related emails
+- `welcome@<your-domain>` - Account invitations, welcome emails
+- `access@<your-domain>` - Password resets, magic links
 
-**Do NOT skip this.** Missing inboxes trigger spam filters.
+**Create actual inboxes for both addresses.** Email providers check if sender addresses are real. Missing inboxes trigger spam filters.
 
-#### Step 3.5: DMARC Configuration (Strongly Recommended)
+**Verify inboxes:**
 
-Add DMARC DNS TXT record to improve deliverability:
+```bash
+# Test that inboxes are reachable
+# Method depends on email provider - check admin panel for both addresses
+```
+
+### DMARC Configuration (HIGHLY RECOMMENDED)
+
+Add DMARC policy to DNS to comply with [Google](https://support.google.com/a/answer/81126) / Yahoo / Apple requirements:
 
 ```
 TXT Record
-name: _dmarc.yourdomain.com
-value: v=DMARC1; p=reject; rua=mailto:dmarc@yourdomain.com; ruf=mailto:dmarc@yourdomain.com; fo=1
+Name: _dmarc.<your-domain>
+Content: v=DMARC1; p=reject; rua=mailto:dmarc@<your-domain>; pct=100; adkim=s; aspf=s
 ```
 
-**Policy explanation:**
-- `p=reject` - Reject unauthenticated email claiming to be from your domain
-- `rua=` - Aggregate reports sent here
-- `ruf=` - Forensic reports sent here
-- `fo=1` - Generate forensic reports for all failures
+**Policy meanings:**
 
-**Verification:**
+- `p=reject` - Reject emails failing authentication
+- `p=quarantine` - Send to spam folder
+- `p=none` - Monitor only (not recommended for production)
+
+**Verify DMARC:**
+
 ```bash
-dig _dmarc.yourdomain.com TXT +short
-# Should return the DMARC policy string
+dig TXT _dmarc.<your-domain>
 ```
 
-### Option C: Custom Email Provider via Webhooks
+### Dashboard Verification
 
-#### Step 3.1: Enable Webhook Events
+Return to WorkOS dashboard. Once DNS records are verified:
 
-In WorkOS Dashboard → Webhooks, subscribe to email-related events:
+- Status changes to "Verified" with green checkmark
+- "Send test email" button becomes active
 
-- `email.password_reset.created`
-- `email.magic_auth.created`
-- `email.invitation.created`
-- (Check docs for complete event list)
+Click "Send test email" and confirm receipt.
 
-#### Step 3.2: Create Webhook Endpoint
+## Step 4C: Custom Email Provider Setup
 
-Add route to receive WorkOS events:
+**This requires webhook listener and email provider integration.**
+
+### Enable Event Webhooks
+
+1. Navigate to: https://dashboard.workos.com/webhooks
+2. Click "Add Endpoint"
+3. Enter your webhook URL: `https://your-app.com/webhooks/workos`
+4. Subscribe to email-related events:
+   - `magic_auth.created`
+   - `invitation.created`
+   - `password_reset.created`
+
+### Create Webhook Endpoint
+
+**Signature verification pattern (CRITICAL for security):**
 
 ```typescript
-// app/api/workos-webhooks/route.ts
-import { NextRequest } from 'next/server';
+// Example: Next.js API route
 import { WorkOS } from '@workos-inc/node';
 
 const workos = new WorkOS(process.env.WORKOS_API_KEY);
 
-export async function POST(request: NextRequest) {
-  const body = await request.text();
+export async function POST(request: Request) {
+  const payload = await request.text();
   const signature = request.headers.get('workos-signature');
-  
-  // Verify webhook signature
-  const event = workos.webhooks.constructEvent({
-    payload: body,
-    sigHeader: signature!,
-    secret: process.env.WORKOS_WEBHOOK_SECRET!,
+  const webhookSecret = process.env.WORKOS_WEBHOOK_SECRET;
+
+  // CRITICAL: Verify signature before processing
+  const event = workos.webhooks.verifyEvent({
+    payload,
+    signature,
+    secret: webhookSecret,
   });
-  
-  // Route to your email provider
+
+  // Route to email provider based on event type
   switch (event.event) {
-    case 'email.magic_auth.created':
-      await sendEmailViaSendGrid(event.data);
+    case 'magic_auth.created':
+      await sendMagicAuthEmail(event.data);
       break;
-    // ... handle other event types
+    case 'invitation.created':
+      await sendInvitationEmail(event.data);
+      break;
+    case 'password_reset.created':
+      await sendPasswordResetEmail(event.data);
+      break;
   }
-  
+
   return new Response('OK', { status: 200 });
 }
 ```
 
-#### Step 3.3: Verify Webhook Delivery
+**DO NOT skip signature verification** - webhooks are public URLs.
 
-```bash
-# Check webhook endpoint responds
-curl -X POST http://localhost:3000/api/workos-webhooks \
-  -H "Content-Type: application/json" \
-  -d '{"test": true}'
+### Email Provider Integration
 
-# Should return 200 OK (signature verification may fail, that's expected)
-```
+Choose your provider and implement send functions:
 
-Configure webhook URL in WorkOS Dashboard. Trigger test event and confirm delivery.
-
-## Step 4: Test Email Delivery
-
-### Trigger Test Email
-
-Use WorkOS feature that sends email (Magic Auth is simplest):
+**SendGrid example:**
 
 ```typescript
-import { WorkOS } from '@workos-inc/node';
+import sgMail from '@sendgrid/mail';
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
-
-await workos.userManagement.sendMagicAuthCode({
-  email: 'your-test-email@example.com',
-});
+async function sendMagicAuthEmail(data: MagicAuthData) {
+  await sgMail.send({
+    to: data.email,
+    from: 'access@your-domain.com',
+    subject: 'Sign in to your account',
+    html: `<a href="${data.link}">Click here to sign in</a>`,
+  });
+}
 ```
 
-### Check Inbox
+**Other providers:** Mailgun, Postmark, AWS SES - follow provider SDK docs.
 
-**Expected:** Email arrives within 30 seconds.
+### Webhook Testing
 
-**If delayed (>5 minutes):** See Error Recovery section.
-
-## Verification Checklist (ALL MUST PASS)
+Use WorkOS CLI or dashboard to trigger test events:
 
 ```bash
-# 1. DNS records propagated (Option B only)
-dig _dmarc.yourdomain.com TXT +short | grep -q "v=DMARC1" && echo "PASS" || echo "FAIL"
+# Install WorkOS CLI
+npm install -g @workos-inc/workos-cli
 
-# 2. WorkOS domain verified in dashboard (Option B only)
-# Manual check: Dashboard shows green checkmark
-
-# 3. Email inboxes exist (Option B only)
-# Manual check: Send test email to welcome@yourdomain.com
-
-# 4. Webhook endpoint responds (Option C only)
-curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:3000/api/workos-webhooks
-# Should return 200
-
-# 5. Test email delivery
-# Trigger Magic Auth code, check inbox within 30 seconds
+# Trigger test webhook
+workos webhooks trigger magic_auth.created --endpoint https://your-app.com/webhooks/workos
 ```
+
+**Verify webhook logs** - check your server logs for incoming POST requests.
+
+## Step 5: Production Readiness Checklist
+
+Run these commands to confirm setup. **All must pass:**
+
+```bash
+# 1. Check environment variables are set
+[ -n "$WORKOS_API_KEY" ] && [ -n "$WORKOS_CLIENT_ID" ] && echo "PASS: Env vars set" || echo "FAIL: Missing env vars"
+
+# 2. Check WorkOS SDK is installed
+npm list @workos-inc/node @workos-inc/authkit-nextjs @workos-inc/react 2>/dev/null | grep -q workos && echo "PASS: SDK installed" || echo "FAIL: SDK missing"
+
+# 3. If using custom domain (Option B), verify DNS
+# dig CNAME <your-verification-record> | grep -q verify.workos.com && echo "PASS: DNS verified" || echo "FAIL: DNS not propagated"
+
+# 4. If using webhooks (Option C), test endpoint reachability
+# curl -X POST https://your-app.com/webhooks/workos -H "Content-Type: application/json" -d '{}' && echo "PASS: Webhook reachable" || echo "FAIL: Webhook unreachable"
+
+# 5. Test email delivery (manual step)
+# Use WorkOS dashboard "Send test email" or trigger real auth flow
+```
+
+**If any check fails,** revisit corresponding step before deploying.
 
 ## Error Recovery
 
-### Email Not Arriving (All Users Affected)
+### Email not delivered (all users affected)
 
-**Root cause:** Domain reputation issue.
-
-**Fixes (in order):**
-
-1. **Check spam folder** - Email may be filtered
-2. **Verify DMARC policy** - Run `dig _dmarc.yourdomain.com TXT +short`
-3. **Check SPF/DKIM records** - All 3 CNAMEs must resolve correctly
-4. **Verify inboxes exist** - Send test email to welcome@ and access@ addresses
-5. **Review team/org names** - Remove spam trigger words
-6. **Use deliverability tools:**
-   ```bash
-   # Test with Google Postmaster Tools
-   # Visit: https://postmaster.google.com/
-   
-   # Test with Microsoft Sender Support  
-   # Visit: https://sendersupport.olc.protection.outlook.com/pm/
-   ```
-
-### Email Not Arriving (Specific Users Only)
-
-**Root cause:** Email provider or organizational settings.
-
-**Likely scenarios:**
-
-- **Gmail users:** Enhanced Pre-delivery Message Scanning enabled
-  - **Fix:** Users must whitelist your domain or wait 15-30 minutes
-  
-- **Corporate email:** IT department spam filters
-  - **Fix:** Request allowlisting from IT admin
-  
-- **Yahoo/Outlook aggressive filtering:**
-  - **Fix:** Register with Microsoft Sender Support / Yahoo Sender Hub
-
-### Email Delayed (>5 Minutes)
-
-**Root cause:** Email provider security scanning.
-
-**Diagnostic:**
-```bash
-# Check if emails are queued
-# Log into WorkOS Dashboard → Email Logs
-# Look for "queued" or "processing" status
-```
+**Root cause:** Domain reputation issue or DNS misconfiguration.
 
 **Fixes:**
-- **Google Workspace:** Enhanced scanning can delay up to 30 minutes (expected)
-- **Microsoft 365:** Advanced Threat Protection may delay 10-15 minutes
-- **If delayed >1 hour:** Contact WorkOS support with email ID from logs
 
-### CNAME Records Not Resolving
+1. Check DNS records are correct and propagated (Step 4B)
+2. Verify DMARC policy is set (Step 4B)
+3. Confirm email addresses (`welcome@`, `access@`) have real inboxes
+4. Review [Google Postmaster Tools](https://www.gmail.com/postmaster/) for domain reputation
+5. Check [Microsoft Sender Support](https://sendersupport.olc.protection.outlook.com/pm/) for delivery issues
 
-**Root cause:** DNS propagation incomplete or incorrect values.
+### Email not delivered (specific users/domains)
 
-**Diagnostic:**
-```bash
-# Check each CNAME individually
-for record in "_workos-verification" "em1234" "s1._domainkey"; do
-  echo "Checking $record.yourdomain.com"
-  dig $record.yourdomain.com CNAME +short
-done
-```
+**Root cause:** Recipient email provider settings or spam filters.
 
 **Fixes:**
-- **Empty result:** DNS not yet propagated (wait 1-4 hours, check with `dig +trace`)
-- **Wrong value:** Correct CNAME target in DNS provider dashboard
-- **@/root domain issues:** Use subdomain instead (e.g., `mail.yourdomain.com`)
 
-### Webhook Events Not Received (Option C)
+1. Ask users to check spam/junk folders
+2. Ask users to whitelist sender domain
+3. For corporate users: IT department may block external domains
+4. Google Workspace users: Check if [Enhanced Pre-delivery Scanning](https://support.google.com/a/answer/7380368) is causing delays
+5. Run spam test: https://www.warmy.io/free-tools/email-deliverability-test/
 
-**Diagnostic:**
-```bash
-# Check webhook endpoint is publicly accessible
-curl -X POST https://yourapp.com/api/workos-webhooks \
-  -H "Content-Type: application/json" \
-  -d '{"test": true}'
-  
-# Should return 200 (even if signature fails)
-```
+### Webhook signature verification fails (Option C)
+
+**Root cause:** Incorrect secret or payload tampering.
 
 **Fixes:**
-- **localhost URL:** Use ngrok or deploy to staging first
-- **403/401 errors:** Verify WORKOS_WEBHOOK_SECRET is set correctly
-- **Signature verification fails:** Ensure using raw request body (not parsed JSON)
-- **No events in dashboard:** Check WorkOS webhook event subscriptions are enabled
 
-### Domain Verification Fails in Dashboard
+1. Verify `WORKOS_WEBHOOK_SECRET` matches dashboard value
+2. Check that you're passing raw request body to `verifyEvent()`, not parsed JSON
+3. Confirm `workos-signature` header is present in logs
+4. Use WorkOS CLI to test with known-good signature
 
-**Root cause:** CNAME records not matching expected values.
+### "Organization name contains spam keywords" warning
 
-**Diagnostic:**
-```bash
-# Get expected vs actual values
-echo "Expected (from dashboard): <copy from WorkOS>"
-echo "Actual:"
-dig _workos-verification.yourdomain.com CNAME +short
-```
+**Root cause:** Organization names in WorkOS dashboard contain spam triggers.
 
 **Fixes:**
-- **Trailing dot issue:** Remove trailing dots from CNAME values
-- **www vs apex:** Ensure using correct subdomain (verify in dashboard)
-- **Proxy/CDN interference:** Bypass CDN for _workos-verification record
-- **Still failing after 48 hours:** Contact WorkOS support with dig output
+
+1. Navigate to: https://dashboard.workos.com/organizations
+2. Edit organization names to remove spam words
+3. Avoid: FREE, URGENT, LIMITED TIME, $$$, CLICK HERE, etc.
+4. Test with [spam keyword checker](https://mailtrap.io/blog/email-spam-words/)
+
+### DMARC policy too strict (emails rejected)
+
+**Root cause:** `p=reject` policy before SPF/DKIM fully configured.
+
+**Temporary fix:**
+
+```
+# Use monitoring mode during setup
+v=DMARC1; p=none; rua=mailto:dmarc@<your-domain>
+```
+
+**Permanent fix after DNS verified:**
+
+```
+# Switch to enforcement mode
+v=DMARC1; p=reject; rua=mailto:dmarc@<your-domain>; pct=100
+```
+
+### Email delayed (30+ minutes)
+
+**Root cause:** Email provider pre-delivery scanning or greylisting.
+
+**Fixes:**
+
+1. No action needed - this is normal security behavior
+2. For consistent delays: Contact WorkOS support with SPF/DKIM records
+3. Check [Litmus deliverability test](https://www.litmus.com/email-testing) for issues
 
 ## Related Skills
 
-- `workos-authkit-nextjs` - For Magic Auth implementation
-- `workos-user-management` - For invitation workflows
-- `workos-organizations` - For organization-scoped emails
+- `workos-authkit-nextjs` - Authentication integration that uses email delivery
+- `workos-user-management` - User invitation flows that trigger emails
