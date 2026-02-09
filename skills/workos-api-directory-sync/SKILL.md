@@ -20,345 +20,314 @@ description: WorkOS Directory Sync API endpoints — directories, users, groups,
 - https://workos.com/docs/reference/directory-sync/directory-user/get
 - https://workos.com/docs/reference/directory-sync/directory-user/list
 
-_Review these docs to understand current endpoint specifications, request/response formats, and authentication requirements._
+## Authentication
 
-## Authentication Setup
-
-Authenticate all API requests using Bearer token authentication:
+All API requests require authentication via bearer token:
 
 ```bash
 Authorization: Bearer sk_your_api_key
 ```
 
-Set the `WORKOS_API_KEY` environment variable with your API key from the WorkOS Dashboard. The key must start with `sk_` prefix.
+Your API key must start with `sk_` and have Directory Sync permissions enabled in the WorkOS Dashboard.
 
 ## Endpoint Catalog
 
 | Method | Endpoint | Purpose |
-|--------|----------|---------|
-| GET | `/directories` | List all directories |
-| GET | `/directories/{directory_id}` | Get a specific directory |
-| DELETE | `/directories/{directory_id}` | Delete a directory |
-| GET | `/directory_users` | List directory users with filtering |
-| GET | `/directory_users/{user_id}` | Get a specific user |
-| GET | `/directory_groups` | List directory groups with filtering |
-| GET | `/directory_groups/{group_id}` | Get a specific group |
+| ------ | -------- | ------- |
+| GET | `/directories` | List all directories for your organization |
+| GET | `/directories/:id` | Get a specific directory by ID |
+| DELETE | `/directories/:id` | Delete a directory |
+| GET | `/directory_users` | List all users across directories |
+| GET | `/directory_users/:id` | Get a specific user by ID |
+| GET | `/directory_groups` | List all groups across directories |
+| GET | `/directory_groups/:id` | Get a specific group by ID |
+
+Base URL: `https://api.workos.com`
 
 ## Operation Decision Tree
 
-**To list all directories in your organization:**
-- Use `GET /directories`
-- No required parameters
-- Returns paginated list of directories
+**To list all synced users from a directory:**
+→ Use `GET /directory_users?directory=directory_123`
 
-**To get details about a specific directory:**
-- Use `GET /directories/{directory_id}`
-- Required: `directory_id` path parameter
+**To get details of a specific user:**
+→ Use `GET /directory_users/:id` with the user ID
 
-**To list users from a directory:**
-- Use `GET /directory_users?directory={directory_id}`
-- Required query parameter: `directory` (directory ID)
-- Optional filters: `group`, `limit`, `before`, `after`
+**To list all groups in a directory:**
+→ Use `GET /directory_groups?directory=directory_123`
 
-**To get a specific user:**
-- Use `GET /directory_users/{user_id}`
-- Required: `user_id` path parameter
+**To get details of a specific group:**
+→ Use `GET /directory_groups/:id` with the group ID
 
-**To list groups from a directory:**
-- Use `GET /directory_groups?directory={directory_id}`
-- Required query parameter: `directory` (directory ID)
-- Optional filters: `user`, `limit`, `before`, `after`
+**To see all configured directories:**
+→ Use `GET /directories`
 
-**To get a specific group:**
-- Use `GET /directory_groups/{group_id}`
-- Required: `group_id` path parameter
+**To check directory connection status:**
+→ Use `GET /directories/:id` and check the `state` field
 
 **To remove a directory:**
-- Use `DELETE /directories/{directory_id}`
-- Required: `directory_id` path parameter
-- Returns 202 Accepted on success
+→ Use `DELETE /directories/:id`
 
 ## Request/Response Patterns
 
 ### List Directory Users
 
-**Request:**
 ```bash
-GET https://api.workos.com/directory_users?directory=directory_01E1X2Y3Z4
+curl https://api.workos.com/directory_users \
+  -H "Authorization: Bearer sk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -G \
+  --data-urlencode "directory=directory_01H8675JXCN8Q2TYZ9XYZ123"
 ```
 
-**Response (200 OK):**
+**Response:**
 ```json
 {
   "data": [
     {
-      "id": "directory_user_01E1X2Y3Z4",
-      "directory_id": "directory_01E1X2Y3Z4",
-      "organization_id": "org_01E1X2Y3Z4",
-      "idp_id": "user@example.com",
+      "id": "directory_user_01H8675JXCN8Q2TYZ9XYZ456",
+      "directory_id": "directory_01H8675JXCN8Q2TYZ9XYZ123",
+      "username": "jsmith",
       "emails": [
         {
           "primary": true,
           "type": "work",
-          "value": "user@example.com"
+          "value": "jsmith@example.com"
         }
       ],
-      "first_name": "Jane",
-      "last_name": "Doe",
-      "username": "jdoe",
+      "first_name": "John",
+      "last_name": "Smith",
       "state": "active",
-      "created_at": "2021-01-01T00:00:00.000Z",
-      "updated_at": "2021-01-01T00:00:00.000Z"
+      "custom_attributes": {},
+      "raw_attributes": {}
     }
   ],
   "list_metadata": {
-    "before": "directory_user_01E1X2Y3Z4",
-    "after": "directory_user_01E1X2Y3Z5"
+    "before": null,
+    "after": "directory_user_01H8675JXCN8Q2TYZ9XYZ456"
   }
 }
 ```
 
-### Get Directory User
+### Get Specific User
 
-**Request:**
 ```bash
-GET https://api.workos.com/directory_users/directory_user_01E1X2Y3Z4
-```
-
-**Response (200 OK):**
-```json
-{
-  "id": "directory_user_01E1X2Y3Z4",
-  "directory_id": "directory_01E1X2Y3Z4",
-  "organization_id": "org_01E1X2Y3Z4",
-  "idp_id": "user@example.com",
-  "emails": [
-    {
-      "primary": true,
-      "type": "work",
-      "value": "user@example.com"
-    }
-  ],
-  "first_name": "Jane",
-  "last_name": "Doe",
-  "username": "jdoe",
-  "state": "active",
-  "created_at": "2021-01-01T00:00:00.000Z",
-  "updated_at": "2021-01-01T00:00:00.000Z"
-}
+curl https://api.workos.com/directory_users/directory_user_01H8675JXCN8Q2TYZ9XYZ456 \
+  -H "Authorization: Bearer sk_your_api_key"
 ```
 
 ### List Directory Groups
 
-**Request:**
 ```bash
-GET https://api.workos.com/directory_groups?directory=directory_01E1X2Y3Z4
+curl https://api.workos.com/directory_groups \
+  -H "Authorization: Bearer sk_your_api_key" \
+  -G \
+  --data-urlencode "directory=directory_01H8675JXCN8Q2TYZ9XYZ123"
 ```
 
-**Response (200 OK):**
+**Response:**
 ```json
 {
   "data": [
     {
-      "id": "directory_group_01E1X2Y3Z4",
-      "directory_id": "directory_01E1X2Y3Z4",
-      "organization_id": "org_01E1X2Y3Z4",
-      "idp_id": "group-id-123",
+      "id": "directory_group_01H8675JXCN8Q2TYZ9XYZ789",
+      "directory_id": "directory_01H8675JXCN8Q2TYZ9XYZ123",
       "name": "Engineering",
-      "created_at": "2021-01-01T00:00:00.000Z",
-      "updated_at": "2021-01-01T00:00:00.000Z"
+      "raw_attributes": {}
     }
   ],
   "list_metadata": {
-    "before": "directory_group_01E1X2Y3Z4",
-    "after": "directory_group_01E1X2Y3Z5"
+    "before": null,
+    "after": "directory_group_01H8675JXCN8Q2TYZ9XYZ789"
   }
 }
 ```
 
-### Delete Directory
+### List Directories
 
-**Request:**
 ```bash
-DELETE https://api.workos.com/directories/directory_01E1X2Y3Z4
+curl https://api.workos.com/directories \
+  -H "Authorization: Bearer sk_your_api_key"
 ```
 
-**Response (202 Accepted):**
+**Response:**
 ```json
 {
-  "message": "Directory deletion initiated"
+  "data": [
+    {
+      "id": "directory_01H8675JXCN8Q2TYZ9XYZ123",
+      "organization_id": "org_01H8675JXCN8Q2TYZ9XYZ000",
+      "name": "Acme Corp",
+      "type": "okta scim v2.0",
+      "state": "linked",
+      "domain": "acme.com"
+    }
+  ],
+  "list_metadata": {
+    "before": null,
+    "after": null
+  }
 }
 ```
 
 ## Pagination Handling
 
-All list endpoints use cursor-based pagination with `before` and `after` parameters:
+All list endpoints support cursor-based pagination:
 
-**First page:**
+**Query parameters:**
+- `limit` — number of results per page (default 10, max 100)
+- `before` — cursor for previous page
+- `after` — cursor for next page
+
+**Example with pagination:**
 ```bash
-GET /directory_users?directory=directory_01E1X2Y3Z4&limit=10
+curl https://api.workos.com/directory_users \
+  -H "Authorization: Bearer sk_your_api_key" \
+  -G \
+  --data-urlencode "directory=directory_01H8675JXCN8Q2TYZ9XYZ123" \
+  --data-urlencode "limit=50" \
+  --data-urlencode "after=directory_user_01H8675JXCN8Q2TYZ9XYZ456"
 ```
 
-**Next page:**
+The `list_metadata` object in responses contains cursors for pagination.
+
+## Filtering
+
+### Filter Users by Directory
+
 ```bash
-GET /directory_users?directory=directory_01E1X2Y3Z4&after=directory_user_01E1X2Y3Z5&limit=10
+curl https://api.workos.com/directory_users?directory=directory_01H8675JXCN8Q2TYZ9XYZ123 \
+  -H "Authorization: Bearer sk_your_api_key"
 ```
 
-**Previous page:**
+### Filter Groups by Directory
+
 ```bash
-GET /directory_users?directory=directory_01E1X2Y3Z4&before=directory_user_01E1X2Y3Z4&limit=10
+curl https://api.workos.com/directory_groups?directory=directory_01H8675JXCN8Q2TYZ9XYZ123 \
+  -H "Authorization: Bearer sk_your_api_key"
 ```
 
-The `list_metadata` object in responses contains the cursor values for navigation. Default limit is 10, maximum is 100.
+### Filter by Organization
 
-## Error Code Mapping
-
-| Status Code | Cause | Fix |
-|------------|-------|-----|
-| 400 Bad Request | Missing required query parameter (e.g., `directory`) | Include required `directory` parameter in query string |
-| 401 Unauthorized | Missing or invalid API key | Set valid `Authorization: Bearer sk_xxx` header |
-| 403 Forbidden | API key lacks permissions | Check API key permissions in WorkOS Dashboard |
-| 404 Not Found | Invalid directory_id, user_id, or group_id | Verify the resource ID exists using list endpoints |
-| 422 Unprocessable Entity | Invalid parameter format (e.g., malformed ID) | Check parameter values match expected format (e.g., `directory_01XXX`) |
-| 429 Too Many Requests | Rate limit exceeded | Implement exponential backoff; check `Retry-After` header |
-| 500 Internal Server Error | WorkOS service issue | Retry with exponential backoff; contact support if persists |
-
-## Rate Limiting
-
-WorkOS enforces rate limits on API requests. When you hit a limit, the API returns:
-
-- Status: `429 Too Many Requests`
-- Header: `Retry-After: {seconds}`
-
-Implement exponential backoff starting at 1 second, doubling on each retry, with a maximum of 5 retries.
-
-## Runnable Verification
-
-### Verify authentication works:
 ```bash
-curl -X GET https://api.workos.com/directories \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+curl https://api.workos.com/directories?organization_id=org_01H8675JXCN8Q2TYZ9XYZ000 \
+  -H "Authorization: Bearer sk_your_api_key"
+```
+
+## Error Codes and Resolution
+
+### 401 Unauthorized
+**Cause:** Invalid or missing API key
+**Fix:** Verify `Authorization: Bearer sk_...` header is present and key is valid
+
+### 404 Not Found
+**Cause:** Resource ID does not exist or belongs to another organization
+**Fix:** Verify the ID is correct and belongs to your organization
+
+### 422 Unprocessable Entity
+**Cause:** Invalid query parameters (e.g., invalid `directory` ID format)
+**Fix:** Check parameter format matches WorkOS ID patterns (`directory_...`, `org_...`)
+
+### 429 Too Many Requests
+**Cause:** Rate limit exceeded
+**Fix:** Implement exponential backoff. Wait time is in `Retry-After` header
+
+### 500 Internal Server Error
+**Cause:** WorkOS service issue
+**Fix:** Retry with exponential backoff. Check https://status.workos.com for incidents
+
+## Rate Limits
+
+WorkOS enforces rate limits on API requests:
+- Default: 1000 requests per minute per API key
+- Retry after receiving 429 using the `Retry-After` header value
+- Implement exponential backoff for failed requests
+
+## Runnable Verification Commands
+
+### Verify API Key
+
+```bash
+curl https://api.workos.com/directories \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
   -H "Content-Type: application/json"
 ```
 
-Expected: `200 OK` with JSON list of directories
+Expected: 200 OK with list of directories or empty array
 
-### List users from a directory:
-```bash
-curl -X GET "https://api.workos.com/directory_users?directory=directory_01E1X2Y3Z4" \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json"
-```
-
-Expected: `200 OK` with paginated user list
-
-### Get a specific user:
-```bash
-curl -X GET https://api.workos.com/directory_users/directory_user_01E1X2Y3Z4 \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json"
-```
-
-Expected: `200 OK` with user object
-
-### List groups from a directory:
-```bash
-curl -X GET "https://api.workos.com/directory_groups?directory=directory_01E1X2Y3Z4" \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json"
-```
-
-Expected: `200 OK` with paginated group list
-
-### Test pagination:
-```bash
-curl -X GET "https://api.workos.com/directory_users?directory=directory_01E1X2Y3Z4&limit=2" \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
-  -H "Content-Type: application/json"
-```
-
-Expected: `200 OK` with 2 users and `list_metadata` containing `after` cursor
-
-## Common Integration Patterns
-
-### Syncing all users from a directory
+### Verify Directory Connection
 
 ```bash
-# 1. Get directory ID from your database or list directories
-DIRECTORY_ID="directory_01E1X2Y3Z4"
-
-# 2. Fetch first page
-RESPONSE=$(curl -s -X GET "https://api.workos.com/directory_users?directory=${DIRECTORY_ID}&limit=100" \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}")
-
-# 3. Extract after cursor and continue pagination
-AFTER=$(echo $RESPONSE | jq -r '.list_metadata.after')
-
-# 4. Fetch next page
-curl -X GET "https://api.workos.com/directory_users?directory=${DIRECTORY_ID}&after=${AFTER}&limit=100" \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+curl https://api.workos.com/directories/directory_01H8675JXCN8Q2TYZ9XYZ123 \
+  -H "Authorization: Bearer $WORKOS_API_KEY"
 ```
 
-### Filtering users by group membership
+Expected: 200 OK with directory object containing `state: "linked"`
+
+### List Users in Directory
 
 ```bash
-# Use the group parameter to get only users in a specific group
-curl -X GET "https://api.workos.com/directory_users?directory=directory_01E1X2Y3Z4&group=directory_group_01E1X2Y3Z4" \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+curl https://api.workos.com/directory_users?directory=directory_01H8675JXCN8Q2TYZ9XYZ123&limit=5 \
+  -H "Authorization: Bearer $WORKOS_API_KEY"
 ```
 
-### Filtering groups by user membership
+Expected: 200 OK with array of user objects
+
+### Test Pagination
 
 ```bash
-# Use the user parameter to get only groups containing a specific user
-curl -X GET "https://api.workos.com/directory_groups?directory=directory_01E1X2Y3Z4&user=directory_user_01E1X2Y3Z4" \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+# First page
+curl https://api.workos.com/directory_users?directory=directory_01H8675JXCN8Q2TYZ9XYZ123&limit=1 \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  | jq -r '.list_metadata.after'
+
+# Use the cursor for next page
+curl "https://api.workos.com/directory_users?directory=directory_01H8675JXCN8Q2TYZ9XYZ123&limit=1&after=<cursor_from_previous>" \
+  -H "Authorization: Bearer $WORKOS_API_KEY"
 ```
 
-## SDK Usage Examples
+## Webhook Integration
 
-If using the WorkOS SDK instead of direct HTTP calls, initialize the client:
+Directory Sync sends webhooks for real-time updates. Events are NOT available via polling — webhook setup is required for:
 
-```javascript
-import { WorkOS } from '@workos-inc/node';
+- `dsync.user.created`
+- `dsync.user.updated`
+- `dsync.user.deleted`
+- `dsync.group.created`
+- `dsync.group.updated`
+- `dsync.group.deleted`
 
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
+Reference: https://workos.com/docs/reference/directory-sync for webhook configuration.
 
-// List users
-const users = await workos.directorySync.listUsers({
-  directory: 'directory_01E1X2Y3Z4',
-  limit: 100
-});
+## Common Patterns
 
-// Get a user
-const user = await workos.directorySync.getUser({
-  userId: 'directory_user_01E1X2Y3Z4'
-});
+### Get All Users for an Organization
 
-// List groups
-const groups = await workos.directorySync.listGroups({
-  directory: 'directory_01E1X2Y3Z4'
-});
+```bash
+# Step 1: List directories for organization
+DIRS=$(curl https://api.workos.com/directories?organization_id=org_123 \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  | jq -r '.data[].id')
+
+# Step 2: Fetch users from each directory
+for DIR in $DIRS; do
+  curl "https://api.workos.com/directory_users?directory=$DIR" \
+    -H "Authorization: Bearer $WORKOS_API_KEY"
+done
 ```
 
-Check the fetched documentation for SDK method signatures and options specific to your language.
+### Check Directory Health
+
+```bash
+curl https://api.workos.com/directories/directory_01H8675JXCN8Q2TYZ9XYZ123 \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  | jq '.state'
+```
+
+Expected states: `linked`, `unlinked`, `invalid_credentials`
 
 ## Related Skills
 
-- **workos-directory-sync** - Feature overview and setup for Directory Sync integration
-- **workos-api-organizations** - Managing organizations that directories belong to
-- **workos-webhooks** - Receiving real-time directory sync events (user/group changes)
-
-## Troubleshooting
-
-### "Missing required parameter: directory"
-You must include the `directory` query parameter when listing users or groups. Get the directory ID from `GET /directories` first.
-
-### "Resource not found" for user/group IDs
-Directory user and group IDs change when directories are re-synced. Always fetch fresh lists rather than caching IDs long-term, or use webhooks to stay updated.
-
-### Empty user/group lists
-Verify the directory has completed initial sync. Check directory state via `GET /directories/{directory_id}`. If state is not `linked`, the directory may still be provisioning.
-
-### Authentication failures
-Ensure your API key starts with `sk_` and is set in the `Authorization: Bearer` header. Test with `GET /directories` to verify credentials work.
+- **workos-directory-sync** — Feature overview and setup guide
+- **workos-api-events** — Webhook event handling
+- **workos-api-organization** — Organization management
+- **workos-admin-portal** — Self-service directory configuration

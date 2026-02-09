@@ -1,6 +1,46 @@
+import { readdirSync } from "fs";
+import { join } from "path";
 import type { GeneratedSkill } from "./types.ts";
 import { parseMarker } from "./hasher.ts";
 import { loadRules, formatRulesForPrompt } from "./rules.ts";
+
+/** Read valid skill names from disk to prevent phantom references */
+function getValidSkillNames(): string[] {
+  try {
+    const skillsDir = join(process.cwd(), "skills");
+    return readdirSync(skillsDir).filter((d) => d.startsWith("workos-"));
+  } catch {
+    return [];
+  }
+}
+
+/** Attribution + anti-hallucination block shared by all refiner prompts */
+function getAttributionBlock(): string {
+  const validSkills = getValidSkillNames();
+  return `
+
+## Source Attribution (CRITICAL)
+
+- ONLY make factual claims that are directly supported by the source documentation provided in the scaffold.
+- Do NOT infer, extrapolate, or assume capabilities not explicitly stated in the docs.
+- When stating that something is "required", "mandatory", "optional", or "not supported", ensure the source docs explicitly say so.
+- For non-obvious claims (e.g., "webhooks are mandatory", "polling is not supported"), include the relevant doc URL as a reference.
+- If the source docs are ambiguous about a capability, say "Check the documentation" and provide the URL — do NOT guess.
+- NEVER introduce SDK method names, API endpoints, or configuration options that are not in the source docs.
+
+## SDK Method Names (CRITICAL)
+
+- NEVER invent or guess SDK method names. If the source docs don't show the exact method signature, write a WebFetch instruction instead: "WebFetch [URL] for current SDK method names."
+- NEVER write "check docs for exact method name" or "exact method name in fetched docs" — this is useless to an agent. Either provide the method or provide a WebFetch URL.
+- Do NOT include code examples with uncertain method names. A wrong method name is worse than no example.
+
+## Related Skills References (CRITICAL)
+
+Only reference these skills in "Related Skills" sections — these are the ONLY valid skill names:
+${validSkills.map((s) => `- ${s}`).join("\n")}
+
+Do NOT invent skill names. If no related skill exists for a topic, omit it.`;
+}
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 const DEFAULT_MODEL = "claude-sonnet-4-5-20250929";
@@ -91,14 +131,7 @@ function buildRouterRefinePrompt(
 7. KEEP the "If No Skill Matches" fallback with llms.txt.
 8. Do NOT add implementation steps, verification commands, or code examples — this is a router, not a tutorial.
 
-## Source Attribution (CRITICAL)
-
-- ONLY make factual claims that are directly supported by the source documentation provided in the scaffold.
-- Do NOT infer, extrapolate, or assume capabilities not explicitly stated in the docs.
-- When stating that something is "required", "mandatory", "optional", or "not supported", ensure the source docs explicitly say so.
-- For non-obvious claims (e.g., "webhooks are mandatory", "polling is not supported"), include the relevant doc URL as a reference.
-- If the source docs are ambiguous about a capability, say "Check the documentation" and provide the URL — do NOT guess.
-- NEVER introduce SDK method names, API endpoints, or configuration options that are not in the source docs.${rulesContext}`;
+${getAttributionBlock()}${rulesContext}`;
 
   const user = `Refine this router skill "${skillName}". Improve its disambiguation, detection priority, and decision flow while preserving the skill lookup table exactly.
 
@@ -149,14 +182,7 @@ function buildApiRefRefinePrompt(
 9. Keep endpoint examples concise — show the pattern, not every possible parameter
 10. Include a "Related Skills" section linking to the corresponding feature skill
 
-## Source Attribution (CRITICAL)
-
-- ONLY make factual claims that are directly supported by the source documentation provided in the scaffold.
-- Do NOT infer, extrapolate, or assume capabilities not explicitly stated in the docs.
-- When stating that something is "required", "mandatory", "optional", or "not supported", ensure the source docs explicitly say so.
-- For non-obvious claims (e.g., "webhooks are mandatory", "polling is not supported"), include the relevant doc URL as a reference.
-- If the source docs are ambiguous about a capability, say "Check the documentation" and provide the URL — do NOT guess.
-- NEVER introduce SDK method names, API endpoints, or configuration options that are not in the source docs.${rulesContext}`;
+${getAttributionBlock()}${rulesContext}`;
 
   const user = `Refine this API reference skill "${skillName}". Transform it into a practical API usage guide with endpoint patterns, error handling, and verification commands.
 
@@ -217,14 +243,7 @@ Key patterns from the gold standard:
 10. Keep the skill focused — aim for 2-5KB of procedural content, not 10KB of docs
 11. Include a "Related Skills" section if relevant cross-references exist
 
-## Source Attribution (CRITICAL)
-
-- ONLY make factual claims that are directly supported by the source documentation provided in the scaffold.
-- Do NOT infer, extrapolate, or assume capabilities not explicitly stated in the docs.
-- When stating that something is "required", "mandatory", "optional", or "not supported", ensure the source docs explicitly say so.
-- For non-obvious claims (e.g., "webhooks are mandatory", "polling is not supported"), include the relevant doc URL as a reference.
-- If the source docs are ambiguous about a capability, say "Check the documentation" and provide the URL — do NOT guess.
-- NEVER introduce SDK method names, API endpoints, or configuration options that are not in the source docs.${rulesContext}`;
+${getAttributionBlock()}${rulesContext}`;
 
   const user = `Refine this skill scaffold for "${skillName}". Transform the doc prose into procedural agent instructions matching the gold standard quality.
 

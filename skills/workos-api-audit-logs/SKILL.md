@@ -20,69 +20,52 @@ description: WorkOS Audit Logs API endpoints — create events, manage schemas, 
 - https://workos.com/docs/reference/audit-logs/export/get
 - https://workos.com/docs/reference/audit-logs/retention
 
-## Authentication
+## Authentication Setup
 
-All API requests require authentication via API key in the Authorization header:
+Set your WorkOS API key in request headers:
 
-```bash
-Authorization: Bearer sk_your_api_key_here
+```
+Authorization: Bearer sk_live_...
 ```
 
-Obtain your API key from the WorkOS Dashboard. The key must start with `sk_` prefix.
-
-## Endpoint Catalog
-
-| Operation | Method | Endpoint | Purpose |
-|-----------|--------|----------|---------|
-| Create Event | POST | `/events` | Log a single audit event |
-| Create Export | POST | `/audit_logs/exports` | Generate CSV export of events |
-| Get Export | GET | `/audit_logs/exports/{export_id}` | Check export status and download URL |
-| Get Retention | GET | `/organizations/{org_id}/audit_logs/retention` | Retrieve retention period |
-| Set Retention | PUT | `/organizations/{org_id}/audit_logs/retention` | Update retention period |
-| Create Schema | POST | `/audit_logs/schemas` | Define custom event schema |
-| List Schemas | GET | `/audit_logs/schemas` | Retrieve all schemas |
-| List Actions | GET | `/audit_logs/schemas/actions` | Get available action types |
+Your API key is available in the WorkOS Dashboard. All requests require authentication via bearer token.
 
 ## Operation Decision Tree
 
-**To log an audit event:**
-- Use `POST /events` — creates a single event immediately
+| Task | Endpoint | Method |
+| ---- | -------- | ------ |
+| Record a single audit log event | `/events` | POST |
+| Create bulk export of events | `/exports` | POST |
+| Check export status | `/exports/:id` | GET |
+| Get current retention period | `/retention` | GET |
+| Set retention period | `/retention` | PUT |
+| Create audit log schema | `/schemas` | POST |
+| List all schemas | `/schemas` | GET |
+| List actions for a schema | `/schemas/:id/actions` | GET |
 
-**To retrieve historical events:**
-- Use `POST /audit_logs/exports` to request export
-- Poll `GET /audit_logs/exports/{export_id}` until status is `ready`
-- Download from the `url` field in response
+## Core Endpoint Patterns
 
-**To manage data retention:**
-- Use `GET /organizations/{org_id}/audit_logs/retention` to check current setting
-- Use `PUT /organizations/{org_id}/audit_logs/retention` to update (default: 90 days)
+### Create Audit Log Event
 
-**To define custom event types:**
-- Use `POST /audit_logs/schemas` to create schema
-- Use `GET /audit_logs/schemas` to list existing schemas
-- Use `GET /audit_logs/schemas/actions` to see available action types
-
-## Request/Response Patterns
-
-### Create Audit Event
+**POST** `/events`
 
 ```bash
-curl https://api.workos.com/events \
-  -X POST \
-  -H "Authorization: Bearer sk_your_api_key" \
+curl -X POST https://api.workos.com/events \
+  -H "Authorization: Bearer sk_live_..." \
   -H "Content-Type: application/json" \
   -d '{
-    "organization_id": "org_01EHQMYV6MBK39QC5PZXHY59C3",
+    "organization_id": "org_01H1QNWFZJ6G8Z5VQXB9K3YXYZ",
     "event": {
-      "action": "user.login",
-      "occurred_at": "2024-01-15T09:30:00Z",
+      "action": "user.created",
+      "occurred_at": "2024-01-15T10:30:00Z",
       "actor": {
+        "id": "user_123",
         "type": "user",
-        "id": "user_01EHQMVDZ6QHGF8W9J5XTHQJKD"
+        "name": "Alice Smith"
       },
       "targets": [{
-        "type": "team",
-        "id": "team_01EHQMVDZ6QHGF8W9J5XTHQJKE"
+        "id": "user_456",
+        "type": "user"
       }],
       "context": {
         "location": "192.0.2.1",
@@ -92,7 +75,13 @@ curl https://api.workos.com/events \
   }'
 ```
 
-**Response (201 Created):**
+**Required fields:**
+- `organization_id`: Organization receiving the event
+- `event.action`: Action identifier (must match schema if defined)
+- `event.occurred_at`: ISO 8601 timestamp
+- `event.actor`: Entity performing the action
+
+**Response (202 Accepted):**
 ```json
 {
   "success": true
@@ -101,261 +90,251 @@ curl https://api.workos.com/events \
 
 ### Create Export
 
+**POST** `/exports`
+
 ```bash
-curl https://api.workos.com/audit_logs/exports \
-  -X POST \
-  -H "Authorization: Bearer sk_your_api_key" \
+curl -X POST https://api.workos.com/exports \
+  -H "Authorization: Bearer sk_live_..." \
   -H "Content-Type: application/json" \
   -d '{
-    "organization_id": "org_01EHQMYV6MBK39QC5PZXHY59C3",
+    "organization_id": "org_01H1QNWFZJ6G8Z5VQXB9K3YXYZ",
     "range_start": "2024-01-01T00:00:00Z",
     "range_end": "2024-01-31T23:59:59Z",
-    "actions": ["user.login", "user.logout"]
+    "actions": ["user.created", "user.deleted"]
   }'
 ```
+
+**Required fields:**
+- `organization_id`: Organization to export events from
+- `range_start`: Start of time range (ISO 8601)
+- `range_end`: End of time range (ISO 8601)
 
 **Response (201 Created):**
 ```json
 {
-  "object": "audit_log_export",
-  "id": "audit_log_export_01EHQN0Z6E5VNQJG8F4D3YZVHJ",
+  "id": "export_01H1QNWFZJ6G8Z5VQXB9K3YXYZ",
   "state": "pending",
   "url": null,
-  "created_at": "2024-01-15T09:30:00.000Z",
-  "updated_at": "2024-01-15T09:30:00.000Z"
+  "created_at": "2024-01-15T10:30:00Z"
 }
 ```
 
 ### Get Export Status
 
-```bash
-curl https://api.workos.com/audit_logs/exports/audit_log_export_01EHQN0Z6E5VNQJG8F4D3YZVHJ \
-  -H "Authorization: Bearer sk_your_api_key"
-```
-
-**Response (200 OK) - Ready:**
-```json
-{
-  "object": "audit_log_export",
-  "id": "audit_log_export_01EHQN0Z6E5VNQJG8F4D3YZVHJ",
-  "state": "ready",
-  "url": "https://workos-audit-logs.s3.amazonaws.com/...",
-  "created_at": "2024-01-15T09:30:00.000Z",
-  "updated_at": "2024-01-15T09:32:00.000Z"
-}
-```
-
-### Set Retention Period
+**GET** `/exports/:id`
 
 ```bash
-curl https://api.workos.com/organizations/org_01EHQMYV6MBK39QC5PZXHY59C3/audit_logs/retention \
-  -X PUT \
-  -H "Authorization: Bearer sk_your_api_key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "retention_period": 180
-  }'
+curl https://api.workos.com/exports/export_01H1QNWFZJ6G8Z5VQXB9K3YXYZ \
+  -H "Authorization: Bearer sk_live_..."
 ```
 
 **Response (200 OK):**
 ```json
 {
-  "retention_period": 180
+  "id": "export_01H1QNWFZJ6G8Z5VQXB9K3YXYZ",
+  "state": "ready",
+  "url": "https://workos-exports.s3.amazonaws.com/...",
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-15T10:32:00Z"
 }
 ```
 
-## Error Code Mapping
+**Export states:**
+- `pending`: Export is being prepared
+- `ready`: Export is complete, `url` contains download link
+- `error`: Export failed
 
-| Status Code | Cause | Fix |
-|-------------|-------|-----|
-| 401 Unauthorized | Missing or invalid API key | Verify `Authorization: Bearer sk_...` header is present and key is valid |
-| 403 Forbidden | API key lacks required permissions | Check key permissions in WorkOS Dashboard |
-| 404 Not Found | Export ID does not exist | Verify export ID from create response; may have expired |
-| 422 Unprocessable Entity | Invalid event schema | Check `organization_id` is valid; ensure `action` matches defined schema; verify `occurred_at` is ISO 8601 format |
-| 429 Too Many Requests | Rate limit exceeded | Implement exponential backoff; default limit is 100 req/min per organization |
-| 500 Internal Server Error | WorkOS service issue | Retry with exponential backoff; check https://status.workos.com |
+### Get Retention Period
 
-### Common 422 Error Causes
-
-**"organization_id is required"** — Missing `organization_id` field in request body
-
-**"Invalid occurred_at format"** — Use ISO 8601 timestamp: `2024-01-15T09:30:00Z`
-
-**"Unknown action type"** — Action must be defined in schema; call `POST /audit_logs/schemas` first
-
-**"actor.id is required"** — Event must include actor with `type` and `id`
-
-## Export Polling Pattern
-
-Exports are asynchronous. Poll until `state` changes from `pending` to `ready`:
+**GET** `/retention?organization_id=org_123`
 
 ```bash
-# 1. Create export
-export_id=$(curl -X POST https://api.workos.com/audit_logs/exports \
-  -H "Authorization: Bearer sk_your_api_key" \
-  -H "Content-Type: application/json" \
-  -d '{"organization_id":"org_01EHQMYV6MBK39QC5PZXHY59C3","range_start":"2024-01-01T00:00:00Z","range_end":"2024-01-31T23:59:59Z"}' \
-  | jq -r '.id')
-
-# 2. Poll every 5 seconds
-while true; do
-  state=$(curl https://api.workos.com/audit_logs/exports/$export_id \
-    -H "Authorization: Bearer sk_your_api_key" \
-    | jq -r '.state')
-  
-  if [ "$state" = "ready" ]; then
-    url=$(curl https://api.workos.com/audit_logs/exports/$export_id \
-      -H "Authorization: Bearer sk_your_api_key" \
-      | jq -r '.url')
-    echo "Download: $url"
-    break
-  fi
-  
-  sleep 5
-done
+curl "https://api.workos.com/retention?organization_id=org_01H1QNWFZJ6G8Z5VQXB9K3YXYZ" \
+  -H "Authorization: Bearer sk_live_..."
 ```
 
-Exports typically complete in 10-60 seconds depending on event volume. URLs expire after 1 hour.
+**Response (200 OK):**
+```json
+{
+  "days": 30
+}
+```
+
+### Set Retention Period
+
+**PUT** `/retention`
+
+```bash
+curl -X PUT https://api.workos.com/retention \
+  -H "Authorization: Bearer sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "organization_id": "org_01H1QNWFZJ6G8Z5VQXB9K3YXYZ",
+    "days": 90
+  }'
+```
+
+**Required fields:**
+- `organization_id`: Organization to configure
+- `days`: Retention period (1-365)
+
+**Response (200 OK):**
+```json
+{
+  "days": 90
+}
+```
+
+### Create Schema
+
+**POST** `/schemas`
+
+```bash
+curl -X POST https://api.workos.com/schemas \
+  -H "Authorization: Bearer sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "user_events",
+    "actions": [
+      {
+        "name": "user.created",
+        "description": "A new user account was created"
+      },
+      {
+        "name": "user.deleted",
+        "description": "A user account was deleted"
+      }
+    ]
+  }'
+```
+
+**Required fields:**
+- `name`: Schema identifier
+- `actions`: Array of action definitions with `name` and optional `description`
+
+**Response (201 Created):**
+```json
+{
+  "id": "schema_01H1QNWFZJ6G8Z5VQXB9K3YXYZ",
+  "name": "user_events",
+  "actions": [...]
+}
+```
+
+## Error Codes and Resolution
+
+| Status | Error | Cause | Fix |
+| ------ | ----- | ----- | --- |
+| 400 | `invalid_request` | Missing required field | Check request body against endpoint schema |
+| 400 | `invalid_action` | Action not in schema | Use action from schema or create schema first |
+| 401 | `unauthorized` | Missing or invalid API key | Verify `Authorization: Bearer sk_live_...` header |
+| 404 | `export_not_found` | Invalid export ID | Check export ID from creation response |
+| 422 | `invalid_date_range` | `range_end` before `range_start` | Ensure `range_start` < `range_end` |
+| 422 | `invalid_retention_days` | Days outside 1-365 range | Set retention between 1 and 365 days |
+| 429 | `rate_limit_exceeded` | Too many requests | Implement exponential backoff (start with 1s delay) |
+
+## Pagination
+
+The List Schemas endpoint supports pagination via cursor-based tokens:
+
+**Request:**
+```bash
+curl "https://api.workos.com/schemas?limit=10&after=schema_cursor_xyz" \
+  -H "Authorization: Bearer sk_live_..."
+```
+
+**Response:**
+```json
+{
+  "data": [...],
+  "list_metadata": {
+    "after": "schema_cursor_abc"
+  }
+}
+```
+
+Use the `after` value from `list_metadata` for the next page. When `list_metadata.after` is null, you've reached the end.
 
 ## Rate Limits
 
-- **Default limit:** 100 requests per minute per organization
-- **Event creation:** Burst up to 1000 events/second supported
-- **Export creation:** Max 10 concurrent exports per organization
+The Audit Logs API enforces these limits:
 
-**Retry strategy on 429:**
-```
-Wait = min(60, 2^attempt) seconds
-Max attempts = 5
-```
+- **Event creation**: 100 requests per second per organization
+- **Exports**: 10 concurrent exports per organization
+- **Other endpoints**: 60 requests per minute per API key
+
+When rate limited (429 response), retry with exponential backoff starting at 1 second.
 
 ## Verification Commands
 
-### Test Event Creation
+Test your integration with these curl commands:
 
 ```bash
-curl https://api.workos.com/events \
-  -X POST \
-  -H "Authorization: Bearer $WORKOS_API_KEY" \
+# 1. Create a test event
+curl -X POST https://api.workos.com/events \
+  -H "Authorization: Bearer sk_test_..." \
   -H "Content-Type: application/json" \
   -d '{
-    "organization_id": "'"$WORKOS_ORG_ID"'",
+    "organization_id": "org_test_123",
     "event": {
-      "action": "user.test",
-      "occurred_at": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'",
+      "action": "test.event",
+      "occurred_at": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
       "actor": {
+        "id": "test_user",
         "type": "user",
-        "id": "test_user"
+        "name": "Test User"
       },
-      "targets": [{
-        "type": "system",
-        "id": "verification"
-      }]
+      "targets": [{"id": "test_target", "type": "resource"}]
     }
-  }' | jq
-```
+  }'
+# Expected: 202 Accepted with {"success": true}
 
-**Expected:** `{"success": true}` with 201 status
+# 2. Check retention settings
+curl "https://api.workos.com/retention?organization_id=org_test_123" \
+  -H "Authorization: Bearer sk_test_..."
+# Expected: 200 OK with {"days": <number>}
 
-### Test Export Creation
-
-```bash
-curl https://api.workos.com/audit_logs/exports \
-  -X POST \
-  -H "Authorization: Bearer $WORKOS_API_KEY" \
+# 3. Create test export
+curl -X POST https://api.workos.com/exports \
+  -H "Authorization: Bearer sk_test_..." \
   -H "Content-Type: application/json" \
   -d '{
-    "organization_id": "'"$WORKOS_ORG_ID"'",
+    "organization_id": "org_test_123",
     "range_start": "2024-01-01T00:00:00Z",
-    "range_end": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"
-  }' | jq
+    "range_end": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"
+  }'
+# Expected: 201 Created with export ID
 ```
 
-**Expected:** Response with `"state": "pending"` and export ID
+## SDK Usage Pattern
 
-### Test Authentication
+WebFetch https://workos.com/docs/reference/audit-logs for current SDK method names and examples.
 
-```bash
-curl https://api.workos.com/audit_logs/schemas \
-  -H "Authorization: Bearer $WORKOS_API_KEY" | jq
-```
-
-**Expected:** 200 status with schemas array (may be empty)
-
-## SDK Usage Patterns
-
-### Node.js
+The general SDK pattern follows this structure:
 
 ```javascript
-import { WorkOS } from '@workos-inc/node';
+// Initialize client
+const workos = new WorkOS('sk_live_...');
 
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
-
-// Create event
-await workos.auditLogs.createEvent({
-  organizationId: 'org_01EHQMYV6MBK39QC5PZXHY59C3',
-  event: {
-    action: 'user.login',
-    occurredAt: new Date().toISOString(),
-    actor: { type: 'user', id: 'user_123' },
-    targets: [{ type: 'team', id: 'team_456' }],
-    context: { location: req.ip }
-  }
+// Create event (WebFetch for exact method signature)
+const result = await workos.auditLogs.createEvent({
+  organizationId: 'org_123',
+  event: { /* event data */ }
 });
 
-// Create and poll export
+// Create export (WebFetch for exact method signature)
 const exportObj = await workos.auditLogs.createExport({
-  organizationId: 'org_01EHQMYV6MBK39QC5PZXHY59C3',
+  organizationId: 'org_123',
   rangeStart: '2024-01-01T00:00:00Z',
   rangeEnd: '2024-01-31T23:59:59Z'
 });
 
-// Poll until ready
-let status = await workos.auditLogs.getExport(exportObj.id);
-while (status.state === 'pending') {
-  await new Promise(resolve => setTimeout(resolve, 5000));
-  status = await workos.auditLogs.getExport(exportObj.id);
-}
-console.log('Download URL:', status.url);
-```
-
-### Python
-
-```python
-from workos import WorkOSClient
-import os
-import time
-
-client = WorkOSClient(api_key=os.getenv('WORKOS_API_KEY'))
-
-# Create event
-client.audit_logs.create_event(
-    organization_id='org_01EHQMYV6MBK39QC5PZXHY59C3',
-    event={
-        'action': 'user.login',
-        'occurred_at': '2024-01-15T09:30:00Z',
-        'actor': {'type': 'user', 'id': 'user_123'},
-        'targets': [{'type': 'team', 'id': 'team_456'}]
-    }
-)
-
-# Create and poll export
-export_obj = client.audit_logs.create_export(
-    organization_id='org_01EHQMYV6MBK39QC5PZXHY59C3',
-    range_start='2024-01-01T00:00:00Z',
-    range_end='2024-01-31T23:59:59Z'
-)
-
-while True:
-    status = client.audit_logs.get_export(export_obj.id)
-    if status.state == 'ready':
-        print(f'Download URL: {status.url}')
-        break
-    time.sleep(5)
+// Poll export status
+const status = await workos.auditLogs.getExport(exportObj.id);
 ```
 
 ## Related Skills
 
-- **workos-audit-logs** — Feature overview and integration guide for Audit Logs
-- **workos-api-organizations** — Managing organizations that own audit events
-- **workos-api-events** — Webhook events for audit log changes (if applicable)
+- **workos-audit-logs** — Feature overview and implementation guide
+- **workos-api-events** — Events API for webhook-based audit log delivery
+- **workos-api-organization** — Organization management for audit log scoping

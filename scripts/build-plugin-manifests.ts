@@ -4,7 +4,13 @@ import { join } from "path";
 const skillsDir = "skills";
 
 /** Skills excluded from manifests (kept on disk but not shipped) */
-const EXCLUDE_FROM_MANIFEST = new Set(["workos-fga"]);
+const EXCLUDE_FROM_MANIFEST = new Set([
+  "workos-fga",
+  "workos-magic-link",
+  "workos-pipes",
+  "workos-domain-verification",
+  "workos-feature-flags",
+]);
 
 const dirs = readdirSync(skillsDir).sort();
 

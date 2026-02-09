@@ -11,132 +11,170 @@ description: Implement audit logging for compliance and security.
 
 **STOP. Do not proceed until complete.**
 
-WebFetch these URLs — they are the source of truth for implementation:
+WebFetch these URLs in order — they are the source of truth:
 
+- https://workos.com/docs/audit-logs/index
 - https://workos.com/docs/audit-logs/metadata-schema
 - https://workos.com/docs/audit-logs/log-streams
-- https://workos.com/docs/audit-logs/index
 - https://workos.com/docs/audit-logs/exporting-events
 - https://workos.com/docs/audit-logs/editing-events
 - https://workos.com/docs/audit-logs/admin-portal
 
-If this skill conflicts with the documentation, follow the documentation.
+If this skill conflicts with the fetched docs, follow the docs.
 
 ## Step 2: Pre-Flight Validation
 
-### WorkOS Account Setup
-
-- Confirm WorkOS Dashboard access at `https://dashboard.workos.com/`
-- Confirm Organization is created in Dashboard
-
 ### Environment Variables
 
-Check for required variables:
+Check for required credentials:
 
-- `WORKOS_API_KEY` - starts with `sk_`
-- `WORKOS_CLIENT_ID` - starts with `client_`
+```bash
+# Both must be set and non-empty
+env | grep WORKOS_API_KEY
+env | grep WORKOS_CLIENT_ID
+```
+
+**Verify:**
+- `WORKOS_API_KEY` starts with `sk_`
+- `WORKOS_CLIENT_ID` starts with `client_`
 
 ### SDK Installation
 
-Detect package manager and verify WorkOS SDK is installed:
+Check SDK is installed:
 
 ```bash
-# Check if SDK exists
-ls node_modules/@workos-inc/node 2>/dev/null || \
-ls node_modules/workos 2>/dev/null
+# Node.js/TypeScript
+ls node_modules/@workos-inc/node 2>/dev/null || echo "FAIL: SDK not installed"
+
+# Python
+python -c "import workos" 2>/dev/null || echo "FAIL: SDK not installed"
+
+# Ruby
+bundle show workos 2>/dev/null || echo "FAIL: SDK not installed"
 ```
 
-If missing, install SDK per detected package manager.
+If SDK missing, install before proceeding:
 
-## Step 3: Configuration Decision Tree
+```bash
+# Node.js
+npm install @workos-inc/node
 
-```
-What are you configuring?
-  |
-  +-- Event Schema with Metadata Validation
-  |     |
-  |     +-- Go to Step 4
-  |
-  +-- Log Stream to SIEM/Storage
-  |     |
-  |     +-- Go to Step 5
-  |
-  +-- Programmatic Event Creation/Export
-        |
-        +-- Go to Step 6
+# Python
+pip install workos
+
+# Ruby
+bundle add workos
 ```
 
-## Step 4: Configure Event Schema with Metadata (Dashboard)
+## Step 3: Dashboard Configuration
 
-**Location:** WorkOS Dashboard → Audit Logs → Events
+**CRITICAL:** Audit Logs require setup in WorkOS Dashboard before emitting events.
 
-### Create New Event
+Navigate to: https://dashboard.workos.com/audit-logs
 
-1. Navigate to Events configuration
-2. Click "Add Event" or edit existing event
-3. Check "Require metadata schema validation" checkbox
-4. Define JSON Schema for metadata objects
+### Define Event Schemas
 
-### Metadata Schema Rules (ENFORCED)
+For each event type your app will emit:
 
-- **Limit:** 50 keys maximum per metadata object
-- **Key names:** 40 characters maximum
-- **Values:** 500 characters maximum
+1. Click "Create Event" or navigate to existing event
+2. Set event action name (e.g., `user.signed_in`, `document.deleted`)
+3. Choose schema validation requirement:
 
-### Schema Locations
+```
+Require metadata schema?
+  |
+  +-- YES --> Define JSON Schema for metadata objects
+  |           (root metadata, actor metadata, target metadata)
+  |
+  +-- NO  --> Skip to Step 4
+```
 
-Define schemas for three metadata locations:
+**Metadata constraints (enforced by API):**
+- Maximum 50 keys per metadata object
+- Key names: max 40 characters
+- Values: max 500 characters
 
-1. **Root event metadata** - `event.metadata`
-2. **Actor metadata** - `event.actor.metadata`
-3. **Target metadata** - `event.targets[].metadata`
+**Example schema definition:**
 
-**Example schema structure:**
+If "Require metadata schema validation" is checked, you'll edit JSON Schema for:
+- Root event `metadata`
+- Actor `metadata`
+- Target `metadata`
 
-```json
+Click "+" to add properties. The schema editor enforces JSON Schema syntax.
+
+**Test:** After saving, emit a test event via SDK — if metadata doesn't match schema, API returns validation error.
+
+## Step 4: Emit Audit Log Events
+
+WebFetch the index documentation for current SDK method signatures. Do NOT assume method names.
+
+**General pattern (verify exact syntax in fetched docs):**
+
+```
+Event structure:
 {
-  "type": "object",
-  "properties": {
-    "ip_address": { "type": "string" },
-    "user_agent": { "type": "string" }
+  "organization_id": "org_123",
+  "action": "user.signed_in",
+  "actor": {
+    "type": "user",
+    "id": "user_123",
+    "metadata": {}  // optional, must match schema if required
   },
-  "required": ["ip_address"]
+  "targets": [
+    {
+      "type": "session",
+      "id": "session_456",
+      "metadata": {}  // optional, must match schema if required
+    }
+  ],
+  "metadata": {},  // optional, must match schema if required
+  "occurred_at": "2024-01-15T10:30:00Z"
 }
 ```
 
-Reference: https://json-schema.org/ for schema syntax.
-
-**Verification:** Emit a test event with invalid metadata. Should return validation error.
-
-## Step 5: Configure Log Streams (Decision Tree)
+**Decision tree for occurred_at:**
 
 ```
-Log Stream destination?
+Event timestamp?
   |
-  +-- Datadog          --> Step 5.1
+  +-- Real-time event --> Omit occurred_at (defaults to now)
   |
-  +-- Splunk           --> Step 5.2
-  |
-  +-- AWS S3           --> Step 5.3
-  |
-  +-- Google Cloud     --> Step 5.4
-  |
-  +-- Generic HTTP     --> Step 5.5
+  +-- Historical event --> Include occurred_at as ISO 8601 string
 ```
 
-**Configuration method:**
+Check fetched docs for:
+- Exact SDK method name for creating events
+- Required vs optional fields
+- Supported actor/target types
+
+## Step 5: Configure Log Streams (Optional)
+
+**Context:** Log Streams send events to customer SIEM providers. This is optional — events are still stored in WorkOS regardless.
+
+Two configuration paths:
 
 ```
-Who configures?
+Who configures stream?
   |
-  +-- You (developer)         --> Use WorkOS Dashboard
+  +-- You (developer) --> WorkOS Dashboard > Log Streams
   |
-  +-- Customer IT admin       --> Enable Admin Portal access
+  +-- Customer IT admin --> Enable Admin Portal (see workos-admin-portal skill)
 ```
 
-### IP Allowlist (CRITICAL for restricted hosts)
+### Supported Providers (as of last doc update)
 
-If streaming to a host with IP restrictions, allowlist these WorkOS IPs:
+Check fetched docs for current list. Known providers:
+
+- **Datadog** — HTTP Log Intake API (regional endpoints)
+- **Splunk** — HTTP Event Collector (HEC)
+- **AWS S3** — Individual JSON files per event
+- **Google Cloud Storage** — Similar to S3
+- **HTTP POST** — Generic webhook to any endpoint
+
+### IP Allowlist (IMPORTANT)
+
+If streaming to IP-restricted hosts, allowlist these WorkOS IPs:
 
 ```
 3.217.146.166
@@ -147,280 +185,175 @@ If streaming to a host with IP restrictions, allowlist these WorkOS IPs:
 50.16.203.9
 ```
 
-Reference: https://workos.com/docs/audit-logs/log-streams
+**Verify:** Test event reaches destination. WorkOS Dashboard shows delivery status.
 
-### Step 5.1: Datadog Configuration
+### Provider-Specific Notes
 
-**Endpoint:** Datadog HTTP Log Intake API (regional)
+**Datadog:**
+- Events sent to `http-intake.logs.datadoghq.com` (or regional variant)
+- Payload wrapped in `message` field
+- Check fetched docs for exact payload structure
 
-Navigate to Dashboard → Audit Logs → Log Streams → Add Stream → Datadog
+**Splunk:**
+- Events sent to HEC endpoint
+- Payload wrapped in `event` field
+- Requires HEC token configuration
 
-Required fields:
+**AWS S3:**
+- Uses cross-account IAM role with external ID
+- One JSON file per event (not batched)
+- Includes `ContentMD5` header for Object Lock compatibility
+- Check fetched docs for IAM policy requirements
 
-- **API Key:** Datadog API key
-- **Region:** US1, US3, US5, EU, etc.
-- **Service:** (optional) Service name tag
-- **Source:** (optional) Source name tag
+## Step 6: Query and Export Events
 
-**Payload format:** Events sent as JSON array with `message` wrapper. See WebFetch docs for exact schema.
+WebFetch the exporting-events documentation for current API endpoints and parameters.
 
-**Verification:**
+**Typical use cases:**
 
-```bash
-# Check Datadog Logs Explorer for events with source:workos
-# Events should appear within 60 seconds
-```
+1. **Display events in your UI** — Fetch events for organization, paginate results
+2. **Compliance exports** — Download events as CSV
+3. **Custom analytics** — Query events by date range, action type, actor
 
-### Step 5.2: Splunk Configuration
+Check fetched docs for:
+- API endpoint for listing events
+- Query parameters (organization_id, action, date ranges)
+- Pagination cursors
+- Export formats (JSON, CSV)
 
-**Endpoint:** Splunk HTTP Event Collector (HEC)
+## Step 7: Edit/Delete Events (RARE)
 
-Navigate to Dashboard → Audit Logs → Log Streams → Add Stream → Splunk
+**WARNING:** Editing audit logs contradicts their immutability purpose. Only use for correcting errors.
 
-Required fields:
-
-- **HEC Token:** Splunk HTTP Event Collector token
-- **HEC Endpoint:** Full URL to HEC endpoint
-- **Index:** (optional) Splunk index name
-- **Source Type:** (optional) Source type tag
-
-**Payload format:** Events sent as JSON array with `event` wrapper. See WebFetch docs for exact schema.
-
-**Verification:**
-
-```bash
-# Check Splunk search: source="workos" OR sourcetype="workos"
-# Events should appear within 60 seconds
-```
-
-### Step 5.3: AWS S3 Configuration
-
-**Authentication:** Cross-account IAM role with external ID
-
-Navigate to Dashboard → Audit Logs → Log Streams → Add Stream → AWS S3
-
-#### Step 5.3a: Create IAM Role in AWS
-
-1. AWS Console → IAM → Roles → Create Role
-2. Select "Another AWS Account"
-3. Enter WorkOS Account ID (from Dashboard instructions)
-4. Check "Require external ID"
-5. Enter External ID (from Dashboard instructions)
-6. Attach policy with S3 permissions:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": ["s3:PutObject", "s3:PutObjectAcl"],
-      "Resource": "arn:aws:s3:::YOUR-BUCKET-NAME/*"
-    }
-  ]
-}
-```
-
-7. Copy Role ARN
-
-#### Step 5.3b: Configure Stream in Dashboard
-
-Required fields:
-
-- **Bucket Name:** S3 bucket name
-- **Region:** AWS region (e.g., us-east-1)
-- **Role ARN:** From Step 5.3a
-- **Path Prefix:** (optional) Prefix for object keys
-
-**File format:** Individual JSON files per event, uploaded with `ContentMD5` header (required for Object Lock enabled buckets).
-
-**Verification:**
-
-```bash
-# List recent objects in bucket
-aws s3 ls s3://YOUR-BUCKET-NAME/PREFIX/ --recursive | tail -20
-
-# Download and inspect an event file
-aws s3 cp s3://YOUR-BUCKET-NAME/PREFIX/event_01HY123456.json - | jq .
-```
-
-Reference: https://docs.aws.amazon.com/IAM/latest/UserGuide/tutorial_cross-account-with-roles.html
-
-### Step 5.4: Google Cloud Storage Configuration
-
-Navigate to Dashboard → Audit Logs → Log Streams → Add Stream → Google Cloud Storage
-
-Refer to WebFetch docs for exact setup steps — authentication uses service account with bucket permissions.
-
-### Step 5.5: Generic HTTP POST Configuration
-
-Navigate to Dashboard → Audit Logs → Log Streams → Add Stream → HTTP POST
-
-Required fields:
-
-- **Endpoint URL:** Full HTTPS URL
-- **Headers:** (optional) Custom headers for authentication
-
-**Payload format:** Events sent as JSON array. See WebFetch docs for exact schema.
-
-**Verification:**
-
-```bash
-# Check your endpoint logs for POST requests from WorkOS IPs
-# Verify payload structure matches expected format
-```
-
-## Step 6: Programmatic Event Management
-
-### Step 6.1: Emit Events via SDK
-
-**CRITICAL:** Check WebFetch docs for SDK method names — they vary by language.
-
-Typical pattern (check docs for exact syntax):
-
-```
-SDK_CLIENT.auditLogs.createEvent({
-  organization_id: "org_123",
-  event: {
-    action: "user.signed_in",
-    occurred_at: "2024-01-15T12:00:00Z",
-    actor: {
-      id: "user_123",
-      type: "user",
-      name: "Alice Smith"
-    },
-    targets: [{
-      id: "resource_456",
-      type: "document"
-    }],
-    context: {
-      location: "192.0.2.1"
-    }
-  }
-})
-```
-
-**Validation:** If metadata schema is enabled (Step 4), events must match schema or will return error.
-
-### Step 6.2: Export Events via API
-
-Reference: https://workos.com/docs/audit-logs/exporting-events
-
-**CRITICAL:** Export methods, pagination, and filtering vary by SDK. Check WebFetch docs before implementing.
-
-Typical pattern:
-
-1. List events with filters (date range, action, actor)
-2. Handle pagination if result set is large
-3. Parse event objects per schema from docs
-
-### Step 6.3: Admin Portal (Customer Self-Service)
-
-**Use case:** Allow customer IT admins to configure Log Streams themselves.
-
-Enable Admin Portal access per WebFetch docs at:
-https://workos.com/docs/audit-logs/admin-portal
-
-**Configuration scope:** Customers can create/edit/delete Log Streams, but cannot modify event schemas (developer-controlled).
+Check fetched docs for:
+- Permissions required to edit events
+- API endpoint for updates
+- What fields can be modified
+- Audit trail of edits
 
 ## Verification Checklist (ALL MUST PASS)
 
-Run these checks to confirm integration:
-
 ```bash
-# 1. Check environment variables exist
-env | grep WORKOS_API_KEY | grep -q "sk_" && echo "PASS: API key valid" || echo "FAIL: API key missing or invalid"
-env | grep WORKOS_CLIENT_ID | grep -q "client_" && echo "PASS: Client ID valid" || echo "FAIL: Client ID missing or invalid"
+# 1. Environment variables set
+[ -n "$WORKOS_API_KEY" ] && echo "PASS" || echo "FAIL: WORKOS_API_KEY missing"
+[ -n "$WORKOS_CLIENT_ID" ] && echo "PASS" || echo "FAIL: WORKOS_CLIENT_ID missing"
 
-# 2. Check SDK is installed
-ls node_modules/@workos-inc/node 2>/dev/null && echo "PASS: SDK installed" || echo "FAIL: SDK missing"
+# 2. SDK installed (pick language)
+# Node.js
+npm list @workos-inc/node 2>/dev/null && echo "PASS" || echo "FAIL: SDK not installed"
 
-# 3. Test event emission (if implemented)
-# Run your event emission code with test data
-# Verify event appears in Dashboard → Audit Logs → Events
+# Python
+python -c "import workos; print('PASS')" 2>/dev/null || echo "FAIL: SDK not installed"
 
-# 4. Test Log Stream (if configured)
-# Emit test event, check destination logs within 60 seconds
-# For S3: aws s3 ls s3://bucket/prefix/ | tail -1
-# For Datadog/Splunk: Check query interface for recent events
+# Ruby
+bundle show workos &>/dev/null && echo "PASS" || echo "FAIL: SDK not installed"
 
-# 5. Test metadata validation (if schema configured)
-# Emit event with invalid metadata, verify error returned
-# Emit event with valid metadata, verify success
+# 3. Dashboard has at least one event schema defined
+# Manual check: Visit https://dashboard.workos.com/audit-logs
+# Should see at least one event action listed
+
+# 4. Test event emission (SDK method from fetched docs)
+# Run your emit_event() call with test data
+# Should return 200 OK or success response
+
+# 5. If using Log Streams, verify delivery
+# WorkOS Dashboard > Log Streams > [Your Stream] > View Recent Events
+# Should show delivered events
 ```
-
-**Dashboard verification:**
-
-- WorkOS Dashboard → Audit Logs → Events shows emitted events
-- WorkOS Dashboard → Audit Logs → Log Streams shows "Active" status
 
 ## Error Recovery
 
-### "API key invalid" or "Unauthorized"
+### "Event schema validation failed"
 
-**Root cause:** Invalid `WORKOS_API_KEY` or insufficient permissions.
+**Root cause:** Event metadata doesn't match defined JSON Schema.
 
-Fix:
+**Fix:**
+1. Go to Dashboard > Audit Logs > [Event Type] > Edit Schema
+2. Compare emitted metadata structure with schema
+3. Either fix emit code or relax schema constraints
+4. **Common mismatch:** Sending string when schema expects integer, or vice versa
 
-1. Verify key starts with `sk_` and has no whitespace
-2. Check key status in Dashboard → API Keys
-3. Regenerate key if needed and update environment
+### "organization_id is required"
 
-### "Metadata validation failed"
+**Root cause:** Missing or empty organization_id in event payload.
 
-**Root cause:** Event metadata does not match JSON Schema defined in Dashboard.
+**Fix:** Every audit log event MUST include a valid organization_id. This links the event to a customer organization.
 
-Fix:
+```bash
+# Verify organization exists
+curl -H "Authorization: Bearer $WORKOS_API_KEY" \
+  https://api.workos.com/organizations/{org_id}
+```
 
-1. Retrieve schema from Dashboard → Audit Logs → Events → Edit Event → Schema
-2. Compare emitted metadata structure against schema
-3. Common issues:
-   - Missing required field
-   - Wrong type (string vs number)
-   - Exceeds character limits (40 for keys, 500 for values, 50 keys max)
+### "Metadata key exceeds 40 characters"
 
-Reference: https://workos.com/docs/audit-logs/metadata-schema
+**Root cause:** Metadata key name too long.
 
-### "Log Stream not receiving events"
+**Fix:** Rename key to 40 characters or less. This is a hard limit enforced by WorkOS.
 
-**Root cause:** Configuration error or network issue.
+### "Too many metadata keys (>50)"
 
-Fix:
+**Root cause:** Metadata object has more than 50 keys.
 
-1. **Check Stream status:** Dashboard → Audit Logs → Log Streams → Should show "Active"
-2. **Test connectivity:**
-   - For S3: Verify IAM role trust policy and permissions
-   - For HTTP endpoints: Verify endpoint is publicly accessible or WorkOS IPs are allowlisted
-   - For Datadog/Splunk: Verify API key/token is valid
-3. **Check destination logs:**
-   - Events may be delayed up to 60 seconds
-   - Some destinations have rate limits
-4. **Verify event emission:** Confirm events appear in Dashboard before troubleshooting stream
+**Fix:** Consolidate metadata or move non-critical data elsewhere. Consider nested objects if schema allows.
 
-### "SDK method not found"
+### Log Stream delivery failures
 
-**Root cause:** SDK method names vary by language, or SDK version mismatch.
+**Symptom:** Events not appearing in Datadog/Splunk/S3.
 
-Fix:
+**Debug steps:**
 
-1. Check WebFetch docs for correct method names in your language
-2. Verify SDK version supports Audit Logs feature
-3. Update SDK to latest version if needed
+```
+Check Dashboard delivery status
+  |
+  +-- "IP blocked" --> Add WorkOS IPs to allowlist (see Step 5)
+  |
+  +-- "Auth failed" --> Verify credentials (API keys, IAM roles)
+  |
+  +-- "Endpoint unreachable" --> Check destination URL, firewall rules
+  |
+  +-- "Invalid payload" --> Check provider-specific payload format in fetched docs
+```
 
-### "Object Lock bucket upload failed"
+### "API key does not have audit_logs scope"
 
-**Root cause:** S3 bucket has Object Lock enabled, requires `ContentMD5` header.
+**Root cause:** API key lacks permission to create audit log events.
 
-WorkOS automatically includes `ContentMD5` header. If uploads still fail:
+**Fix:**
+1. Go to Dashboard > API Keys
+2. Regenerate key with "Audit Logs" permission enabled
+3. Update `WORKOS_API_KEY` environment variable
 
-1. Verify IAM role has `s3:PutObject` permission
-2. Verify bucket policy allows cross-account PutObject
-3. Check CloudTrail logs for specific S3 error
+### SDK import errors
 
-Reference: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock-managing.html#object-lock-put-object
+**Node.js:** `Cannot find module '@workos-inc/node'`
+
+```bash
+# Reinstall SDK
+npm install @workos-inc/node
+# Verify installation
+ls node_modules/@workos-inc/node
+```
+
+**Python:** `ModuleNotFoundError: No module named 'workos'`
+
+```bash
+# Reinstall SDK
+pip install workos
+# Verify installation
+python -c "import workos; print(workos.__version__)"
+```
+
+**Ruby:** `cannot load such file -- workos`
+
+```bash
+# Add to Gemfile and install
+bundle add workos
+bundle install
+```
 
 ## Related Skills
 
-- **workos-events**: Webhook event handling for WorkOS platform events
-- **workos-directory-sync**: SCIM directory synchronization
-- **workos-sso**: Single Sign-On implementation
+- **workos-api-audit-logs**: API reference for programmatic event creation
+- **workos-admin-portal**: Let customers configure Log Streams themselves
+- **workos-events**: Webhook events for audit log changes (if available)

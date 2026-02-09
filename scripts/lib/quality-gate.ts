@@ -137,6 +137,18 @@ function scoreSkill(skill: GeneratedSkill): QualityResult {
     );
   }
 
+  // --- Global Checks ---
+
+  // Check for "check docs" overuse (>3 deferrals)
+  const checkDocsCount = (
+    content.match(/check\s+(the\s+)?(docs|documentation)\s+for\s+(exact|current|specific|actual)/gi) || []
+  ).length;
+  if (checkDocsCount > 3) {
+    issues.push(
+      `Excessive "check docs" deferrals (${checkDocsCount}x) — skill should provide concrete guidance`,
+    );
+  }
+
   // --- Domain Rules ---
   const rules = loadRules(skill.name);
   const ruleViolations = evaluateRules(content, rules);

@@ -14,139 +14,120 @@ description: WorkOS Widgets API endpoints — generate widget tokens and manage 
 - https://workos.com/docs/reference/widgets
 - https://workos.com/docs/reference/widgets/get-token
 
+## When to Use This Skill
+
+Use this skill when you need to:
+- Generate secure tokens for embedding WorkOS widgets in your application
+- Implement admin portal widgets or user profile management
+- Create time-limited access to WorkOS-hosted UI components
+
 ## Authentication Setup
 
-All Widgets API calls require authentication using your WorkOS API key in the `Authorization` header:
+All Widgets API calls require authentication via API key in the Authorization header:
 
 ```
-Authorization: Bearer sk_live_xxxxx
+Authorization: Bearer sk_live_your_api_key
 ```
 
-Obtain your API key from the WorkOS Dashboard under API Keys. Use `sk_test_` keys for development and `sk_live_` keys for production.
+- API keys start with `sk_test_` (development) or `sk_live_` (production)
+- Obtain keys from WorkOS Dashboard → API Keys
+- **NEVER** expose API keys in client-side code — call this API from your backend only
 
 ## Endpoint Catalog
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| POST | `/user_management/widgets/get_token` | Generate a short-lived token to initialize a Widget |
+| POST | `/widgets/token` | Generate a secure token to embed a widget |
 
 ## Operation Decision Tree
 
-**To embed a Widget in your application:**
-1. Call `POST /user_management/widgets/get_token` to generate a token
-2. Pass the token to the Widget JavaScript SDK in your frontend
-3. The Widget SDK handles rendering and user interactions
+**To embed a widget in your application:**
+1. Call POST `/widgets/token` from your backend with user/organization context
+2. Return the token to your frontend
+3. Use the token to initialize the widget component
 
-**Token lifecycle:**
-- Tokens are short-lived (consult docs for exact TTL)
-- Generate a new token for each Widget session
-- Do NOT reuse tokens across multiple users or sessions
+**Token expiration:**
+- Tokens are single-use and expire after the session
+- Generate a new token each time a user needs to access the widget
 
-## Request/Response Patterns
+## Core Endpoint: Generate Widget Token
 
-### Generate Widget Token
+### Request Pattern
 
-**Request:**
-```bash
-curl -X POST https://api.workos.com/user_management/widgets/get_token \
-  -H "Authorization: Bearer sk_live_xxxxx" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "user_id": "user_01H7ZKXP9RMVN8WYZ3K8QJQX7E",
-    "organization_id": "org_01H7ZKXP9RMVN8WYZ3K8QJQX7E"
-  }'
 ```
+POST https://api.workos.com/widgets/token
+Authorization: Bearer sk_live_your_api_key
+Content-Type: application/json
 
-**Response (200 OK):**
-```json
 {
-  "token": "widget_token_xxxxx",
-  "expires_at": "2024-01-15T12:34:56.789Z"
+  "organization_id": "org_01H1234567890ABCDEFGHIJK",
+  "user_id": "user_01H1234567890ABCDEFGHIJK"
 }
 ```
 
-**Required parameters:**
-- Check the fetched documentation for current required fields (typically `user_id` and/or `organization_id`)
+### Required Parameters
 
-**Optional parameters:**
-- Consult the docs for session customization options
+- `organization_id` (string) — ID of the organization this widget session is for
+- `user_id` (string) — ID of the user accessing the widget
 
-## Error Codes and Resolution
+### Response Pattern
 
-| Status Code | Cause | Fix |
-|-------------|-------|-----|
-| 401 Unauthorized | Missing or invalid API key | Verify `Authorization: Bearer sk_live_xxxxx` header is present and key is valid |
-| 400 Bad Request | Missing required field (e.g., `user_id`) | Check request body includes all required parameters per docs |
-| 404 Not Found | Invalid `user_id` or `organization_id` | Verify the user/org exists in your WorkOS environment |
-| 429 Too Many Requests | Rate limit exceeded | Implement exponential backoff retry logic |
-| 500 Internal Server Error | WorkOS service issue | Retry after 1-2 seconds; check WorkOS status page |
+```json
+{
+  "token": "widget_token_01H1234567890ABCDEFGHIJK_abc123xyz",
+  "expires_at": 1234567890
+}
+```
 
-## Rate Limits
+- `token` — Use this to initialize the widget in your frontend
+- `expires_at` — Unix timestamp when the token expires
 
-Consult the fetched documentation for current rate limits. If you receive 429 responses:
+## Error Codes and Recovery
 
-1. Implement exponential backoff (start with 1s delay, double on each retry)
-2. Cache tokens where possible (within their expiration window)
-3. Contact WorkOS if you need higher limits
+| Status | Cause | Fix |
+|--------|-------|-----|
+| 401 | Invalid or missing API key | Verify `Authorization: Bearer sk_live_...` header is present and key is valid |
+| 403 | API key lacks widget permissions | Check API key permissions in WorkOS Dashboard |
+| 404 | `organization_id` or `user_id` not found | Verify IDs exist in your WorkOS environment |
+| 422 | Missing required parameter | Ensure both `organization_id` and `user_id` are provided |
+| 429 | Rate limit exceeded | Implement exponential backoff; default limit is 600 requests/minute per API key |
+| 500 | WorkOS internal error | Retry with exponential backoff; check https://status.workos.com |
 
-## Pagination
+## Rate Limiting
 
-The Widgets API does not use pagination — it generates single-use tokens per request.
+- **Default limit:** 600 requests per minute per API key
+- **Response header:** `X-RateLimit-Remaining` shows requests left in current window
+- **On 429 error:** Wait 60 seconds before retrying or implement exponential backoff
 
 ## Verification Commands
 
-### Test Token Generation (cURL)
+### Test token generation (curl)
 
 ```bash
-export WORKOS_API_KEY="sk_test_xxxxx"
-export USER_ID="user_01H7ZKXP9RMVN8WYZ3K8QJQX7E"
-
-curl -X POST https://api.workos.com/user_management/widgets/get_token \
-  -H "Authorization: Bearer $WORKOS_API_KEY" \
+curl -X POST https://api.workos.com/widgets/token \
+  -H "Authorization: Bearer sk_test_your_api_key" \
   -H "Content-Type: application/json" \
-  -d "{\"user_id\": \"$USER_ID\"}" \
-  -w "\nHTTP Status: %{http_code}\n"
+  -d '{
+    "organization_id": "org_01H1234567890ABCDEFGHIJK",
+    "user_id": "user_01H1234567890ABCDEFGHIJK"
+  }'
 ```
 
-**Expected output:**
-- HTTP Status: 200
-- JSON response with `token` and `expires_at` fields
+**Expected response:** JSON with `token` and `expires_at` fields
 
-### Test Token Generation (Node.js SDK)
+### Test with Node.js SDK
 
-```javascript
-const { WorkOS } = require('@workos-inc/node');
+WebFetch https://workos.com/docs/reference/widgets for current SDK method names and initialization patterns.
 
-const workos = new WorkOS(process.env.WORKOS_API_KEY);
+## Security Considerations
 
-async function generateWidgetToken() {
-  try {
-    const { token, expiresAt } = await workos.widgets.getToken({
-      userId: 'user_01H7ZKXP9RMVN8WYZ3K8QJQX7E',
-      organizationId: 'org_01H7ZKXP9RMVN8WYZ3K8QJQX7E'
-    });
-    
-    console.log('Token:', token);
-    console.log('Expires:', expiresAt);
-  } catch (error) {
-    console.error('Error:', error.message);
-    console.error('Status:', error.status);
-  }
-}
-
-generateWidgetToken();
-```
-
-## Integration Checklist
-
-- [ ] API key is configured in environment variables (`WORKOS_API_KEY`)
-- [ ] Token generation endpoint returns 200 with valid token
-- [ ] Token is passed to Widget JavaScript SDK in frontend
-- [ ] Error responses (400, 401, 404) are handled with user-friendly messages
-- [ ] Rate limit errors (429) trigger retry logic
-- [ ] Tokens are regenerated after expiration (not cached indefinitely)
+1. **Backend only** — Generate tokens server-side; never call this API from client JavaScript
+2. **Single use** — Tokens expire after the widget session ends
+3. **Short-lived** — Do not cache tokens; generate fresh tokens per user request
+4. **Organization scoped** — Each token is tied to a specific organization and user
 
 ## Related Skills
 
-- **workos-widgets** — Feature overview for choosing and configuring Widgets
-- **workos-user-management** — Managing users and organizations referenced in Widget tokens
+- **workos-widgets** — Feature overview and integration patterns for widgets
+- **workos-admin-portal** — Alternative approach for organization management UI
+- **workos-api-organization** — Managing organizations programmatically

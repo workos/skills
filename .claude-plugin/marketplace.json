@@ -417,25 +417,6 @@
       ]
     },
     {
-      "name": "workos-domain-verification",
-      "description": "Verify organization domains for SSO and directory sync.",
-      "version": "0.1.0",
-      "author": {
-        "name": "WorkOS",
-        "email": "support@workos.com"
-      },
-      "source": "./skills/workos-domain-verification",
-      "homepage": "https://workos.com/docs",
-      "repository": "https://github.com/workos/skills",
-      "license": "MIT",
-      "category": "enterprise",
-      "keywords": [
-        "workos",
-        "domain",
-        "verification"
-      ]
-    },
-    {
       "name": "workos-email",
       "description": "Configure email delivery for WorkOS authentication flows.",
       "version": "0.1.0",
@@ -472,25 +453,6 @@
       ]
     },
     {
-      "name": "workos-feature-flags",
-      "description": "Manage feature flags and rollouts with WorkOS.",
-      "version": "0.1.0",
-      "author": {
-        "name": "WorkOS",
-        "email": "support@workos.com"
-      },
-      "source": "./skills/workos-feature-flags",
-      "homepage": "https://workos.com/docs",
-      "repository": "https://github.com/workos/skills",
-      "license": "MIT",
-      "category": "enterprise",
-      "keywords": [
-        "workos",
-        "feature",
-        "flags"
-      ]
-    },
-    {
       "name": "workos-integrations",
       "description": "Set up identity provider integrations with WorkOS. Covers SSO, SCIM, and OAuth for 40+ providers.",
       "version": "0.1.0",
@@ -506,25 +468,6 @@
       "keywords": [
         "workos",
         "integrations"
-      ]
-    },
-    {
-      "name": "workos-magic-link",
-      "description": "Implement passwordless authentication via Magic Link.",
-      "version": "0.1.0",
-      "author": {
-        "name": "WorkOS",
-        "email": "support@workos.com"
-      },
-      "source": "./skills/workos-magic-link",
-      "homepage": "https://workos.com/docs",
-      "repository": "https://github.com/workos/skills",
-      "license": "MIT",
-      "category": "authentication",
-      "keywords": [
-        "workos",
-        "magic",
-        "link"
       ]
     },
     {
@@ -752,24 +695,6 @@
         "saml",
         "oidc",
         "migration"
-      ]
-    },
-    {
-      "name": "workos-pipes",
-      "description": "Connect external services and data sources with WorkOS Pipes.",
-      "version": "0.1.0",
-      "author": {
-        "name": "WorkOS",
-        "email": "support@workos.com"
-      },
-      "source": "./skills/workos-pipes",
-      "homepage": "https://workos.com/docs",
-      "repository": "https://github.com/workos/skills",
-      "license": "MIT",
-      "category": "enterprise",
-      "keywords": [
-        "workos",
-        "pipes"
       ]
     },
     {
