@@ -1,8 +1,8 @@
 rules:
   - id: dsync-webhooks-mandatory
     description: "Directory Sync requires webhooks — polling is not supported"
-    severity: warn
-    promoted: false
+    severity: error
+    promoted: true
     must_contain:
       - pattern: "webhook"
         context: "Must mention webhooks as the event delivery mechanism"
