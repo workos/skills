@@ -1,5 +1,6 @@
 import type { GeneratedSkill } from "./types.ts";
 import { parseMarker } from "./hasher.ts";
+import { loadRules, formatRulesForPrompt } from "./rules.ts";
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 const DEFAULT_MODEL = "claude-sonnet-4-5-20250929";
@@ -64,6 +65,9 @@ function buildRouterRefinePrompt(
   frontmatter: string,
   body: string,
 ): { system: string; user: string } {
+  const rules = loadRules(skillName);
+  const rulesContext = formatRulesForPrompt(rules);
+
   const system = `You are a skill refinement agent specializing in ROUTING skills. A router skill is NOT an implementation guide — it is a decision-tree dispatcher that maps user intent to the correct specialized skill.
 
 ## What makes a great router skill
@@ -85,7 +89,16 @@ function buildRouterRefinePrompt(
 5. IMPROVE the decision flow — make it a clear, unambiguous dispatch tree.
 6. ADD edge case handling (multiple features, unknown framework, vague requests).
 7. KEEP the "If No Skill Matches" fallback with llms.txt.
-8. Do NOT add implementation steps, verification commands, or code examples — this is a router, not a tutorial.`;
+8. Do NOT add implementation steps, verification commands, or code examples — this is a router, not a tutorial.
+
+## Source Attribution (CRITICAL)
+
+- ONLY make factual claims that are directly supported by the source documentation provided in the scaffold.
+- Do NOT infer, extrapolate, or assume capabilities not explicitly stated in the docs.
+- When stating that something is "required", "mandatory", "optional", or "not supported", ensure the source docs explicitly say so.
+- For non-obvious claims (e.g., "webhooks are mandatory", "polling is not supported"), include the relevant doc URL as a reference.
+- If the source docs are ambiguous about a capability, say "Check the documentation" and provide the URL — do NOT guess.
+- NEVER introduce SDK method names, API endpoints, or configuration options that are not in the source docs.${rulesContext}`;
 
   const user = `Refine this router skill "${skillName}". Improve its disambiguation, detection priority, and decision flow while preserving the skill lookup table exactly.
 
@@ -105,6 +118,9 @@ function buildApiRefRefinePrompt(
   body: string,
   docUrls: string[],
 ): { system: string; user: string } {
+  const rules = loadRules(skillName);
+  const rulesContext = formatRulesForPrompt(rules);
+
   const system = `You are a skill refinement agent specializing in API REFERENCE skills. An API reference skill teaches an agent how to use specific REST API endpoints — it is NOT a feature overview or tutorial.
 
 ## What makes a great API reference skill
@@ -131,7 +147,16 @@ function buildApiRefRefinePrompt(
 7. ADD pagination pattern if the API supports listing
 8. REMOVE marketing prose, feature descriptions, and baked-in content that should come from docs
 9. Keep endpoint examples concise — show the pattern, not every possible parameter
-10. Include a "Related Skills" section linking to the corresponding feature skill`;
+10. Include a "Related Skills" section linking to the corresponding feature skill
+
+## Source Attribution (CRITICAL)
+
+- ONLY make factual claims that are directly supported by the source documentation provided in the scaffold.
+- Do NOT infer, extrapolate, or assume capabilities not explicitly stated in the docs.
+- When stating that something is "required", "mandatory", "optional", or "not supported", ensure the source docs explicitly say so.
+- For non-obvious claims (e.g., "webhooks are mandatory", "polling is not supported"), include the relevant doc URL as a reference.
+- If the source docs are ambiguous about a capability, say "Check the documentation" and provide the URL — do NOT guess.
+- NEVER introduce SDK method names, API endpoints, or configuration options that are not in the source docs.${rulesContext}`;
 
   const user = `Refine this API reference skill "${skillName}". Transform it into a practical API usage guide with endpoint patterns, error handling, and verification commands.
 
@@ -152,6 +177,9 @@ function buildRefinePrompt(
   docUrls: string[],
   goldStandard: string,
 ): { system: string; user: string } {
+  const rules = loadRules(skillName);
+  const rulesContext = formatRulesForPrompt(rules);
+
   const system = `You are a skill refinement agent. Your job is to transform auto-generated skill scaffolds into high-quality procedural agent instructions.
 
 A "skill" is a markdown file that tells an AI coding agent HOW to implement a feature — not WHAT the feature is. Skills encode procedural knowledge: numbered steps, decision trees, verification commands, and error recovery.
@@ -187,7 +215,16 @@ Key patterns from the gold standard:
 8. REMOVE all baked-in documentation content — the agent will WebFetch at runtime
 9. REMOVE truncated or broken code blocks
 10. Keep the skill focused — aim for 2-5KB of procedural content, not 10KB of docs
-11. Include a "Related Skills" section if relevant cross-references exist`;
+11. Include a "Related Skills" section if relevant cross-references exist
+
+## Source Attribution (CRITICAL)
+
+- ONLY make factual claims that are directly supported by the source documentation provided in the scaffold.
+- Do NOT infer, extrapolate, or assume capabilities not explicitly stated in the docs.
+- When stating that something is "required", "mandatory", "optional", or "not supported", ensure the source docs explicitly say so.
+- For non-obvious claims (e.g., "webhooks are mandatory", "polling is not supported"), include the relevant doc URL as a reference.
+- If the source docs are ambiguous about a capability, say "Check the documentation" and provide the URL — do NOT guess.
+- NEVER introduce SDK method names, API endpoints, or configuration options that are not in the source docs.${rulesContext}`;
 
   const user = `Refine this skill scaffold for "${skillName}". Transform the doc prose into procedural agent instructions matching the gold standard quality.
 

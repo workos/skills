@@ -1,10 +1,12 @@
-import type { GeneratedSkill } from "./types.ts";
+import type { GeneratedSkill, RuleViolation } from "./types.ts";
+import { loadRules, evaluateRules } from "./rules.ts";
 
 export interface QualityResult {
   skillName: string;
   pass: boolean;
   score: number;
   issues: string[];
+  ruleViolations: RuleViolation[];
 }
 
 export interface QualityReport {
@@ -135,10 +137,29 @@ function scoreSkill(skill: GeneratedSkill): QualityResult {
     );
   }
 
+  // --- Domain Rules ---
+  const rules = loadRules(skill.name);
+  const ruleViolations = evaluateRules(content, rules);
+
+  // Log rule violations
+  for (const v of ruleViolations) {
+    const icon = v.severity === "error" ? "✗" : "⚠";
+    const typeLabel = v.type === "missing" ? "Missing" : "Forbidden";
+    issues.push(
+      `RULE ${v.ruleId}: ${typeLabel} pattern "${v.pattern}" (${v.severity})`,
+    );
+  }
+
+  // Promoted error-severity violations block the skill
+  const hasBlockingViolation = ruleViolations.some(
+    (v) => v.severity === "error",
+  );
+
   return {
     skillName: skill.name,
-    pass: score >= 70,
+    pass: score >= 70 && !hasBlockingViolation,
     score,
     issues,
+    ruleViolations,
   };
 }

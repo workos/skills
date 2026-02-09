@@ -1,0 +1,13 @@
+rules:
+  - id: dsync-webhooks-mandatory
+    description: "Directory Sync requires webhooks — polling is not supported"
+    severity: warn
+    promoted: false
+    must_contain:
+      - pattern: "webhook"
+        context: "Must mention webhooks as the event delivery mechanism"
+    must_not_contain:
+      - pattern: "poll(ing)? for.*(directory|sync|dsync).*event"
+        context: "Polling is not supported for Directory Sync events"
+      - pattern: "optional.*(webhook|event delivery)"
+        context: "Webhooks are mandatory, not optional"

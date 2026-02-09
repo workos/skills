@@ -288,6 +288,14 @@ async function main() {
     console.log(
       `  ${status} ${r.skillName.padEnd(40)} ${r.score}/100${issueStr}`,
     );
+    // Log rule violations beneath the skill line
+    for (const v of r.ruleViolations) {
+      const icon = v.severity === "error" ? "✗" : "⚠";
+      const typeLabel = v.type === "missing" ? "Missing" : "Forbidden";
+      console.log(
+        `    ${icon} RULE ${v.ruleId}: ${typeLabel} pattern "${v.pattern}" (${v.severity})`,
+      );
+    }
   }
 
   // Write quality report
