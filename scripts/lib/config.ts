@@ -55,7 +55,7 @@ export const SECTION_CONFIG: Record<string, SectionConfig> = {
   mfa: { split: { strategy: "single" } },
   "magic-link": { split: { strategy: "single" } },
   integrations: { split: { strategy: "single" } },
-  fga: { split: { strategy: "single" } },
+  fga: { split: { strategy: "single" }, skip: true },
   "feature-flags": { split: { strategy: "single" } },
   events: { split: { strategy: "single" } },
   "domain-verification": { split: { strategy: "single" } },

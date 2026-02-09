@@ -2,7 +2,7 @@ import type { GeneratedSkill } from "./types.ts";
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 const DEFAULT_MODEL = "claude-sonnet-4-5-20250929";
-const MAX_TOKENS = 4096;
+const MAX_TOKENS = 8192;
 
 /** Delay between API calls to avoid rate limiting */
 const RATE_LIMIT_DELAY_MS = 1000;
@@ -30,15 +30,18 @@ export async function refineSkill(
   const skillName = skill.name;
 
   const isRouter = skillName === "workos-router";
+  const isApiRef = skillName.startsWith("workos-api-");
   const prompt = isRouter
     ? buildRouterRefinePrompt(skillName, frontmatter, body)
-    : buildRefinePrompt(
-        skillName,
-        frontmatter,
-        body,
-        docUrls,
-        options.goldStandard,
-      );
+    : isApiRef
+      ? buildApiRefRefinePrompt(skillName, frontmatter, body, docUrls)
+      : buildRefinePrompt(
+          skillName,
+          frontmatter,
+          body,
+          docUrls,
+          options.goldStandard,
+        );
 
   const refined = await callAnthropic(prompt, options);
   const content = ensureMarkers(frontmatter, refined);
@@ -80,6 +83,52 @@ function buildRouterRefinePrompt(
 8. Do NOT add implementation steps, verification commands, or code examples — this is a router, not a tutorial.`;
 
   const user = `Refine this router skill "${skillName}". Improve its disambiguation, detection priority, and decision flow while preserving the skill lookup table exactly.
+
+<scaffold>
+${body}
+</scaffold>
+
+Output ONLY the refined skill body markdown. No frontmatter, no \`<!-- generated -->\` marker, no wrapping code fences.`;
+
+  return { system, user };
+}
+
+/** Build the system + user prompt for API reference skill refinement */
+function buildApiRefRefinePrompt(
+  skillName: string,
+  frontmatter: string,
+  body: string,
+  docUrls: string[],
+): { system: string; user: string } {
+  const system = `You are a skill refinement agent specializing in API REFERENCE skills. An API reference skill teaches an agent how to use specific REST API endpoints — it is NOT a feature overview or tutorial.
+
+## What makes a great API reference skill
+
+1. **WebFetch first** — Step 1 always fetches the latest API docs at runtime. The skill does NOT bake in API details that may change.
+2. **Endpoint catalog** — lists available endpoints (method + path) so the agent knows what's possible
+3. **Authentication setup** — how to authenticate API calls (API key header, bearer token, etc.)
+4. **Request/response patterns** — show the shape of requests and expected responses for key operations
+5. **Error code mapping** — map HTTP status codes to specific causes and fixes (not generic "check API key")
+6. **Pagination handling** — if the API is paginated, show the pattern (cursor, offset, etc.)
+7. **Decision tree for operations** — which endpoint to use for which task (create vs update vs upsert)
+8. **Runnable verification** — curl commands or SDK calls to test the integration works
+9. **Rate limit guidance** — mention limits and retry strategies if applicable
+10. **Imperative voice** — "Call GET /users" not "The GET /users endpoint can be called"
+
+## Rules for API reference refinement
+
+1. Output ONLY the skill body (everything after frontmatter). Do NOT include frontmatter or the \`<!-- generated -->\` marker.
+2. KEEP the "Step 1: Fetch Documentation" section with these exact doc URLs: ${docUrls.map((u) => `\n   - ${u}`).join("")}
+3. PRESERVE all endpoint tables and request/response examples — these are the core value
+4. ADD a clear operation decision tree (CRUD mapping)
+5. ADD specific error codes with causes and fixes (not generic retry logic)
+6. ADD runnable curl or SDK verification commands
+7. ADD pagination pattern if the API supports listing
+8. REMOVE marketing prose, feature descriptions, and baked-in content that should come from docs
+9. Keep endpoint examples concise — show the pattern, not every possible parameter
+10. Include a "Related Skills" section linking to the corresponding feature skill`;
+
+  const user = `Refine this API reference skill "${skillName}". Transform it into a practical API usage guide with endpoint patterns, error handling, and verification commands.
 
 <scaffold>
 ${body}

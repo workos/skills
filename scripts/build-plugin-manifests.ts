@@ -2,6 +2,10 @@ import { readdirSync, readFileSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 
 const skillsDir = "skills";
+
+/** Skills excluded from manifests (kept on disk but not shipped) */
+const EXCLUDE_FROM_MANIFEST = new Set(["workos-fga"]);
+
 const dirs = readdirSync(skillsDir).sort();
 
 interface PluginEntry {
@@ -20,6 +24,7 @@ interface PluginEntry {
 const plugins: PluginEntry[] = [];
 
 for (const dir of dirs) {
+  if (EXCLUDE_FROM_MANIFEST.has(dir)) continue;
   const skillPath = join(skillsDir, dir, "SKILL.md");
   let content: string;
   try {

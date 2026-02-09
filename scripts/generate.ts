@@ -20,9 +20,8 @@ import type { GeneratedSkill } from "./lib/types.ts";
 
 /** Skills that should NOT be refined (already well-structured or endpoint tables) */
 const SKIP_REFINE = new Set([
-  "workos-router",
   "workos-integrations",
-  // API ref skills are endpoint tables — refining them would lose the table format
+  // API ref skills get their own refine prompt — don't skip them
 ]);
 
 function parseArgs(): {
@@ -181,9 +180,7 @@ async function main() {
 
     const toRefine = flags.refineOnly
       ? generatedSkills.filter((s) => s.name === flags.refineOnly)
-      : generatedSkills.filter(
-          (s) => !SKIP_REFINE.has(s.name) && !s.name.startsWith("workos-api-"),
-        );
+      : generatedSkills.filter((s) => !SKIP_REFINE.has(s.name));
 
     if (toRefine.length === 0) {
       console.warn("  No skills matched for refinement");

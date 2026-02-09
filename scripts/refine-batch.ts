@@ -36,7 +36,6 @@ const GENERATED_SKILLS = [
   "workos-migrate-auth0",
   "workos-mfa",
   "workos-magic-link",
-  "workos-fga",
   "workos-feature-flags",
   "workos-events",
   "workos-domain-verification",
@@ -44,6 +43,16 @@ const GENERATED_SKILLS = [
   "workos-custom-domains",
   "workos-audit-logs",
   "workos-admin-portal",
+  "workos-api-admin-portal",
+  "workos-api-audit-logs",
+  "workos-api-authkit",
+  "workos-api-directory-sync",
+  "workos-api-events",
+  "workos-api-organization",
+  "workos-api-roles",
+  "workos-api-sso",
+  "workos-api-vault",
+  "workos-api-widgets",
 ];
 
 function parseArgs() {
