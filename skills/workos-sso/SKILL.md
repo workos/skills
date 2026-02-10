@@ -11,7 +11,7 @@ description: Configure Single Sign-On with SAML and OIDC identity providers.
 
 **STOP. Do not proceed until complete.**
 
-WebFetch these docs — they are the source of truth for SSO implementation:
+WebFetch these URLs in order — they are the source of truth for SSO implementation:
 
 - https://workos.com/docs/sso/test-sso
 - https://workos.com/docs/sso/single-logout
@@ -26,288 +26,480 @@ If this skill conflicts with fetched docs, follow the docs.
 
 ## Step 2: Pre-Flight Validation
 
-### WorkOS Account Setup
-
-- Log into [WorkOS Dashboard](https://dashboard.workos.com/)
-- Navigate to API Keys
-- Confirm you have `WORKOS_API_KEY` (starts with `sk_`)
-- Confirm you have `WORKOS_CLIENT_ID` (starts with `client_`)
-
 ### Environment Variables
 
-Check `.env` or `.env.local` for:
+Check for required variables in `.env.local` or environment:
 
-- `WORKOS_API_KEY` - secret API key
-- `WORKOS_CLIENT_ID` - client identifier
-- `WORKOS_REDIRECT_URI` - callback URL in your app (e.g., `https://your-app.com/callback`)
+- `WORKOS_API_KEY` — starts with `sk_` (production) or `sk_test_` (staging)
+- `WORKOS_CLIENT_ID` — starts with `client_`
 
-**Verify:** All three variables are set before continuing.
+**Verify:** Both keys exist and have correct prefixes. Staging keys access Test Identity Provider by default.
+
+### Redirect URI Configuration
+
+Confirm callback URL is registered in WorkOS Dashboard:
+
+1. Log into https://dashboard.workos.com/
+2. Navigate to _API Keys_ → _Redirect URIs_
+3. Verify your callback URL (e.g., `https://your-app.com/sso/callback`) is listed
+
+**Critical:** Exact match required — trailing slashes and protocols must match.
 
 ## Step 3: Install SDK
 
-WebFetch: https://workos.com/docs for SDK installation instructions for your language/framework.
+Detect package manager from lockfile, install WorkOS SDK:
 
-Detect package manager, install WorkOS SDK.
+```bash
+# Detect which lockfile exists
+ls package-lock.json yarn.lock pnpm-lock.yaml bun.lockb 2>/dev/null
 
-**Verify:** SDK package exists in dependencies before writing integration code.
+# Install matching package manager
+npm install @workos-inc/node
+# OR
+yarn add @workos-inc/node
+# OR
+pnpm add @workos-inc/node
+# OR
+bun add @workos-inc/node
+```
 
-## Step 4: Login Flow Decision Tree
+**Verify:** SDK package exists in node_modules before continuing.
 
-Choose your SSO login flow based on UX requirements:
+```bash
+ls node_modules/@workos-inc/node/package.json
+```
+
+## Step 4: Login Flow Selection (Decision Tree)
 
 ```
-Login flow type?
+User initiates SSO from?
   |
-  +-- SP-initiated (user starts at your login page)
-  |   |
-  |   +-- User enters email in your app
-  |   +-- Your app redirects to IdP
-  |   +-- IdP redirects back to your callback URL
-  |   +-- MOST COMMON - implement this first
+  +-- Your app's login page
+  |   --> Service Provider-Initiated (SP-initiated)
+  |   --> User enters email → redirect to IdP → redirect back
+  |   --> IMPLEMENTATION: Step 5
   |
-  +-- IdP-initiated (user starts at their IdP)
-      |
-      +-- User logs into IdP directly
-      +-- User selects your app from IdP dashboard
-      +-- IdP redirects to your callback URL
-      +-- CRITICAL: Test this even if not primary flow
+  +-- Identity Provider portal
+      --> Identity Provider-Initiated (IdP-initiated)
+      --> User selects your app from IdP → redirect to your app
+      --> IMPLEMENTATION: Step 6 (callback only, no authorization URL)
 ```
 
-**Both flows MUST work** — customers expect IdP-initiated to "just work".
+**Both flows require the same callback handler.** Implement Step 5 for SP-initiated, then Step 6 for IdP-initiated support.
 
-## Step 5: Implement Authorization Flow
+## Step 5: Implement SP-Initiated SSO
 
-### Create Authorization URL Endpoint
+### 5.1: Generate Authorization URL
 
-WebFetch: https://workos.com/docs/sso for current SDK method to generate authorization URL.
+Create endpoint to start SSO flow. Check fetched docs for exact method signature.
 
-Your app needs an endpoint that:
-1. Takes user email or organization identifier as input
-2. Generates WorkOS authorization URL
-3. Redirects user to that URL
+**Typical pattern (verify against docs):**
 
-**Do NOT build custom OAuth flows** — use SDK methods.
+```typescript
+import { WorkOS } from '@workos-inc/node';
 
-### Create Callback Route
+const workos = new WorkOS(process.env.WORKOS_API_KEY);
 
-Parse `WORKOS_REDIRECT_URI` to determine callback route path:
+// Generate authorization URL
+const authorizationUrl = workos.sso.getAuthorizationURL({
+  clientId: process.env.WORKOS_CLIENT_ID,
+  redirectUri: 'https://your-app.com/sso/callback',
+  // ONE OF:
+  organization: 'org_123', // For specific org
+  // OR
+  provider: 'GoogleOAuth', // For specific provider
+  // OR
+  domain: 'example.com', // For domain-based routing
+});
+
+// Redirect user to authorizationUrl
+```
+
+**Decision tree for user identification:**
 
 ```
-URI path              --> Route location
-/auth/callback        --> /auth/callback handler
-/sso/callback         --> /sso/callback handler
+How to identify which IdP?
+  |
+  +-- You know the organization ID
+  |   --> Use organization parameter
+  |
+  +-- User enters email
+  |   --> Extract domain → use domain parameter
+  |   --> WorkOS routes to correct IdP
+  |
+  +-- Multi-provider login page
+      --> Use provider parameter (GoogleOAuth, MicrosoftOAuth, etc.)
 ```
 
-WebFetch: https://workos.com/docs/sso for SDK method to exchange authorization code for user profile.
+Check fetched docs for supported provider values.
 
-Callback handler must:
-1. Extract `code` parameter from query string
-2. Exchange code for user profile using SDK
-3. Create session in your app
-4. Redirect to authenticated area
+### 5.2: State Parameter (Optional but Recommended)
 
-**Critical:** Handle both success and error responses (see Error Recovery section).
+For CSRF protection and context preservation:
 
-## Step 6: Test with Test Identity Provider
+```typescript
+const state = generateRandomString(); // Your implementation
+storeInSession(state); // Your session mechanism
 
-**REQUIRED:** Test SSO integration before production launch.
+const authorizationUrl = workos.sso.getAuthorizationURL({
+  // ... other params
+  state: state,
+});
+```
 
-### Enable Test SSO in Dashboard
+**Verify state** in callback handler (Step 6.2).
 
-1. Navigate to [Test SSO](https://dashboard.workos.com/test-sso) in Dashboard
-2. Confirm default Test Organization exists
-3. Note the test user credentials provided
+## Step 6: Implement Callback Handler
 
-### Test SP-Initiated Flow
+### 6.1: Create Callback Route
 
-1. Start auth flow from your login page
-2. Enter test user email (provided in Dashboard)
-3. Verify redirect to Test IdP
-4. Complete authentication at Test IdP
-5. Verify redirect back to your callback
-6. Confirm user session created
+Create handler at your configured redirect URI path (e.g., `/sso/callback`).
 
-**If any step fails, see Error Recovery before continuing.**
+Check fetched docs for `authenticateWithCode` method signature:
 
-### Test IdP-Initiated Flow
+```typescript
+// Callback handler receives: code, state parameters
+const { code, state, error, error_description } = request.query;
 
-**Critical:** Disable AuthKit in Dashboard if enabled — AuthKit and standalone SSO API cannot be tested simultaneously.
+// Handle errors first (Step 6.3)
+if (error) {
+  // See Step 6.3
+}
 
-1. Start auth flow from Test IdP (link in Dashboard)
-2. Complete authentication at Test IdP
-3. Verify redirect to your callback WITHOUT visiting your login page
-4. Confirm user session created
+// Exchange code for profile
+const profile = await workos.sso.authenticateWithCode({
+  clientId: process.env.WORKOS_CLIENT_ID,
+  code: code,
+});
 
-**Common failure:** Callback route rejects IdP-initiated flow. Your callback MUST NOT require session state that only exists in SP-initiated flow.
+// profile contains:
+// - profile.id (unique user ID)
+// - profile.email
+// - profile.firstName, profile.lastName
+// - profile.organizationId
+// - profile.connectionId
+```
 
-### Test Error Scenarios
+### 6.2: State Validation (If Used)
 
-Dashboard provides pre-configured error test cases:
+```typescript
+const storedState = getFromSession(); // Your session mechanism
+if (state !== storedState) {
+  throw new Error('State mismatch — possible CSRF attack');
+}
+```
 
-**Test Case: signin_consent_denied**
-1. Use test link for "User denies consent"
-2. Callback receives: `error=signin_consent_denied&error_description=User%20cancelled...`
-3. Display helpful message: "Contact your admin if this was unexpected"
+### 6.3: Error Handling (CRITICAL)
 
-**Test Case: Generic IdP error**
-1. Use test link for "Generic error"
-2. Callback receives error parameters
-3. Log error details, show generic user-facing message
+**Required error codes to handle:**
 
-**Verify:** All error test cases handled gracefully without crashes.
+```typescript
+switch (error) {
+  case 'signin_consent_denied':
+    // User denied consent at IdP
+    // Action: Show "Contact your admin" message
+    // Do NOT retry automatically — user explicitly declined
+    break;
 
-## Step 7: Production Organization Setup
+  case 'invalid_request':
+    // Configuration issue (wrong redirect URI, client ID, etc.)
+    // Action: Log error, show generic "Configuration error"
+    // Fix: Check Dashboard settings
+    break;
 
-### Create Organization for Real Customer
+  case 'access_denied':
+    // IdP rejected authentication
+    // Action: Show "Access denied by your organization"
+    break;
 
-1. Navigate to [Organizations](https://dashboard.workos.com/organizations) in Dashboard
-2. Click "Create Organization"
-3. Enter customer company name
-4. Note the Organization ID (starts with `org_`)
+  default:
+    // Generic error
+    // error_description contains details
+    // Log for debugging, show generic error to user
+}
+```
 
-### Send Setup Link to Customer Admin
+Check fetched docs for complete error code list.
 
-1. Go to created organization
+### 6.4: Session Management
+
+After successful authentication:
+
+```typescript
+// Create session with profile data
+const session = {
+  userId: profile.id,
+  email: profile.email,
+  organizationId: profile.organizationId,
+};
+
+// Store session (your implementation)
+setUserSession(session);
+
+// Redirect to app dashboard
+redirect('/dashboard');
+```
+
+**Critical for IdP-initiated:** Callback handler must work WITHOUT prior authorization URL generation. User arrives directly from IdP with code.
+
+## Step 7: Test with Test Identity Provider
+
+### 7.1: Verify Test Organization Exists
+
+Navigate to Dashboard staging environment:
+
+1. Log into https://dashboard.workos.com/
+2. Switch to **staging environment** (top right)
+3. Navigate to _Organizations_
+4. Confirm "Test Organization" exists with active SSO connection
+
+**If missing:** Your staging environment should have this by default. Contact WorkOS support.
+
+### 7.2: Test SP-Initiated Flow
+
+```bash
+# Start your app
+npm run dev
+
+# Navigate to login page
+open http://localhost:3000/login
+
+# Enter test email: test@example.com
+# Should redirect to Test IdP
+# Click "Sign in" on Test IdP
+# Should redirect back to your app with successful authentication
+```
+
+**Verify:** Check callback handler receives `code` parameter, not `error`.
+
+### 7.3: Test IdP-Initiated Flow (CRITICAL)
+
+**Important:** Disable AuthKit first if enabled:
+
+1. Navigate to https://dashboard.workos.com/authentication
+2. Toggle AuthKit OFF
+3. Save
+
+Then test:
+
+1. Navigate to Test SSO page: https://dashboard.workos.com/test-sso
+2. Click "Test IdP-initiated SSO" link
+3. Should land directly on Test IdP
+4. Click "Sign in"
+5. Should redirect to your callback handler
+
+**If fails:** Check callback handler doesn't require prior authorization URL generation.
+
+### 7.4: Test Error Scenarios
+
+From Test SSO page, test:
+
+- **Consent Denied**: Click "Deny" on Test IdP → verify `signin_consent_denied` error handled
+- **Guest Email**: Use `guest@different-domain.com` → verify profile contains guest email
+- **Generic Error**: Click "Simulate Error" → verify `error` and `error_description` handled
+
+## Step 8: Configure Production Organization
+
+### 8.1: Create Organization
+
+In Dashboard production environment:
+
+1. Navigate to _Organizations_
+2. Click "Create organization"
+3. Enter customer name (e.g., "Acme Corp")
+4. Enter domain (e.g., "acme.com")
+5. Save
+
+### 8.2: Enable SSO Connection
+
+**Decision tree for setup method:**
+
+```
+Who configures SSO?
+  |
+  +-- Your team (white-glove setup)
+  |   --> Manual connection creation (Step 8.3)
+  |
+  +-- Customer admin (self-serve)
+      --> Admin Portal invitation (Step 8.4)
+```
+
+### 8.3: Manual Connection Setup (White-Glove)
+
+1. Open organization in Dashboard
+2. Click "Create connection"
+3. Select identity provider (Okta, Azure AD, Google, etc.)
+4. Follow provider-specific instructions from fetched docs
+5. Test connection with "Test Connection" button
+
+Check `workos-integrations` skill for provider-specific setup details.
+
+### 8.4: Admin Portal Invitation (Self-Serve)
+
+1. Open organization in Dashboard
 2. Click "Invite admin"
-3. Select "Single Sign-On" from features list
+3. Select "Single Sign-On"
 4. Enter customer admin email OR copy setup link
+5. Customer follows Admin Portal instructions
 
-**Setup link goes to Admin Portal** — customer follows provider-specific instructions there.
+**Verify:** Connection status changes to "Active" after customer completes setup.
 
-**Alternative:** Integrate Admin Portal into your app for self-serve setup (see workos-admin-portal skill).
+## Step 9: Single Logout (Optional)
 
-## Step 8: Single Logout (Optional)
+**Check fetched docs for current support status.** As of last update:
 
-**Availability:** Currently only supported for OpenID Connect connections.
+- Supported for OpenID Connect connections only
+- Not supported for SAML connections
+- Limited scenarios
 
-WebFetch: https://workos.com/docs/sso/single-logout for latest implementation details.
+### Implementation (if supported)
 
-If implementing logout:
-1. Confirm customer connection type is OIDC
-2. Redirect user to WorkOS Logout endpoint (see fetched docs for URL)
-3. User logs out of your app AND all other SSO-enabled apps
+```typescript
+// RP-initiated logout
+const logoutUrl = workos.sso.getLogoutURL({
+  sessionId: profile.sessionId, // From authentication response
+});
 
-**Do NOT implement if customer uses SAML** — feature not supported. Contact WorkOS support for roadmap.
+// Redirect user to logoutUrl
+// This logs out from your app AND IdP
+```
+
+**Fallback:** If Single Logout not supported, implement local logout only:
+
+```typescript
+// Clear local session
+clearUserSession();
+redirect('/login');
+
+// User remains logged into IdP (standard behavior)
+```
 
 ## Verification Checklist (ALL MUST PASS)
 
-Run these checks to confirm SSO integration. **Do not mark complete until all pass:**
+Run these commands to verify integration:
 
 ```bash
-# 1. Check environment variables exist
-grep -E "WORKOS_API_KEY|WORKOS_CLIENT_ID|WORKOS_REDIRECT_URI" .env* || echo "FAIL: Missing env vars"
+# 1. Environment variables exist
+grep -E "WORKOS_API_KEY|WORKOS_CLIENT_ID" .env.local || echo "FAIL: Missing env vars"
 
-# 2. Check SDK package installed (adjust for your package manager)
-npm list @workos-inc/node 2>/dev/null || echo "FAIL: SDK not installed"
+# 2. SDK installed
+ls node_modules/@workos-inc/node/package.json || echo "FAIL: SDK not installed"
 
-# 3. Check callback route exists (adjust path to your callback route)
-ls src/routes/callback.* app/callback/route.* pages/api/callback.* 2>/dev/null || echo "FAIL: No callback route found"
+# 3. Callback route exists (adjust path to your implementation)
+find . -name "*callback*" -o -name "*sso*" | grep -v node_modules
 
-# 4. Test authorization URL generation (create test script)
-node -e "require('./test-auth-url.js')" || echo "FAIL: Cannot generate auth URL"
+# 4. Test authentication with curl (requires running app)
+curl -I http://localhost:3000/sso/callback?code=test 2>/dev/null | grep -E "200|302" || echo "FAIL: Callback not responding"
 
-# 5. Build succeeds
-npm run build || echo "FAIL: Build errors"
+# 5. Production build succeeds
+npm run build
 ```
 
-**Manual verification required:**
-- [ ] Test SSO scenarios completed in Dashboard (SP-initiated, IdP-initiated, error cases)
-- [ ] Callback handles both success and error responses
-- [ ] User session created after successful SSO
-- [ ] Error messages displayed to users are helpful (not raw error codes)
+**Manual verification:**
+
+- [ ] SP-initiated flow works with Test IdP
+- [ ] IdP-initiated flow works with Test IdP
+- [ ] `signin_consent_denied` error displays helpful message
+- [ ] Callback handler logs profile data correctly
+- [ ] Session persists across page reloads
+- [ ] Production organization has active SSO connection
 
 ## Error Recovery
 
-### "Missing required parameter: organization"
+### "Connection not found"
 
-**Cause:** Authorization URL generation missing organization context.
-
-**Fix:** Provide either:
-- `organization` parameter (Organization ID from Dashboard), OR
-- `connection` parameter (Connection ID), OR
-- User email with domain matching verified organization domain
-
-Check fetched docs for current SDK method signature.
-
-### "Invalid redirect_uri"
-
-**Cause:** `WORKOS_REDIRECT_URI` not registered in Dashboard.
+**Root cause:** Authorization URL uses `organization` parameter, but organization has no active SSO connection.
 
 **Fix:**
-1. Navigate to [Configuration → Redirects](https://dashboard.workos.com/configuration/redirects)
-2. Add your callback URL exactly as it appears in env var
-3. Save and retry
 
-**Critical:** URL must match EXACTLY (including trailing slash if present).
+1. Check organization in Dashboard
+2. Verify SSO connection status is "Active"
+3. For test: Use "Test Organization" in staging environment
+4. For production: Customer must complete Admin Portal setup
 
-### "signin_consent_denied" at callback
+### "Redirect URI mismatch"
 
-**Cause:** User clicked "Cancel" or "Deny" during SSO consent screen.
-
-**Expected behavior** — not an error. Display message:
-> "Sign-in was cancelled. If this was unexpected, contact your administrator."
-
-Do NOT log as error. Do NOT retry automatically.
-
-### Callback receives `error=access_denied`
-
-**Cause:** User not authorized for your application in IdP.
-
-**Fix for customer admin:**
-1. Log into IdP (Okta, Azure AD, etc.)
-2. Assign user to your application
-3. User retries login
-
-**Fix for your app:** Display message directing user to contact their IT admin.
-
-### IdP-initiated flow fails with "Invalid state"
-
-**Cause:** Callback code expects state parameter that doesn't exist in IdP-initiated flow.
-
-**Fix:** Make state validation conditional:
-```
-If request is from IdP-initiated flow:
-  Skip state validation
-Else:
-  Validate state parameter
-```
-
-IdP-initiated requests do NOT include state parameter — this is expected.
-
-### "Connection not found" error
-
-**Cause:** Organization has no active SSO connection.
-
-**Fix for customer admin:**
-1. Complete Admin Portal setup instructions
-2. Verify connection shows "Active" in Dashboard
-
-**Fix for your app:** Check connection status before redirecting:
-```
-connection_status = "active"?
-  |
-  +-- Yes --> Redirect to SSO
-  |
-  +-- No  --> Show "SSO not configured" message
-```
-
-WebFetch Dashboard API docs for checking connection status programmatically.
-
-### Test IdP shows "Disable AuthKit" message
-
-**Cause:** AuthKit and standalone SSO API cannot run simultaneously in test environment.
+**Root cause:** Callback URL doesn't match Dashboard configuration EXACTLY.
 
 **Fix:**
-1. Navigate to [Authentication settings](https://dashboard.workos.com/authentication)
-2. Toggle AuthKit to "Disabled"
-3. Retry test flow
 
-**Re-enable AuthKit** after testing if using it in production.
+1. Check actual callback URL in browser (after IdP redirect)
+2. Log into Dashboard → API Keys → Redirect URIs
+3. Add exact URL including protocol and trailing slash
+4. Common mismatch: `http://localhost:3000/callback/` vs `http://localhost:3000/callback`
+
+### "Invalid client credentials"
+
+**Root cause:** Wrong `WORKOS_CLIENT_ID` or `WORKOS_API_KEY`.
+
+**Fix:**
+
+1. Verify keys in Dashboard → API Keys
+2. Check environment (staging keys work only in staging)
+3. Confirm no extra whitespace in `.env.local`
+4. Restart app after changing env vars
+
+### "State mismatch" or "Invalid state"
+
+**Root cause:** State parameter implementation broken or missing.
+
+**Fix:**
+
+1. If not using state: Remove state validation from callback handler
+2. If using state: Check session storage mechanism works
+3. Verify state generation uses cryptographically secure random
+4. Check session doesn't expire between authorization URL and callback
+
+### Callback receives `error=invalid_request`
+
+**Root cause:** Configuration error in authorization URL generation.
+
+**Fix:**
+
+1. Check parameters passed to `getAuthorizationURL`:
+   - `clientId` matches Dashboard
+   - `redirectUri` matches Dashboard exactly
+   - At least one of: `organization`, `provider`, or `domain`
+2. Check SDK version supports your parameter combination
+3. Review fetched docs for required parameters
+
+### User sees "This app hasn't been verified" (Google OAuth)
+
+**Root cause:** Google SSO connection not verified with Google.
+
+**Fix:**
+
+1. This is expected for development/staging
+2. For production: Follow Google OAuth verification process
+3. Alternatively: Use Test IdP or different provider for testing
+4. Users can click "Advanced" → "Go to [app] (unsafe)" to proceed (dev only)
+
+### IdP-initiated flow lands on 404
+
+**Root cause:** Callback handler doesn't handle missing `state` parameter.
+
+**Fix:**
+
+1. Make `state` parameter optional in callback handler
+2. IdP-initiated flow doesn't include state (by design)
+3. Check: `const state = request.query.state || null;`
+
+### "cookies was called outside request scope" (Next.js 15+)
+
+**Root cause:** Async cookie operations not properly awaited.
+
+**Fix:**
+
+1. Ensure callback handler is async
+2. Await all session operations
+3. Check session library compatibility with Next.js 15+
+4. See `workos-authkit-nextjs` skill for Next.js-specific patterns
 
 ## Related Skills
 
-- **workos-integrations**: Provider-specific SSO configuration (Okta, Azure AD, Google)
+- **workos-authkit-nextjs**: Higher-level Next.js SSO integration with UI components
+- **workos-integrations**: Provider-specific SSO setup instructions (Okta, Azure AD, Google, etc.)
 - **workos-admin-portal**: Self-serve SSO setup for customers
-- **workos-directory-sync**: Sync user directories after SSO authentication
-- **workos-authkit-nextjs**: AuthKit integration (alternative to standalone SSO)
-- **workos-rbac**: Role assignment after SSO login
+- **workos-directory-sync**: Sync user directories from IdPs after SSO is configured
+- **workos-rbac**: Add role-based access control after SSO authentication
+- **workos-domain-verification**: Verify domain ownership before enabling SSO

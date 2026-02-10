@@ -14,257 +14,241 @@ description: WorkOS Widgets API endpoints — generate widget tokens and manage 
 - https://workos.com/docs/reference/widgets
 - https://workos.com/docs/reference/widgets/get-token
 
-## When to Use This Skill
+## Overview
 
-Use this skill when you need to generate short-lived tokens for embedding WorkOS Widgets in your application UI. Widgets provide pre-built UI components for user authentication flows (signup, login, MFA setup).
+The Widgets API provides a **single endpoint** for generating short-lived access tokens that authorize embedded widget components. Widgets let users manage their organization settings (SSO, Directory Sync, Audit Logs, etc.) directly in your application without leaving your UI.
 
-**Common scenarios:**
-- Embed WorkOS AuthKit widget in your frontend
-- Generate tokens for user profile management widgets
-- Create ephemeral access tokens for widget authentication
+## Endpoint Catalog
 
-## Operation Decision Tree
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `POST` | `/widgets/token` | Generate a widget access token for a specific organization |
 
-```
-Need to embed a widget?
-│
-├─ YES → Call POST /widgets/token
-│         ├─ user_id provided? → Token scoped to specific user
-│         └─ user_id omitted? → Token for new user signup flows
-│
-└─ NO → This API has only token generation. See workos-widgets for feature overview.
-```
+## Authentication
 
-## Authentication Setup
-
-All requests require HTTP Bearer authentication:
+All Widgets API calls require:
 
 ```bash
 Authorization: Bearer <WORKOS_API_KEY>
 ```
 
-Your API key must start with `sk_` (secret key) and have widgets permissions enabled in the WorkOS Dashboard.
+Your API key must start with `sk_` (secret key). Find it in the WorkOS Dashboard under API Keys.
 
-## Endpoint Catalog
+## Operation Decision Tree
 
-### POST /widgets/token
+**Goal: Embed a widget in your application**
 
-**Purpose:** Generate a short-lived token for widget embedding
+1. User clicks "Manage SSO" (or similar) in your UI
+2. Backend calls `POST /widgets/token` with `organization_id` + `widget_scope`
+3. Return token to frontend
+4. Frontend renders widget component with token
+5. Token expires after 10 minutes (default) — generate a new token if needed
 
-**Request:**
+## Request Pattern: Generate Token
+
+### Endpoint
+
+```
+POST https://api.workos.com/widgets/token
+Content-Type: application/json
+Authorization: Bearer sk_test_...
+```
+
+### Required Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `organization_id` | string | The WorkOS organization ID (starts with `org_`) |
+| `widget_scope` | string | Widget type: `sso`, `dsync`, `audit_logs`, or `log_streams` |
+
+### Optional Parameters
+
+| Parameter | Type | Description | Default |
+|-----------|------|-------------|---------|
+| `expires_in` | integer | Token lifetime in seconds | `600` (10 min) |
+
+### Example Request
+
 ```bash
 curl -X POST https://api.workos.com/widgets/token \
-  -H "Authorization: Bearer sk_example_123456789" \
+  -H "Authorization: Bearer sk_test_..." \
   -H "Content-Type: application/json" \
   -d '{
-    "user_id": "user_01H7ZGXFP5C6BBQY5Z7EXAMPLE",
-    "organization_id": "org_01H7ZGXFP5C6BBQY5Z7EXAMPLE",
-    "session_duration_minutes": 15
+    "organization_id": "org_01H5K5Z4J8T9D3G2F1N6M8V7C4",
+    "widget_scope": "sso",
+    "expires_in": 600
   }'
 ```
 
-**Request Parameters:**
+### Example Response (Success)
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `user_id` | string | No | WorkOS user ID to scope the token. Omit for signup flows. |
-| `organization_id` | string | No | Organization context for the widget session |
-| `session_duration_minutes` | integer | No | Token validity period (default: 15, max: 60) |
-
-**Response (200 OK):**
 ```json
 {
-  "token": "wgt_01H7ZGXFP5C6BBQY5Z7EXAMPLE",
-  "expires_at": "2024-01-15T10:30:00Z"
+  "token": "widget_01H5K5ZABC123XYZ...",
+  "expires_at": "2024-01-15T12:45:00.000Z"
 }
 ```
 
-**Response Fields:**
+## Response Patterns
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `token` | string | Short-lived widget token (prefix: `wgt_`) |
-| `expires_at` | string | ISO 8601 timestamp of token expiration |
+### Success (200 OK)
 
-## Error Handling
+```json
+{
+  "token": "string",        // Pass this to the widget component
+  "expires_at": "string"    // ISO 8601 timestamp
+}
+```
 
-### 400 Bad Request
+### Error Responses
 
-**Cause:** Invalid request parameters
+| Status | Cause | Fix |
+|--------|-------|-----|
+| `400` | Missing required field (`organization_id` or `widget_scope`) | Include all required parameters in request body |
+| `400` | Invalid `widget_scope` value | Use one of: `sso`, `dsync`, `audit_logs`, `log_streams` |
+| `401` | Invalid or missing API key | Check `Authorization: Bearer sk_...` header is correct |
+| `404` | Organization not found | Verify `organization_id` exists in your WorkOS environment |
+| `429` | Rate limit exceeded | Retry after delay (see `Retry-After` header) |
+| `500` | WorkOS server error | Retry request with exponential backoff |
 
-**Example response:**
+### Error Response Format
+
 ```json
 {
   "error": "invalid_request",
-  "error_description": "session_duration_minutes must be between 1 and 60"
+  "error_description": "organization_id is required"
 }
 ```
 
-**Fix:**
-- Verify `session_duration_minutes` is 1-60
-- Ensure `user_id` matches format `user_[a-z0-9]{26}`
-- Confirm `organization_id` matches format `org_[a-z0-9]{26}`
+## Rate Limits
 
-### 401 Unauthorized
+- **Default limit**: 600 requests per minute per API key
+- **On limit hit**: Returns `429` with `Retry-After` header (seconds until reset)
+- **Strategy**: Implement exponential backoff (start with 1s, double on each retry)
 
-**Cause:** Missing or invalid API key
+## Token Lifecycle
 
-**Example response:**
-```json
-{
-  "error": "unauthorized",
-  "error_description": "Invalid API key"
-}
-```
+1. **Generation**: Call `POST /widgets/token` from your backend
+2. **Expiration**: Default 10 minutes (customizable via `expires_in`)
+3. **Refresh**: Tokens cannot be refreshed — generate a new token when expired
+4. **Security**: Tokens are single-use per widget session — do NOT reuse across users
 
-**Fix:**
-- Verify `WORKOS_API_KEY` starts with `sk_`
-- Check key exists in WorkOS Dashboard → API Keys
-- Confirm key has not been deleted or rotated
+## SDK Usage (Node.js)
 
-### 403 Forbidden
-
-**Cause:** API key lacks widgets permission
-
-**Fix:**
-- Go to WorkOS Dashboard → API Keys
-- Verify key has "Widgets" scope enabled
-- Regenerate key if permissions cannot be modified
-
-### 404 Not Found
-
-**Cause:** Referenced user or organization does not exist
-
-**Example response:**
-```json
-{
-  "error": "not_found",
-  "error_description": "User user_01H7ZGXFP5C6BBQY5Z7EXAMPLE not found"
-}
-```
-
-**Fix:**
-- Verify `user_id` exists in your WorkOS environment
-- Confirm `organization_id` is valid if provided
-- Check for typos in ID strings
-
-### 429 Too Many Requests
-
-**Cause:** Rate limit exceeded
-
-**Fix:**
-- Implement exponential backoff (start with 1s, double on each retry)
-- Cache tokens client-side until near expiration
-- Distribute requests across multiple API keys if needed
-
-**Rate limits:** 100 requests per minute per API key (check docs for current limits)
-
-## SDK Usage Patterns
-
-### Node.js
 ```javascript
 import { WorkOS } from '@workos-inc/node';
 
 const workos = new WorkOS(process.env.WORKOS_API_KEY);
 
-// Generate token for existing user
+// Generate widget token
 const { token } = await workos.widgets.getToken({
-  user: 'user_01H7ZGXFP5C6BBQY5Z7EXAMPLE',
-  organizationId: 'org_01H7ZGXFP5C6BBQY5Z7EXAMPLE',
-  sessionDurationMinutes: 30
+  organizationId: 'org_01H5K5Z4J8T9D3G2F1N6M8V7C4',
+  widgetScope: 'sso',
+  expiresIn: 600
 });
 
-// Generate token for new user signup
-const { token: signupToken } = await workos.widgets.getToken({
-  sessionDurationMinutes: 15
-});
+// Return token to frontend
+res.json({ token });
 ```
-
-### Python
-```python
-from workos import WorkOSClient
-
-client = WorkOSClient(api_key=os.getenv("WORKOS_API_KEY"))
-
-# Generate token for existing user
-response = client.widgets.get_token(
-    user="user_01H7ZGXFP5C6BBQY5Z7EXAMPLE",
-    organization_id="org_01H7ZGXFP5C6BBQY5Z7EXAMPLE",
-    session_duration_minutes=30
-)
-token = response["token"]
-```
-
-## Token Lifecycle Management
-
-**Token validity:**
-- Default: 15 minutes
-- Maximum: 60 minutes
-- Tokens are single-use for widget initialization
-
-**Best practices:**
-1. Generate tokens server-side immediately before widget rendering
-2. Pass tokens to frontend via secure, non-cacheable endpoints
-3. Never expose tokens in URLs or client-side storage
-4. Regenerate expired tokens rather than extending validity
 
 ## Verification Commands
 
-### Test token generation (curl)
+### Test Token Generation
+
 ```bash
-export WORKOS_API_KEY="sk_example_123456789"
+# Replace with your actual API key and organization ID
+export WORKOS_API_KEY="sk_test_..."
+export ORG_ID="org_01H5K5Z4J8T9D3G2F1N6M8V7C4"
 
 curl -X POST https://api.workos.com/widgets/token \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"session_duration_minutes": 15}' \
-  | jq -r '.token'
+  -d "{
+    \"organization_id\": \"$ORG_ID\",
+    \"widget_scope\": \"sso\"
+  }"
 ```
 
-**Expected output:** `wgt_01H7ZGXFP5C6BBQY5Z7EXAMPLE`
+**Expected output**: JSON with `token` and `expires_at` fields.
 
-### Test token expiration
+### Verify Token Format
+
 ```bash
-# Generate token
+# Extract token from response
 TOKEN=$(curl -s -X POST https://api.workos.com/widgets/token \
-  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"session_duration_minutes": 1}' \
-  | jq -r '.expires_at')
+  -d "{\"organization_id\": \"$ORG_ID\", \"widget_scope\": \"sso\"}" \
+  | jq -r '.token')
 
-echo "Token expires at: ${TOKEN}"
+echo "Token: $TOKEN"
+# Should start with "widget_"
 ```
 
-### Verify API key permissions
-```bash
-# Should return 401 if key is invalid
-curl -I -X POST https://api.workos.com/widgets/token \
-  -H "Authorization: Bearer sk_invalid_key" \
-  -H "Content-Type: application/json"
+## Common Integration Patterns
 
-# Should return 403 if key lacks widgets permission
+### Backend Route (Express)
+
+```javascript
+app.post('/api/widget-token', async (req, res) => {
+  const { organizationId } = req.body;
+  
+  try {
+    const { token } = await workos.widgets.getToken({
+      organizationId,
+      widgetScope: 'sso'
+    });
+    res.json({ token });
+  } catch (error) {
+    if (error.status === 404) {
+      return res.status(404).json({ error: 'Organization not found' });
+    }
+    res.status(500).json({ error: 'Failed to generate token' });
+  }
+});
 ```
 
-## Integration Checklist
+### Frontend Token Consumption
 
-- [ ] API key starts with `sk_` and has widgets scope enabled
-- [ ] Token generation endpoint returns 200 with valid `wgt_` token
-- [ ] Tokens expire after configured `session_duration_minutes`
-- [ ] Frontend receives tokens via secure backend endpoint (not hardcoded)
-- [ ] Error responses are handled gracefully (show user-friendly messages)
-- [ ] Token regeneration logic exists for expired tokens
+```javascript
+// Fetch token from your backend
+const response = await fetch('/api/widget-token', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ organizationId: 'org_...' })
+});
 
-## Common Pitfalls
+const { token } = await response.json();
 
-**Using client-side API keys:** The Widgets Token API requires a SECRET key (`sk_`), not a client ID (`client_`). Never expose secret keys in frontend code.
+// Pass token to widget component (exact usage depends on widget type)
+```
 
-**Reusing expired tokens:** Tokens are short-lived by design. Implement server-side token generation on-demand rather than caching tokens.
+## Troubleshooting
 
-**Missing organization context:** If your users belong to organizations, always pass `organization_id` to scope the widget session correctly.
+### "organization_id is required"
+
+**Cause**: Request body missing `organization_id` field.  
+**Fix**: Ensure JSON body includes `{"organization_id": "org_..."}`
+
+### "Invalid widget_scope"
+
+**Cause**: `widget_scope` is not one of the allowed values.  
+**Fix**: Use `sso`, `dsync`, `audit_logs`, or `log_streams`.
+
+### Token expired immediately
+
+**Cause**: `expires_in` set too low or clock skew.  
+**Fix**: Use default 600 seconds or higher. Check server time sync.
+
+### 401 Unauthorized
+
+**Cause**: API key missing, malformed, or wrong environment (test vs production).  
+**Fix**: Verify `Authorization: Bearer sk_test_...` header matches your WorkOS environment.
 
 ## Related Skills
 
-- **workos-widgets** — Feature overview and frontend integration patterns for Widgets
-- **workos-authkit-react** — React implementation of AuthKit using Widget tokens
-- **workos-authkit-nextjs** — Next.js server-side token generation patterns
-- **workos-api-authkit** — User session management after widget authentication
+- **workos-widgets** — Widget integration patterns and frontend setup
+- **workos-api-sso** — SSO configuration API (what the SSO widget manages)
+- **workos-api-directory-sync** — Directory Sync API (what the dsync widget manages)
+- **workos-api-audit-logs** — Audit Logs API (what the audit_logs widget manages)
+- **workos-api-organization** — Organization management API

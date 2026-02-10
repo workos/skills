@@ -22,109 +22,124 @@ description: WorkOS SSO API endpoints — connections, profiles, authorization U
 
 ## Authentication Setup
 
-All API requests require authentication via Bearer token in the Authorization header:
+All API requests require authentication via Bearer token:
 
-```
-Authorization: Bearer sk_your_api_key
+```bash
+Authorization: Bearer sk_live_1234567890
 ```
 
-Set environment variables:
-- `WORKOS_API_KEY` - Your API key (starts with `sk_`)
-- `WORKOS_CLIENT_ID` - Your client ID (starts with `client_`)
+Set your API key as an environment variable:
+
+```bash
+export WORKOS_API_KEY="sk_live_1234567890"
+export WORKOS_CLIENT_ID="client_1234567890"
+```
 
 ## Endpoint Catalog
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
+### Authorization Endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
 | GET | `/sso/authorize` | Initiate SSO login flow |
-| POST | `/sso/token` | Exchange authorization code for profile |
-| GET | `/user_management/users/{user_id}/sso_profile` | Get user's SSO profile |
-| GET | `/sso/connections` | List SSO connections |
-| GET | `/sso/connections/{id}` | Get specific connection details |
-| DELETE | `/sso/connections/{id}` | Delete a connection |
+| POST | `/sso/token` | Exchange authorization code for user profile |
+
+### Connection Management
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/connections` | List all SSO connections |
+| GET | `/connections/{id}` | Get single connection details |
+| DELETE | `/connections/{id}` | Delete an SSO connection |
+
+### Profile & Logout
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/sso/profile` | Get user profile from access token |
+| GET | `/sso/logout` | Generate logout URL |
 
 ## Operation Decision Tree
 
-**To initiate SSO login:**
-→ Use `GET /sso/authorize` to get authorization URL
-→ Redirect user to this URL
-→ User authenticates with their identity provider
-→ IdP redirects back to your callback URL with code
+**Task: Initiate SSO login**
+→ Use `GET /sso/authorize` with `provider`, `connection_id`, or `organization_id`
+→ Redirect user to returned authorization URL
 
-**To complete authentication:**
-→ Use `POST /sso/token` with the authorization code
-→ Receive user profile and access token
+**Task: Complete SSO login**
+→ User returns to redirect URI with `code` parameter
+→ Use `POST /sso/token` with the code to exchange for profile
 
-**To check existing profile:**
-→ Use `GET /user_management/users/{user_id}/sso_profile`
+**Task: List all connections for an organization**
+→ Use `GET /connections?organization_id={org_id}`
 
-**To manage connections:**
-→ List all: `GET /sso/connections`
-→ Get one: `GET /sso/connections/{id}`
-→ Delete: `DELETE /sso/connections/{id}`
+**Task: Get details of a specific connection**
+→ Use `GET /connections/{connection_id}`
+
+**Task: Remove an SSO connection**
+→ Use `DELETE /connections/{connection_id}`
+
+**Task: Get user profile from access token**
+→ Use `POST /sso/profile` with the access token
+
+**Task: Log out a user**
+→ Use `GET /sso/logout` with `session_id` to get logout URL
 
 ## Request/Response Patterns
 
-### Get Authorization URL
+### GET /sso/authorize - Initiate SSO
 
 **Request:**
-```http
-GET https://api.workos.com/sso/authorize
-  ?client_id=client_123
-  &redirect_uri=https://yourapp.com/callback
-  &response_type=code
-  &provider=GoogleOAuth
-  &state=random_state_string
+```bash
+curl "https://api.workos.com/sso/authorize?client_id=${WORKOS_CLIENT_ID}&redirect_uri=https://yourapp.com/callback&response_type=code&provider=GoogleOAuth" \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
 ```
 
 **Response:**
-```http
-HTTP/1.1 302 Found
-Location: https://accounts.google.com/o/oauth2/v2/auth?...
-```
-
-Alternative response for direct URL:
 ```json
 {
-  "link": "https://id.workos.com/sso/authorize/..."
+  "link": "https://auth.workos.com/sso/authorize?..."
 }
 ```
 
-### Exchange Code for Profile
+Redirect the user to the `link` URL.
+
+### POST /sso/token - Exchange Code for Profile
 
 **Request:**
-```http
-POST https://api.workos.com/sso/token
-Content-Type: application/x-www-form-urlencoded
-
-client_id=client_123&
-client_secret=sk_live_abc123&
-grant_type=authorization_code&
-code=auth_code_from_callback
+```bash
+curl -X POST "https://api.workos.com/sso/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -d "client_id=${WORKOS_CLIENT_ID}" \
+  -d "client_secret=${WORKOS_API_KEY}" \
+  -d "code=01HQRS5FJMJXKPQTGBW6S1K9NN" \
+  -d "grant_type=authorization_code"
 ```
 
 **Response:**
 ```json
 {
-  "access_token": "01HQRS...",
+  "access_token": "01HQRS5H...",
   "profile": {
-    "id": "prof_123",
-    "connection_id": "conn_456",
-    "connection_type": "GoogleOAuth",
+    "id": "prof_01HQRS5H...",
     "email": "user@example.com",
-    "first_name": "Jane",
+    "first_name": "John",
     "last_name": "Doe",
-    "raw_attributes": {...}
+    "connection_id": "conn_01HQRS5H...",
+    "connection_type": "GoogleOAuth",
+    "organization_id": "org_01HQRS5H...",
+    "idp_id": "12345",
+    "raw_attributes": {}
   }
 }
 ```
 
-### List Connections
+### GET /connections - List Connections
 
 **Request:**
-```http
-GET https://api.workos.com/sso/connections
-Authorization: Bearer sk_live_abc123
+```bash
+curl "https://api.workos.com/connections?organization_id=org_01HQRS5H..." \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
 ```
 
 **Response:**
@@ -132,176 +147,192 @@ Authorization: Bearer sk_live_abc123
 {
   "data": [
     {
-      "id": "conn_123",
-      "name": "Google OAuth",
-      "type": "GoogleOAuth",
+      "id": "conn_01HQRS5H...",
+      "name": "Acme Corp SAML",
+      "connection_type": "SAML",
       "state": "active",
-      "created_at": "2024-01-15T10:30:00.000Z"
+      "organization_id": "org_01HQRS5H..."
     }
   ],
   "list_metadata": {
-    "before": null,
-    "after": "conn_124"
+    "after": null,
+    "before": "conn_01HQRS5H..."
   }
 }
 ```
 
-### Get Connection
+### GET /connections/{id} - Get Connection
 
 **Request:**
-```http
-GET https://api.workos.com/sso/connections/conn_123
-Authorization: Bearer sk_live_abc123
+```bash
+curl "https://api.workos.com/connections/conn_01HQRS5H..." \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
 ```
 
 **Response:**
 ```json
 {
-  "id": "conn_123",
-  "name": "Google OAuth",
-  "type": "GoogleOAuth",
+  "id": "conn_01HQRS5H...",
+  "name": "Acme Corp SAML",
+  "connection_type": "SAML",
   "state": "active",
-  "created_at": "2024-01-15T10:30:00.000Z",
-  "updated_at": "2024-01-15T10:30:00.000Z"
+  "organization_id": "org_01HQRS5H...",
+  "domains": [
+    {
+      "domain": "acme.com",
+      "id": "domain_01HQRS5H..."
+    }
+  ]
 }
 ```
 
-### Delete Connection
+### DELETE /connections/{id} - Delete Connection
 
 **Request:**
-```http
-DELETE https://api.workos.com/sso/connections/conn_123
-Authorization: Bearer sk_live_abc123
+```bash
+curl -X DELETE "https://api.workos.com/connections/conn_01HQRS5H..." \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
 ```
 
 **Response:**
-```http
-HTTP/1.1 204 No Content
 ```
+204 No Content
+```
+
+### POST /sso/profile - Get Profile from Token
+
+**Request:**
+```bash
+curl -X POST "https://api.workos.com/sso/profile" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -d '{"access_token": "01HQRS5H..."}'
+```
+
+**Response:**
+```json
+{
+  "profile": {
+    "id": "prof_01HQRS5H...",
+    "email": "user@example.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "connection_id": "conn_01HQRS5H...",
+    "connection_type": "GoogleOAuth",
+    "organization_id": "org_01HQRS5H..."
+  }
+}
+```
+
+## Error Code Mapping
+
+### GET /sso/authorize Errors
+
+| Status | Error Code | Cause | Fix |
+|--------|-----------|-------|-----|
+| 400 | `invalid_request` | Missing required parameter (e.g., `redirect_uri`) | Include all required parameters: `client_id`, `redirect_uri`, `response_type`, and one of `provider`, `connection_id`, or `organization_id` |
+| 400 | `invalid_redirect_uri` | Redirect URI not whitelisted | Add redirect URI to allowed list in WorkOS Dashboard |
+| 401 | `unauthorized` | Invalid or missing API key | Verify `WORKOS_API_KEY` starts with `sk_` and is valid |
+| 404 | `connection_not_found` | Invalid `connection_id` | Verify connection exists using `GET /connections/{id}` |
+| 404 | `organization_not_found` | Invalid `organization_id` | Verify organization exists in WorkOS Dashboard |
+
+### POST /sso/token Errors
+
+| Status | Error Code | Cause | Fix |
+|--------|-----------|-------|-----|
+| 400 | `invalid_grant` | Authorization code expired or already used | Codes expire after 10 minutes and are single-use — restart flow |
+| 400 | `invalid_request` | Missing `code` or `grant_type` | Include both parameters in request body |
+| 401 | `unauthorized` | Invalid `client_secret` | Verify `WORKOS_API_KEY` matches the one used for `/sso/authorize` |
+
+### Connection Management Errors
+
+| Status | Error Code | Cause | Fix |
+|--------|-----------|-------|-----|
+| 401 | `unauthorized` | Invalid API key | Check `Authorization: Bearer` header contains valid API key |
+| 404 | `not_found` | Connection ID doesn't exist | Verify connection ID with `GET /connections` |
+| 409 | `conflict` | Connection still in use | Cannot delete active connections — deactivate first |
 
 ## Pagination Handling
 
-List endpoints support cursor-based pagination:
+List endpoints (`GET /connections`) use cursor-based pagination:
 
-```http
-GET /sso/connections?after=conn_124&limit=10
+**Request with cursor:**
+```bash
+curl "https://api.workos.com/connections?after=conn_01HQRS5H...&limit=10" \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
 ```
 
-Response includes `list_metadata` with `before` and `after` cursors:
+**Response includes pagination metadata:**
 ```json
 {
   "data": [...],
   "list_metadata": {
-    "before": "conn_120",
-    "after": "conn_134"
+    "after": "conn_01HQRS6...",
+    "before": "conn_01HQRS5H..."
   }
 }
 ```
 
-To fetch next page, use the `after` cursor value. To fetch previous page, use `before` cursor.
-
-## Error Code Mapping
-
-### Authorization Errors (GET /sso/authorize)
-
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `invalid_client_id` | Client ID not found or incorrect | Verify `WORKOS_CLIENT_ID` in dashboard |
-| `invalid_redirect_uri` | Redirect URI not whitelisted | Add URI to allowed list in dashboard |
-| `invalid_provider` | Provider not configured | Check connection exists for provider |
-| `invalid_state` | State parameter missing/invalid | Include random state string for CSRF protection |
-| `connection_not_found` | Connection ID doesn't exist | Verify connection ID or use organization/provider |
-
-Reference: https://workos.com/docs/reference/sso/get-authorization-url/error-codes
-
-### Token Exchange Errors (POST /sso/token)
-
-| Status | Error | Cause | Fix |
-|--------|-------|-------|-----|
-| 400 | `invalid_grant` | Authorization code expired or invalid | Request new code by reinitiating flow |
-| 401 | `invalid_client` | Client ID or secret incorrect | Verify `WORKOS_CLIENT_ID` and `WORKOS_API_KEY` |
-| 400 | `unsupported_grant_type` | Grant type not `authorization_code` | Set `grant_type=authorization_code` |
-
-### Connection Management Errors
-
-| Status | Error | Cause | Fix |
-|--------|-------|-------|-----|
-| 401 | `unauthorized` | Missing or invalid API key | Include `Authorization: Bearer sk_...` header |
-| 404 | `connection_not_found` | Connection ID doesn't exist | Verify connection ID from list endpoint |
-| 403 | `forbidden` | API key lacks permissions | Use API key with appropriate scope |
-
-## Rate Limiting
-
-WorkOS applies rate limits per API key. Headers in responses:
-- `X-RateLimit-Limit` - Total requests allowed per window
-- `X-RateLimit-Remaining` - Requests remaining
-- `X-RateLimit-Reset` - Unix timestamp when limit resets
-
-**On 429 Too Many Requests:**
-1. Read `Retry-After` header (seconds to wait)
-2. Implement exponential backoff: wait 1s, 2s, 4s, 8s between retries
-3. Cache connection data to reduce list calls
+Use `after` cursor for next page, `before` for previous page. Default limit is 10, max is 100.
 
 ## Runnable Verification
 
-### Test Authorization URL Generation
+### Test 1: List Connections
+
 ```bash
-curl -X GET "https://api.workos.com/sso/authorize?client_id=$WORKOS_CLIENT_ID&redirect_uri=http://localhost:3000/callback&response_type=code&provider=GoogleOAuth&state=test123" \
-  -i
+curl "https://api.workos.com/connections?limit=5" \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
 ```
 
-Expected: 302 redirect or JSON with `link` property
+**Expected:** JSON array of connections with `id`, `name`, `connection_type`, `state`.
 
-### Test Token Exchange (after getting code from callback)
+### Test 2: Get Authorization URL
+
 ```bash
-curl -X POST https://api.workos.com/sso/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "client_id=$WORKOS_CLIENT_ID" \
-  -d "client_secret=$WORKOS_API_KEY" \
-  -d "grant_type=authorization_code" \
-  -d "code=YOUR_AUTH_CODE"
+curl "https://api.workos.com/sso/authorize?client_id=${WORKOS_CLIENT_ID}&redirect_uri=http://localhost:3000/callback&response_type=code&provider=GoogleOAuth" \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
 ```
 
-Expected: JSON with `access_token` and `profile` object
+**Expected:** JSON with `link` field containing authorization URL.
 
-### Test List Connections
+### Test 3: Get Connection Details
+
 ```bash
-curl -X GET https://api.workos.com/sso/connections \
-  -H "Authorization: Bearer $WORKOS_API_KEY"
+# First, get a connection ID from the list
+CONNECTION_ID=$(curl -s "https://api.workos.com/connections?limit=1" \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}" | jq -r '.data[0].id')
+
+# Then fetch its details
+curl "https://api.workos.com/connections/${CONNECTION_ID}" \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
 ```
 
-Expected: JSON with `data` array of connections
+**Expected:** JSON with full connection details including `domains` array.
 
-### Test Get Connection
-```bash
-curl -X GET https://api.workos.com/sso/connections/conn_123 \
-  -H "Authorization: Bearer $WORKOS_API_KEY"
+## Rate Limit Guidance
+
+WorkOS SSO API has a rate limit of 600 requests per minute per API key.
+
+**Rate limit headers:**
+```
+X-RateLimit-Limit: 600
+X-RateLimit-Remaining: 599
+X-RateLimit-Reset: 1640000000
 ```
 
-Expected: JSON object with connection details
+**When rate limited (status 429):**
+1. Parse `Retry-After` header (seconds until reset)
+2. Implement exponential backoff: 1s, 2s, 4s, 8s
+3. Max 5 retries before failing
 
-### Test Delete Connection
-```bash
-curl -X DELETE https://api.workos.com/sso/connections/conn_123 \
-  -H "Authorization: Bearer $WORKOS_API_KEY"
-```
-
-Expected: 204 No Content status
-
-## Integration Checklist
-
-- [ ] Environment variables set (`WORKOS_API_KEY`, `WORKOS_CLIENT_ID`)
-- [ ] Redirect URIs whitelisted in WorkOS Dashboard
-- [ ] Authorization URL generates successfully
-- [ ] Callback endpoint receives authorization code
-- [ ] Token exchange returns valid profile
-- [ ] Connection list returns expected data
-- [ ] Error responses handled with specific error codes
-- [ ] Rate limit headers monitored in production
+**Prevention strategies:**
+- Cache connection details (they rarely change)
+- Use webhooks for profile updates instead of polling
+- Batch connection lookups where possible
 
 ## Related Skills
 
-- **workos-sso** - Feature overview and integration patterns for SSO
-- **workos-authkit-base** - Full authentication implementation with SSO
-- **workos-api-organization** - Managing organizations that use SSO connections
-- **workos-admin-portal** - Self-service SSO configuration UI
+- **workos-sso** — Feature overview and integration patterns for SSO
+- **workos-api-organization** — Manage organizations that own SSO connections
+- **workos-admin-portal** — Allow customers to self-configure SSO connections
+- **workos-domain-verification** — Verify domains before enabling SSO for them

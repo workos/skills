@@ -13,82 +13,69 @@ description: Migrate to WorkOS from Stytch.
 
 WebFetch: `https://workos.com/docs/migrate/stytch`
 
-This document is the source of truth for current API endpoints, supported hash formats, and migration patterns. If this skill conflicts with the fetched docs, follow the docs.
+The documentation is the source of truth. If this skill conflicts with the docs, follow the docs.
 
-## Step 2: Pre-Migration Assessment
+## Step 2: Pre-Migration Planning (Decision Tree)
 
-### Determine Migration Scope
-
-Answer these questions by inspecting your Stytch project:
+### User Type Detection
 
 ```
-Stytch Product Type?
+Stytch user type?
   |
-  +-- B2B (Organizations + Members) --> Follow full migration path
+  +-- B2B Users --> Follow this skill (organizations + members)
   |
-  +-- Consumer (Individual Users)    --> Use Stytch's export utility
-                                         (github.com/stytchauth/stytch-node-export-users)
+  +-- Consumer Users --> Use Stytch's export utility: 
+                         https://github.com/stytchauth/stytch-node-export-users
 ```
 
-**This skill covers B2B migrations only.** Consumer migrations require different export tooling.
+This skill covers **B2B user migration only**. Consumer users require different export logic.
 
-### Authentication Method Audit
+### Authentication Method Inventory
 
-Check Stytch Dashboard to identify which auth methods are in use:
+Check your Stytch dashboard to determine which auth methods are in use:
 
-- **Password auth** → Requires password hash export from Stytch support (see Step 3)
-- **Magic Link** → Maps to WorkOS Magic Auth (6-digit code, not link)
-- **Email OTP** → Direct equivalent to WorkOS Magic Auth
-- **OAuth (Google, Microsoft, GitHub)** → Direct equivalent, no data export needed
+- **Password auth** → Contact Stytch support for hash export (Timeline: varies, plan ahead)
+- **Magic Link** → Maps to WorkOS Magic Auth (6-digit code vs. clickable link)
+- **Email OTP** → Direct mapping to Magic Auth (no changes needed)
+- **OAuth (Google, Microsoft, GitHub)** → Direct mapping to WorkOS OAuth
 
-**Critical decision:** If password auth is enabled, you MUST request password hashes from Stytch support before starting imports. This process can take days/weeks — start the request NOW.
+**Critical:** If using password auth, contact `support@stytch.com` NOW to request hash export. This has variable turnaround time and will block final import.
 
-### Environment Variables
+## Step 3: Environment Setup
 
-Verify these exist before proceeding:
+### Required Credentials
 
-**Stytch (for export):**
-- `STYTCH_PROJECT_ID`
-- `STYTCH_SECRET`
-
-**WorkOS (for import):**
-- `WORKOS_API_KEY` (starts with `sk_`)
-- `WORKOS_CLIENT_ID` (starts with `client_`)
-
-## Step 3: Request Password Hash Export (IF APPLICABLE)
-
-**Skip this step if NOT using password authentication.**
-
-If your Stytch project uses password auth:
-
-1. Email `support@stytch.com` with subject: "Password hash export request for migration"
-2. Include your Stytch project ID in the request
-3. Wait for Stytch to provide export file (timeline varies — can be days to weeks)
-4. When received, verify file contains `scrypt` hashes (Stytch's default algorithm)
-
-**CRITICAL:** You cannot import passwords without this export. Timeline is outside your control — start this request during assessment phase.
-
-WorkOS supports these hash formats: `scrypt`, `bcrypt`, `argon2`. Confirm with Stytch which format they're providing.
-
-**Do NOT proceed to Step 5 (user import) until you receive this file** if password auth is required.
-
-## Step 4: Export Organizations and Members
-
-### Install Stytch SDK
-
-Detect package manager and install:
+Create `.env.local` with:
 
 ```bash
-npm install stytch
-# or
-yarn add stytch
-# or
-pnpm add stytch
+# Stytch (for export)
+STYTCH_PROJECT_ID=project-test-xxx
+STYTCH_SECRET=secret-test-xxx
+
+# WorkOS (for import)
+WORKOS_API_KEY=sk_test_xxx
+WORKOS_CLIENT_ID=client_xxx
 ```
 
-### Export Script Pattern
+### SDK Installation
 
-Create export script at project root (e.g., `scripts/export-stytch.ts`):
+Detect package manager, install both SDKs:
+
+```bash
+# Stytch for export
+npm install stytch
+
+# WorkOS for import
+npm install @workos-inc/node
+```
+
+**Verify:** Both packages exist in `node_modules` before continuing.
+
+## Step 4: Export from Stytch (BLOCKING)
+
+### Export Organizations
+
+Create `export-stytch.ts`:
 
 ```typescript
 import { B2BClient } from 'stytch';
@@ -99,386 +86,377 @@ const client = new B2BClient({
   secret: process.env.STYTCH_SECRET!,
 });
 
-async function exportData() {
-  // 1. Export organizations (paginated)
-  const organizations = [];
+async function exportOrganizations() {
+  const orgs = [];
   let cursor: string | undefined;
   
   do {
     const response = await client.organizations.search({
-      limit: 100,
       cursor,
+      limit: 1000,
     });
-    organizations.push(...response.organizations);
-    cursor = response.next_cursor;
+    orgs.push(...response.organizations);
+    cursor = response.has_more ? response.next_cursor : undefined;
   } while (cursor);
-
-  // 2. Export members for each org (paginated)
-  const members = [];
   
-  for (const org of organizations) {
-    let memberCursor: string | undefined;
-    
-    do {
-      const response = await client.members.search({
-        organization_ids: [org.organization_id],
-        limit: 100,
-        cursor: memberCursor,
-      });
-      members.push(...response.members);
-      memberCursor = response.next_cursor;
-    } while (memberCursor);
-  }
-
-  // 3. Save to files
-  await writeFile('stytch-organizations.json', JSON.stringify(organizations, null, 2));
-  await writeFile('stytch-members.json', JSON.stringify(members, null, 2));
-  
-  console.log(`Exported ${organizations.length} organizations`);
-  console.log(`Exported ${members.length} members`);
+  await writeFile('stytch-orgs.json', JSON.stringify(orgs, null, 2));
+  return orgs;
 }
-
-exportData().catch(console.error);
 ```
 
-**Rate limit:** Both APIs allow 100 requests/minute. Script will automatically paginate.
+**Rate limit:** 100 requests/minute. For large datasets, add delays between batches.
+
+### Export Members
+
+For each organization, export members:
+
+```typescript
+async function exportMembers(orgId: string) {
+  const members = [];
+  let cursor: string | undefined;
+  
+  do {
+    const response = await client.organizations.members.search({
+      organization_ids: [orgId],
+      cursor,
+      limit: 1000,
+    });
+    members.push(...response.members);
+    cursor = response.has_more ? response.next_cursor : undefined;
+  } while (cursor);
+  
+  return members;
+}
+
+async function exportAllMembers(orgs: any[]) {
+  const allMembers = [];
+  for (const org of orgs) {
+    const members = await exportMembers(org.organization_id);
+    allMembers.push(...members);
+  }
+  await writeFile('stytch-members.json', JSON.stringify(allMembers, null, 2));
+}
+```
 
 **Run export:**
 
 ```bash
-tsx scripts/export-stytch.ts
-# or
-ts-node scripts/export-stytch.ts
+tsx export-stytch.ts
 ```
 
-**Verify export succeeded:**
+**Verify:** Files `stytch-orgs.json` and `stytch-members.json` exist and contain data.
 
-```bash
-test -f stytch-organizations.json && echo "Organizations exported"
-test -f stytch-members.json && echo "Members exported"
-jq 'length' stytch-organizations.json  # Should show count > 0
-jq 'length' stytch-members.json        # Should show count > 0
-```
+### Password Hash Export (If Using Password Auth)
 
-## Step 5: Install WorkOS SDK
+**This is a MANUAL process:**
 
-Detect package manager and install:
+1. Email `support@stytch.com` with subject "Password Hash Export Request"
+2. Provide your Stytch project ID
+3. Wait for hash file delivery (timeline varies)
+4. **Critical:** Verify the hash algorithm they provide. Ask specifically: "What hashing algorithm was used?" (Stytch uses `scrypt` but confirm format matches WorkOS expectations)
 
-```bash
-npm install @workos-inc/node
-# or
-yarn add @workos-inc/node
-# or
-pnpm add @workos-inc/node
-```
+**Do not proceed to Step 5 if passwords are in use and you don't have the hash export.**
 
-**Verify installation:**
+## Step 5: Import to WorkOS
 
-```bash
-test -d node_modules/@workos-inc/node && echo "WorkOS SDK installed"
-```
+### Import Organizations First
 
-## Step 6: Import Organizations
-
-### Import Script Pattern
-
-Create import script at project root (e.g., `scripts/import-workos.ts`):
+Create `import-workos.ts`:
 
 ```typescript
 import { WorkOS } from '@workos-inc/node';
 import { readFile } from 'fs/promises';
 
-const workos = new WorkOS(process.env.WORKOS_API_KEY!);
+const workos = new WorkOS(process.env.WORKOS_API_KEY);
 
-async function importOrganizations() {
-  const orgsData = await readFile('stytch-organizations.json', 'utf-8');
-  const stytchOrgs = JSON.parse(orgsData);
+async function importOrganization(stytchOrg: any) {
+  const domainData = stytchOrg.email_allowed_domains?.map((domain: string) => ({
+    domain,
+    state: 'verified', // Adjust based on Stytch verification state
+  }));
   
-  const mapping = new Map(); // Stytch ID -> WorkOS ID
+  const org = await workos.organizations.createOrganization({
+    name: stytchOrg.organization_name,
+    domainData,
+    idempotencyKey: `stytch-${stytchOrg.organization_id}`, // Prevent duplicates
+  });
   
-  for (const stytchOrg of stytchOrgs) {
-    const domainData = stytchOrg.email_allowed_domains?.map((domain: string) => ({
-      domain,
-      state: 'verified', // Adjust if Stytch provides verification status
-    })) || [];
-
-    const workosOrg = await workos.organizations.createOrganization({
-      name: stytchOrg.organization_name,
-      domainData,
-      // Optional: preserve Stytch metadata
-      // metadata: { stytch_id: stytchOrg.organization_id },
-    });
-
-    mapping.set(stytchOrg.organization_id, workosOrg.id);
-    console.log(`Imported: ${stytchOrg.organization_name} -> ${workosOrg.id}`);
-  }
-
-  // Save mapping for user import
-  await writeFile('org-id-mapping.json', JSON.stringify(Array.from(mapping.entries())));
-  
-  return mapping;
+  return { stytchId: stytchOrg.organization_id, workosId: org.id };
 }
 
-importOrganizations().catch(console.error);
-```
-
-**Domain verification state:**
-
-- If Stytch provided verified domains → use `state: 'verified'`
-- If unverified or unknown → use `state: 'pending'`
-- Check fetched docs for current domain state options
-
-**Run import:**
-
-```bash
-tsx scripts/import-workos.ts
-```
-
-**Verify organizations imported:**
-
-```bash
-test -f org-id-mapping.json && echo "Mapping created"
-jq 'length' org-id-mapping.json  # Should match org count
-```
-
-## Step 7: Import Users and Memberships
-
-### Member Status Filtering (CRITICAL)
-
-Stytch members have statuses. **You must decide which to import:**
-
-```
-Member Status?
-  |
-  +-- active   --> Import with password hash (if available)
-  |
-  +-- invited  --> Skip import, re-send invites via WorkOS
-  |
-  +-- pending  --> Skip import, re-send invites via WorkOS
-```
-
-**Recommended:** Only import `active` members. Re-invite others after migration completes.
-
-### Import Script Pattern (Without Passwords)
-
-```typescript
-async function importUsers() {
-  const membersData = await readFile('stytch-members.json', 'utf-8');
-  const stytchMembers = JSON.parse(membersData);
+async function importAllOrganizations() {
+  const orgsData = await readFile('stytch-orgs.json', 'utf-8');
+  const orgs = JSON.parse(orgsData);
+  const mapping = [];
   
-  const orgMapping = new Map(JSON.parse(await readFile('org-id-mapping.json', 'utf-8')));
-  
-  // Filter to active members only
-  const activeMembers = stytchMembers.filter((m: any) => m.status === 'active');
-  
-  for (const member of activeMembers) {
-    // Parse name
-    const nameParts = member.name?.split(' ') || [];
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '';
-
-    // Create user
-    const user = await workos.userManagement.createUser({
-      email: member.email_address,
-      emailVerified: member.email_address_verified || false,
-      firstName,
-      lastName,
-    });
-
-    // Create org membership
-    const workosOrgId = orgMapping.get(member.organization_id);
-    if (workosOrgId) {
-      await workos.userManagement.createOrganizationMembership({
-        userId: user.id,
-        organizationId: workosOrgId,
-        roleSlug: 'member', // Adjust based on Stytch role mapping
-      });
-    }
-
-    console.log(`Imported: ${member.email_address} -> ${user.id}`);
+  for (const org of orgs) {
+    const result = await importOrganization(org);
+    mapping.push(result);
   }
+  
+  await writeFile('org-mapping.json', JSON.stringify(mapping, null, 2));
 }
 ```
 
-### Import Script Pattern (With Passwords)
+**Critical:** Save the Stytch → WorkOS organization ID mapping. You need it for member imports.
 
-**Only use this if you received password hashes from Stytch support.**
-
-Modify the user creation call:
+### Import Users and Memberships
 
 ```typescript
-const user = await workos.userManagement.createUser({
-  email: member.email_address,
-  emailVerified: member.email_address_verified || false,
-  firstName,
-  lastName,
-  passwordHash: passwordHashFromStytch,      // From support export
-  passwordHashType: 'scrypt',                // Confirm with Stytch
-});
+async function importUser(stytchMember: any, orgMapping: any[]) {
+  // Filter by status - only import active members
+  if (stytchMember.status !== 'active') {
+    console.log(`Skipping non-active member: ${stytchMember.email_address}`);
+    return null;
+  }
+  
+  // Parse name
+  const nameParts = stytchMember.name?.split(' ') || [];
+  const firstName = nameParts[0] || '';
+  const lastName = nameParts.slice(1).join(' ') || '';
+  
+  // Create user (without password for now)
+  const user = await workos.userManagement.createUser({
+    email: stytchMember.email_address,
+    emailVerified: stytchMember.email_address_verified ?? false,
+    firstName,
+    lastName,
+    idempotencyKey: `stytch-user-${stytchMember.member_id}`,
+  });
+  
+  // Create organization membership
+  const workosOrgId = orgMapping.find(
+    m => m.stytchId === stytchMember.organization_id
+  )?.workosId;
+  
+  if (workosOrgId) {
+    await workos.userManagement.createOrganizationMembership({
+      userId: user.id,
+      organizationId: workosOrgId,
+    });
+  }
+  
+  return user;
+}
 ```
 
-**Supported hash types:** Check fetched docs for current list. Known types include `scrypt`, `bcrypt`, `argon2`.
+**Decision: Invited/Pending Members**
 
-**Critical:** The `passwordHashType` MUST match the algorithm Stytch used. If mismatch, users cannot sign in.
+```
+Member status?
+  |
+  +-- active   --> Import directly
+  |
+  +-- invited  --> Option A: Skip and re-invite via WorkOS
+  |            --> Option B: Import and send new invite
+  |
+  +-- pending  --> Same as invited
+```
 
-## Step 8: Configure Authentication Methods
+Choose your strategy before running the import loop.
 
-### WorkOS Dashboard Configuration
+### Import Password Hashes (If Available)
 
-Navigate to WorkOS Dashboard → Authentication tab:
+**Only proceed if you have the hash export from Stytch support.**
 
-**If migrating password auth:**
-1. Enable "Email and Password"
-2. Configure password requirements (match or exceed Stytch's requirements)
+```typescript
+async function importUserWithPassword(stytchMember: any, passwordHash: string) {
+  const user = await workos.userManagement.createUser({
+    email: stytchMember.email_address,
+    emailVerified: stytchMember.email_address_verified ?? false,
+    firstName,
+    lastName,
+    passwordHash: passwordHash,
+    passwordHashType: 'scrypt', // Confirm with Stytch support
+    idempotencyKey: `stytch-user-${stytchMember.member_id}`,
+  });
+  
+  return user;
+}
+```
 
-**If migrating magic link/email OTP:**
-1. Enable "Magic Auth" (WorkOS equivalent)
-2. Note: WorkOS sends 6-digit code, not clickable link — update user-facing docs
+**Critical:** The `passwordHashType` parameter must match the algorithm Stytch used. Verify this with their support team. WorkOS supports:
+- `scrypt`
+- `bcrypt`
+- `argon2`
 
-**If migrating OAuth:**
-1. Navigate to Authentication → OAuth providers
-2. Enable each provider used in Stytch (Google, Microsoft, GitHub, etc.)
-3. Configure OAuth credentials (see related skill: `workos-authkit-base`)
+If the format is wrong, users cannot sign in and you'll need to force password resets.
 
-**User auto-linking:** WorkOS will automatically link OAuth sign-ins to existing users by email match. No additional config needed.
+## Step 6: Configure WorkOS Dashboard
 
-## Step 9: Update Application Code
+### Enable Authentication Methods
 
-### Replace Stytch SDK Calls
+Navigate to WorkOS Dashboard → Authentication:
 
-This is application-specific, but common patterns:
+1. **Password Auth** (if migrating passwords):
+   - Enable "Email + Password"
+   - Configure password requirements to match or exceed Stytch's
 
-**Sign-in flow:**
-- Remove Stytch authentication SDK calls
-- Integrate WorkOS AuthKit (see related skill for your framework)
+2. **Magic Auth** (replaces Stytch Magic Link / Email OTP):
+   - Enable "Magic Auth"
+   - Note: Users get 6-digit code (not clickable link)
+   - Codes expire after 10 minutes
 
-**Session management:**
-- Replace Stytch session validation with WorkOS session validation
-- Update middleware to use WorkOS auth
+3. **OAuth Providers** (if migrating social logins):
+   - Navigate to Authentication → OAuth
+   - Enable each provider (Google, Microsoft, GitHub, etc.)
+   - Configure client credentials for each
+   - Users will auto-link by email address
 
-**Related Skills:**
-- `workos-authkit-nextjs` - Next.js App Router integration
-- `workos-authkit-react` - React integration
-- `workos-authkit-vanilla-js` - Plain JavaScript integration
+**Critical:** WorkOS Magic Auth sends a CODE, not a clickable link. Update user-facing documentation to reflect this UX change.
 
-### Magic Link → Magic Auth Migration Notes
+## Step 7: SDK Integration (If Not Already Done)
 
-**Critical UX change:** Magic Auth uses 6-digit codes entered in-app, NOT clickable email links.
+If this is a NEW WorkOS integration (not just data migration), implement AuthKit:
 
-Update user-facing documentation and UI:
-- Change "Check your email for a link" → "Check your email for a code"
-- Add code input field (AuthKit provides this automatically)
+- See `workos-authkit-nextjs` skill for Next.js
+- See `workos-authkit-react` skill for React
+- See `workos-authkit-vanilla-js` skill for plain JavaScript
+
+**This step is BLOCKING if you don't have WorkOS auth flows implemented yet.**
 
 ## Verification Checklist (ALL MUST PASS)
 
+Run these checks after import completes:
+
 ```bash
-# 1. Export files exist
-test -f stytch-organizations.json && echo "PASS: Orgs exported" || echo "FAIL"
-test -f stytch-members.json && echo "PASS: Members exported" || echo "FAIL"
+# 1. Verify export files exist
+ls stytch-orgs.json stytch-members.json org-mapping.json
 
-# 2. Import mapping exists
-test -f org-id-mapping.json && echo "PASS: Org mapping created" || echo "FAIL"
+# 2. Count imported organizations (should match Stytch count)
+cat org-mapping.json | jq 'length'
 
-# 3. WorkOS SDK installed
-test -d node_modules/@workos-inc/node && echo "PASS: SDK installed" || echo "FAIL"
+# 3. Test user login (pick a test user)
+# Manual: Go to WorkOS dashboard → Users → Try signing in as test user
 
-# 4. Verify org count matches (adjust paths if using src directory)
-echo "Stytch orgs: $(jq 'length' stytch-organizations.json)"
-echo "WorkOS orgs: (check dashboard count)"
+# 4. Verify OAuth providers configured (if applicable)
+# Manual: Dashboard → Authentication → OAuth → Check each provider shows "Configured"
 
-# 5. Verify user count matches
-echo "Active Stytch members: $(jq '[.[] | select(.status == "active")] | length' stytch-members.json)"
-echo "WorkOS users: (check dashboard count)"
-
-# 6. Test authentication
-# Manual: Attempt sign-in with migrated user credentials
+# 5. Check password auth enabled (if migrated hashes)
+# Manual: Dashboard → Authentication → Email + Password → Should show "Enabled"
 ```
 
-**If counts don't match:** Check import script logs for API errors. Common issues:
-- Rate limiting (wait and retry)
-- Duplicate email addresses (WorkOS requires unique emails)
-- Invalid domain data format
+**Critical password verification:**
+
+```bash
+# Test a user with migrated password hash
+curl -X POST https://api.workos.com/user_management/authenticate \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_id": "'"$WORKOS_CLIENT_ID"'",
+    "email": "test@example.com",
+    "password": "test-password",
+    "grant_type": "password"
+  }'
+
+# Expected: 200 with access_token
+# If 401: Hash format mismatch - verify passwordHashType with Stytch
+```
 
 ## Error Recovery
 
-### "Email address already exists" during user import
+### "Stytch API rate limit exceeded"
 
-**Root cause:** User already exists in WorkOS (duplicate import attempt or email collision).
+**Root cause:** Exceeded 100 requests/minute during export.
 
-**Fix:**
-1. Check if user exists: Query WorkOS users by email before creating
-2. If exists, skip user creation and only create org membership
-3. Pattern:
+**Fix:** Add rate limiting to export script:
 
 ```typescript
-const existing = await workos.userManagement.listUsers({ email: member.email_address });
-const user = existing.data[0] || await workos.userManagement.createUser({...});
+async function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Add after each API call
+await sleep(650); // ~90 requests/minute with buffer
 ```
 
 ### "Invalid password hash format"
 
-**Root cause:** `passwordHashType` parameter doesn't match actual hash algorithm.
+**Root cause:** `passwordHashType` doesn't match actual Stytch hash algorithm.
 
 **Fix:**
-1. Verify hash format with Stytch support export documentation
-2. Check WorkOS docs (via WebFetch) for supported hash types
-3. Common mismatch: Specifying `bcrypt` when Stytch exported `scrypt`
 
-### Stytch API rate limit (100 req/min)
+1. Contact Stytch support: "What hashing algorithm and parameters were used?"
+2. Update `passwordHashType` in import script
+3. Re-run import for affected users OR force password resets
 
-**Root cause:** Export script hitting rate limit during pagination.
+### "Organization already exists" during import
+
+**Root cause:** Re-running import without idempotency keys.
 
 **Fix:**
-Add delay between requests:
+
+1. Check `org-mapping.json` for existing Stytch → WorkOS ID pairs
+2. Skip organizations already in mapping file
+3. Always use `idempotencyKey` parameter to prevent duplicates
+
+### "Email already exists" during user import
+
+**Root cause:** User already imported or email collision.
+
+**Fix:**
 
 ```typescript
-await new Promise(resolve => setTimeout(resolve, 600)); // 600ms = 100/min
+try {
+  const user = await workos.userManagement.createUser({...});
+} catch (error) {
+  if (error.code === 'user_already_exists') {
+    // Fetch existing user by email and create membership only
+    const users = await workos.userManagement.listUsers({ email: stytchMember.email_address });
+    const existingUser = users.data[0];
+    await workos.userManagement.createOrganizationMembership({
+      userId: existingUser.id,
+      organizationId: workosOrgId,
+    });
+  } else {
+    throw error;
+  }
+}
 ```
 
-### "Organization not found" during membership creation
+### "User cannot sign in after migration"
 
-**Root cause:** Org ID mapping lookup failed or org import didn't complete.
+**Decision tree for diagnosis:**
+
+```
+Sign-in method?
+  |
+  +-- Password --> Check passwordHashType matches Stytch algorithm
+  |            --> Verify emailVerified = true (WorkOS requires verified emails)
+  |
+  +-- Magic Auth --> No migration needed - works immediately
+  |
+  +-- OAuth --> Check provider configured in dashboard
+            --> Verify email matches between Stytch and OAuth account
+```
+
+### "Members missing from imported organizations"
+
+**Root cause:** Status filtering excluded invited/pending members.
 
 **Fix:**
-1. Verify `org-id-mapping.json` exists and contains all Stytch org IDs
-2. Check WorkOS dashboard for organization count
-3. Re-run org import if needed (ensure idempotency by checking for existing orgs first)
 
-### WorkOS API authentication failures
+1. Review filtering logic in `importUser` function
+2. Decide on invited/pending strategy (re-invite vs. import)
+3. Re-run member import with adjusted status filter
 
-**Root cause:** Invalid or missing `WORKOS_API_KEY`.
+### Stytch environment variables not loading
 
 **Fix:**
-1. Verify env var is set: `echo $WORKOS_API_KEY`
-2. Confirm key starts with `sk_` (not `pk_` — that's publishable key)
-3. Check key has correct permissions in WorkOS Dashboard → API Keys
-4. Regenerate key if compromised
 
-### Users cannot sign in after migration
+```bash
+# Verify .env.local exists and has correct format
+cat .env.local | grep STYTCH
 
-**Decision tree:**
-
+# For tsx, ensure dotenv is configured
+tsx --env-file=.env.local export-stytch.ts
 ```
-Auth method used?
-  |
-  +-- Password --> Check password hash import was successful
-  |                Verify passwordHashType matches export format
-  |
-  +-- OAuth    --> Verify OAuth provider configured in WorkOS Dashboard
-  |                Confirm redirect URIs match
-  |
-  +-- Magic    --> Verify Magic Auth enabled in dashboard
-                   Confirm email delivery is working
-```
-
-Check WorkOS Dashboard → Logs for specific authentication error messages.
 
 ## Related Skills
 
-- `workos-authkit-nextjs` - Next.js integration after migration
-- `workos-authkit-react` - React integration after migration
-- `workos-authkit-vanilla-js` - Plain JS integration after migration
-- `workos-api-authkit` - AuthKit API reference
-- `workos-magic-link` - Magic Auth configuration details
-- `workos-api-organization` - Organization management API
-- `workos-domain-verification` - Domain verification for SSO
+- `workos-authkit-nextjs` - Integrate AuthKit with Next.js after migration
+- `workos-authkit-react` - Integrate AuthKit with React after migration
+- `workos-magic-link` - Configure Magic Auth to replace Stytch magic links
+- `workos-api-authkit` - Direct API usage for custom auth flows
+- `workos-api-organization` - Advanced organization management post-migration

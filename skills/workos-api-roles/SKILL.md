@@ -20,94 +20,137 @@ description: WorkOS RBAC API endpoints — roles, permissions, and role assignme
 - https://workos.com/docs/reference/roles/organization-role/list
 - https://workos.com/docs/reference/roles/organization-role/remove-permission
 
-## Authentication
+## Authentication Setup
 
-Set the API key in the `Authorization` header for all requests:
+All API requests require authentication via Bearer token:
 
+```bash
+Authorization: Bearer sk_live_your_api_key
 ```
-Authorization: Bearer sk_your_api_key
-```
 
-The API key must start with `sk_` and have the `roles` permission scope enabled in the WorkOS Dashboard.
+Set your API key as an environment variable:
+
+```bash
+export WORKOS_API_KEY=sk_live_your_api_key
+```
 
 ## Endpoint Catalog
 
-### Organization Roles (Org-Scoped)
+### Organization Roles (Per-Organization Role Management)
 
 | Method | Endpoint | Purpose |
-| ------ | -------- | ------- |
-| `POST` | `/organization_roles` | Create a new role in an organization |
-| `GET` | `/organization_roles/:id` | Retrieve a specific organization role |
-| `GET` | `/organization_roles` | List all roles in an organization |
-| `PUT` | `/organization_roles/:id` | Update role name or description |
-| `DELETE` | `/organization_roles/:id` | Delete an organization role |
-| `POST` | `/organization_roles/:id/permissions/add` | Add a single permission to a role |
-| `POST` | `/organization_roles/:id/permissions/remove` | Remove a single permission from a role |
-| `POST` | `/organization_roles/:id/permissions/set` | Set all permissions (replaces existing) |
+|--------|----------|---------|
+| POST | `/user_management/organization_roles` | Create a role for a specific organization |
+| GET | `/user_management/organization_roles/:id` | Get a single organization role |
+| GET | `/user_management/organization_roles` | List roles for an organization |
+| PUT | `/user_management/organization_roles/:id` | Update organization role metadata |
+| DELETE | `/user_management/organization_roles/:id` | Delete an organization role |
+| POST | `/user_management/organization_roles/:id/add_permission` | Add permission to organization role |
+| POST | `/user_management/organization_roles/:id/remove_permission` | Remove permission from organization role |
+| POST | `/user_management/organization_roles/:id/set_permissions` | Replace all permissions for organization role |
 
-### Global Roles (Tenant-Level Templates)
-
-| Method | Endpoint | Purpose |
-| ------ | -------- | ------- |
-| `POST` | `/roles` | Create a global role template |
-| `GET` | `/roles/:id` | Retrieve a global role |
-| `GET` | `/roles` | List all global roles |
-| `PUT` | `/roles/:id` | Update global role name or description |
-| `POST` | `/roles/:id/permissions/add` | Add a permission to a global role |
-| `POST` | `/roles/:id/permissions/set` | Set all permissions on a global role |
-
-### Permissions
+### Global Roles (Reusable Role Templates)
 
 | Method | Endpoint | Purpose |
-| ------ | -------- | ------- |
-| `POST` | `/permissions` | Create a new permission |
-| `GET` | `/permissions/:id` | Retrieve a specific permission |
-| `GET` | `/permissions` | List all permissions |
-| `PUT` | `/permissions/:id` | Update permission name or description |
-| `DELETE` | `/permissions/:id` | Delete a permission |
+|--------|----------|---------|
+| POST | `/user_management/roles` | Create a reusable role template |
+| GET | `/user_management/roles/:id` | Get a single role template |
+| GET | `/user_management/roles` | List all role templates |
+| PUT | `/user_management/roles/:id` | Update role template metadata |
+| POST | `/user_management/roles/:id/add_permission` | Add permission to role template |
+| POST | `/user_management/roles/:id/set_permissions` | Replace all permissions for role template |
+
+### Permissions (Granular Access Controls)
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/user_management/permissions` | Create a permission |
+| GET | `/user_management/permissions/:id` | Get a single permission |
+| GET | `/user_management/permissions` | List all permissions |
+| PUT | `/user_management/permissions/:id` | Update permission metadata |
+| DELETE | `/user_management/permissions/:id` | Delete a permission |
 
 ## Operation Decision Tree
 
-**When do I use organization_roles vs. roles?**
+### When to Use Organization Roles vs Global Roles
 
-- Use `POST /organization_roles` to create a role instance within a specific organization
-- Use `POST /roles` to create a global role template that can be applied across multiple organizations
+```
+Need to define a role?
+│
+├─ Is this role specific to ONE organization?
+│  └─ Use Organization Roles API (POST /organization_roles)
+│     - Examples: "Acme Corp Admin", "Beta Org Viewer"
+│
+└─ Is this role reusable across ALL organizations?
+   └─ Use Global Roles API (POST /roles)
+      - Examples: "Admin", "Member", "Viewer"
+      - Note: Global roles are templates — assign them to organizations separately
+```
 
-**Create vs. Update vs. Set Permissions?**
+### CRUD Operation Mapping
 
-- Use `POST /organization_roles/:id/permissions/add` to add ONE permission without affecting existing ones
-- Use `POST /organization_roles/:id/permissions/remove` to remove ONE permission
-- Use `POST /organization_roles/:id/permissions/set` to replace ALL permissions atomically
+**Create a new permission:**
+```
+POST /user_management/permissions
+```
 
-**When to create permissions first?**
+**Create a role template (multi-organization):**
+```
+POST /user_management/roles
+```
 
-- Always create permissions (`POST /permissions`) before assigning them to roles
-- Permission slugs must exist before you can add them to a role
+**Create a role for specific organization:**
+```
+POST /user_management/organization_roles
+```
+
+**Update role metadata (name, description):**
+```
+PUT /user_management/roles/:id              # For global roles
+PUT /user_management/organization_roles/:id # For org-specific roles
+```
+
+**Add/remove permissions incrementally:**
+```
+POST /organization_roles/:id/add_permission    # Add one permission
+POST /organization_roles/:id/remove_permission # Remove one permission
+```
+
+**Replace all permissions at once:**
+```
+POST /organization_roles/:id/set_permissions # Replaces entire permission set
+POST /roles/:id/set_permissions              # For global roles
+```
+
+**Delete role (WARNING: affects assigned users):**
+```
+DELETE /user_management/organization_roles/:id
+```
 
 ## Request/Response Patterns
 
 ### Create Organization Role
 
 **Request:**
-```http
-POST /organization_roles
-Content-Type: application/json
-
-{
-  "organization_id": "org_01H5P...",
-  "name": "Billing Admin",
-  "description": "Manages billing and subscriptions"
-}
+```bash
+curl -X POST https://api.workos.com/user_management/organization_roles \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "organization_id": "org_01H5K8PJZ8N4JKQ6X1Y9Z2ABC",
+    "name": "Engineering Manager",
+    "description": "Manages engineering team members"
+  }'
 ```
 
 **Response (201):**
 ```json
 {
   "object": "organization_role",
-  "id": "orgrole_01H5P...",
-  "organization_id": "org_01H5P...",
-  "name": "Billing Admin",
-  "description": "Manages billing and subscriptions",
+  "id": "org_role_01H5K8PJZ8N4JKQ6X1Y9Z2DEF",
+  "organization_id": "org_01H5K8PJZ8N4JKQ6X1Y9Z2ABC",
+  "name": "Engineering Manager",
+  "description": "Manages engineering team members",
   "permissions": [],
   "created_at": "2024-01-15T10:30:00.000Z",
   "updated_at": "2024-01-15T10:30:00.000Z"
@@ -117,25 +160,58 @@ Content-Type: application/json
 ### Add Permission to Role
 
 **Request:**
-```http
-POST /organization_roles/orgrole_01H5P.../permissions/add
-Content-Type: application/json
-
-{
-  "permission_id": "perm_01H5P..."
-}
+```bash
+curl -X POST https://api.workos.com/user_management/organization_roles/org_role_01H5K8PJZ8N4JKQ6X1Y9Z2DEF/add_permission \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "permission_id": "perm_01H5K8PJZ8N4JKQ6X1Y9Z2GHI"
+  }'
 ```
 
 **Response (200):**
 ```json
 {
   "object": "organization_role",
-  "id": "orgrole_01H5P...",
+  "id": "org_role_01H5K8PJZ8N4JKQ6X1Y9Z2DEF",
   "permissions": [
     {
-      "id": "perm_01H5P...",
-      "slug": "billing:read",
-      "name": "Read Billing Data"
+      "id": "perm_01H5K8PJZ8N4JKQ6X1Y9Z2GHI",
+      "name": "repo:write",
+      "description": "Write access to repositories"
+    }
+  ]
+}
+```
+
+### Set All Permissions (Replace Existing)
+
+**Request:**
+```bash
+curl -X POST https://api.workos.com/user_management/organization_roles/org_role_01H5K8PJZ8N4JKQ6X1Y9Z2DEF/set_permissions \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "permission_ids": [
+      "perm_01H5K8PJZ8N4JKQ6X1Y9Z2GHI",
+      "perm_01H5K8PJZ8N4JKQ6X1Y9Z2JKL"
+    ]
+  }'
+```
+
+**Response (200):**
+```json
+{
+  "object": "organization_role",
+  "id": "org_role_01H5K8PJZ8N4JKQ6X1Y9Z2DEF",
+  "permissions": [
+    {
+      "id": "perm_01H5K8PJZ8N4JKQ6X1Y9Z2GHI",
+      "name": "repo:write"
+    },
+    {
+      "id": "perm_01H5K8PJZ8N4JKQ6X1Y9Z2JKL",
+      "name": "user:invite"
     }
   ]
 }
@@ -144,8 +220,9 @@ Content-Type: application/json
 ### List Organization Roles (Paginated)
 
 **Request:**
-```http
-GET /organization_roles?organization_id=org_01H5P...&limit=10&after=orgrole_01H5P...
+```bash
+curl -X GET "https://api.workos.com/user_management/organization_roles?organization_id=org_01H5K8PJZ8N4JKQ6X1Y9Z2ABC&limit=10" \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
 ```
 
 **Response (200):**
@@ -155,13 +232,14 @@ GET /organization_roles?organization_id=org_01H5P...&limit=10&after=orgrole_01H5
   "data": [
     {
       "object": "organization_role",
-      "id": "orgrole_01H5P...",
-      "name": "Billing Admin"
+      "id": "org_role_01H5K8PJZ8N4JKQ6X1Y9Z2DEF",
+      "name": "Engineering Manager",
+      "permissions": [...]
     }
   ],
   "list_metadata": {
-    "after": "orgrole_01H5Q...",
-    "before": null
+    "before": null,
+    "after": "org_role_01H5K8PJZ8N4JKQ6X1Y9Z2XYZ"
   }
 }
 ```
@@ -169,154 +247,139 @@ GET /organization_roles?organization_id=org_01H5P...&limit=10&after=orgrole_01H5
 ### Create Permission
 
 **Request:**
-```http
-POST /permissions
-Content-Type: application/json
-
-{
-  "slug": "billing:write",
-  "name": "Modify Billing Data",
-  "description": "Can update payment methods and plans"
-}
+```bash
+curl -X POST https://api.workos.com/user_management/permissions \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "repo:delete",
+    "description": "Delete repositories"
+  }'
 ```
 
 **Response (201):**
 ```json
 {
   "object": "permission",
-  "id": "perm_01H5P...",
-  "slug": "billing:write",
-  "name": "Modify Billing Data",
-  "description": "Can update payment methods and plans",
+  "id": "perm_01H5K8PJZ8N4JKQ6X1Y9Z2MNO",
+  "name": "repo:delete",
+  "description": "Delete repositories",
   "created_at": "2024-01-15T10:30:00.000Z",
   "updated_at": "2024-01-15T10:30:00.000Z"
 }
 ```
 
-## Pagination Pattern
+## Pagination Handling
 
 List endpoints use cursor-based pagination:
 
-1. Initial request: `GET /organization_roles?organization_id=org_01H5P...&limit=10`
-2. Get next page: Use the `after` cursor from `list_metadata`: `GET /organization_roles?organization_id=org_01H5P...&limit=10&after=orgrole_01H5Q...`
-3. Get previous page: Use the `before` cursor if present
-4. End of results: `list_metadata.after` is `null`
+**Initial request:**
+```bash
+curl "https://api.workos.com/user_management/roles?limit=10"
+```
 
-Default limit is 10, maximum is 100.
+**Next page (using `after` cursor):**
+```bash
+curl "https://api.workos.com/user_management/roles?limit=10&after=role_01H5K8PJZ8N4JKQ6X1Y9Z2XYZ"
+```
+
+**Previous page (using `before` cursor):**
+```bash
+curl "https://api.workos.com/user_management/roles?limit=10&before=role_01H5K8PJZ8N4JKQ6X1Y9Z2ABC"
+```
+
+The `list_metadata` object contains `before` and `after` cursors. A `null` cursor indicates no more pages in that direction.
 
 ## Error Code Mapping
 
-| Status | Cause | Fix |
-| ------ | ----- | --- |
-| `400` | Missing required field (`organization_id`, `name`, etc.) | Check request body includes all required fields per fetched docs |
-| `401` | Invalid or missing API key | Verify `Authorization: Bearer sk_...` header is set correctly |
-| `403` | API key lacks `roles` permission scope | Enable `roles` scope in WorkOS Dashboard → API Keys |
-| `404` | Role, permission, or organization not found | Verify ID exists with `GET /{resource}/:id` before operating on it |
-| `409` | Duplicate slug or name conflict | Use a unique `slug` for permissions or check existing roles with `GET /organization_roles` |
-| `422` | Invalid permission ID when adding to role | Ensure permission exists with `GET /permissions/:id` before adding |
-| `429` | Rate limit exceeded (100 requests/second) | Implement exponential backoff: wait 1s, 2s, 4s, 8s before retrying |
-| `500` | WorkOS internal error | Retry with exponential backoff up to 3 attempts |
+| Status Code | Cause | Fix |
+|-------------|-------|-----|
+| 400 | Invalid `organization_id` format | Verify organization ID starts with `org_` |
+| 400 | Missing required field (e.g., `name`) | Check request body includes all required fields |
+| 401 | Invalid or missing API key | Verify `Authorization: Bearer sk_live_...` header |
+| 403 | API key lacks required permissions | Check API key permissions in WorkOS Dashboard |
+| 404 | Role ID or permission ID not found | Verify resource exists via GET request first |
+| 409 | Permission already assigned to role | Use `set_permissions` to replace, or skip if acceptable |
+| 409 | Permission name already exists | Choose a unique permission name |
+| 422 | Invalid permission_id format | Ensure permission ID starts with `perm_` |
+| 429 | Rate limit exceeded | Implement exponential backoff (start with 1s delay) |
+| 500 | Internal server error | Retry with exponential backoff, contact support if persists |
+
+### Common Error Response Format
+
+```json
+{
+  "error": "invalid_request",
+  "error_description": "organization_id is required",
+  "code": "invalid_request"
+}
+```
+
+## Runnable Verification Commands
+
+### 1. Create a Permission
+```bash
+export WORKOS_API_KEY=sk_live_your_key_here
+
+PERMISSION_ID=$(curl -s -X POST https://api.workos.com/user_management/permissions \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"test:read","description":"Test read permission"}' \
+  | jq -r '.id')
+
+echo "Created permission: $PERMISSION_ID"
+```
+
+### 2. Create an Organization Role
+```bash
+export ORG_ID=org_your_org_id_here
+
+ROLE_ID=$(curl -s -X POST https://api.workos.com/user_management/organization_roles \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d "{\"organization_id\":\"$ORG_ID\",\"name\":\"Test Role\",\"description\":\"Test role\"}" \
+  | jq -r '.id')
+
+echo "Created role: $ROLE_ID"
+```
+
+### 3. Add Permission to Role
+```bash
+curl -X POST https://api.workos.com/user_management/organization_roles/$ROLE_ID/add_permission \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d "{\"permission_id\":\"$PERMISSION_ID\"}"
+```
+
+### 4. Verify Role Has Permission
+```bash
+curl -s -X GET https://api.workos.com/user_management/organization_roles/$ROLE_ID \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}" \
+  | jq '.permissions'
+```
+
+### 5. Cleanup (Delete Role)
+```bash
+curl -X DELETE https://api.workos.com/user_management/organization_roles/$ROLE_ID \
+  -H "Authorization: Bearer ${WORKOS_API_KEY}"
+```
 
 ## Rate Limits
 
-- **Limit:** 100 requests per second per API key
-- **Retry strategy:** Exponential backoff with jitter (1s → 2s → 4s → 8s)
-- **Headers:** Check `X-RateLimit-Remaining` and `X-RateLimit-Reset` in responses
+- **Default limit:** 100 requests per 10 seconds per API key
+- **Retry strategy:** Implement exponential backoff starting at 1 second
+- **429 response includes:** `Retry-After` header (seconds to wait)
 
-## Runnable Verification
-
-### Verify Authentication
-
+**Example retry logic:**
 ```bash
-curl https://api.workos.com/permissions \
-  -H "Authorization: Bearer sk_your_api_key" \
-  -H "Content-Type: application/json"
+# If 429 received, extract Retry-After header
+RETRY_AFTER=$(curl -i ... | grep -i retry-after | awk '{print $2}')
+sleep $RETRY_AFTER
+# Retry request
 ```
-
-Expected: `200 OK` with list of permissions (or empty list if none created)
-
-### Create Permission and Role End-to-End
-
-```bash
-# 1. Create permission
-PERM_ID=$(curl -s https://api.workos.com/permissions \
-  -H "Authorization: Bearer sk_your_api_key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "slug": "test:read",
-    "name": "Test Read"
-  }' | jq -r '.id')
-
-# 2. Create organization role
-ROLE_ID=$(curl -s https://api.workos.com/organization_roles \
-  -H "Authorization: Bearer sk_your_api_key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "organization_id": "org_01H5P...",
-    "name": "Test Role"
-  }' | jq -r '.id')
-
-# 3. Add permission to role
-curl https://api.workos.com/organization_roles/$ROLE_ID/permissions/add \
-  -H "Authorization: Bearer sk_your_api_key" \
-  -H "Content-Type: application/json" \
-  -d "{\"permission_id\": \"$PERM_ID\"}"
-
-# 4. Verify role has permission
-curl https://api.workos.com/organization_roles/$ROLE_ID \
-  -H "Authorization: Bearer sk_your_api_key"
-```
-
-Expected: Final response includes permission in `permissions` array.
-
-### Test Pagination
-
-```bash
-# List roles with small limit to trigger pagination
-curl "https://api.workos.com/organization_roles?organization_id=org_01H5P...&limit=2" \
-  -H "Authorization: Bearer sk_your_api_key"
-```
-
-Expected: `list_metadata.after` is non-null if more than 2 roles exist.
-
-## Common Patterns
-
-### Atomic Permission Replacement
-
-To replace all permissions on a role without race conditions:
-
-```bash
-curl -X POST https://api.workos.com/organization_roles/orgrole_01H5P.../permissions/set \
-  -H "Authorization: Bearer sk_your_api_key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "permission_ids": ["perm_01H5P...", "perm_01H5Q...", "perm_01H5R..."]
-  }'
-```
-
-This is safer than multiple `add`/`remove` calls which can interleave with other updates.
-
-### Check Permission Existence Before Assignment
-
-```bash
-# 1. Verify permission exists
-STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-  https://api.workos.com/permissions/perm_01H5P... \
-  -H "Authorization: Bearer sk_your_api_key")
-
-# 2. Only add if 200
-if [ "$STATUS" = "200" ]; then
-  curl -X POST https://api.workos.com/organization_roles/orgrole_01H5P.../permissions/add \
-    -H "Authorization: Bearer sk_your_api_key" \
-    -H "Content-Type: application/json" \
-    -d '{"permission_id": "perm_01H5P..."}'
-fi
-```
-
-This prevents `422` errors from invalid permission IDs.
 
 ## Related Skills
 
-- **workos-rbac** — Feature overview and WorkOS RBAC concepts
-- **workos-api-organization** — Managing organizations that own roles
-- **workos-fga** — Fine-grained authorization patterns using roles
+- **workos-rbac** — Role-Based Access Control feature guide (how to design permission systems)
+- **workos-api-organization** — Organization management API (required for organization roles)
+- **workos-api-authkit** — User management API (assign roles to users)
