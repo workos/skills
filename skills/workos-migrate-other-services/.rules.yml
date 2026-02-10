@@ -1,0 +1,8 @@
+rules:
+  - id: other-services-decision-coverage
+    description: "Generic guide needs extensive decision trees to compensate for lack of specifics"
+    severity: warn
+    promoted: false
+    must_contain:
+      - pattern: "decision tree|Decision Tree|\\+--|\\|"
+        context: "Generic guides need multiple decision trees for password handling, field mapping, and cutover strategy"

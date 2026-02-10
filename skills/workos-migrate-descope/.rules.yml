@@ -1,0 +1,8 @@
+rules:
+  - id: descope-preserve-sdk-methods
+    description: "Source docs include concrete SDK examples — preserve them"
+    severity: warn
+    promoted: false
+    must_contain:
+      - pattern: "userManagement.createUser"
+        context: "Source docs show this method — refiner should preserve it, not replace with WebFetch"

@@ -30,9 +30,16 @@ function getAttributionBlock(): string {
 
 ## SDK Method Names (CRITICAL)
 
-- NEVER invent or guess SDK method names. If the source docs don't show the exact method signature, write a WebFetch instruction instead: "WebFetch [URL] for current SDK method names."
+- The scaffold was generated from REAL documentation. If it contains SDK method names with parameter signatures, PRESERVE them exactly — they came from the docs.
+- If YOU are unsure whether a method exists, check if it appears in the scaffold. If it does, trust it.
+- NEVER invent NEW SDK method names beyond what the scaffold provides. If you need a method the scaffold doesn't show, write a WebFetch instruction instead.
 - NEVER write "check docs for exact method name" or "exact method name in fetched docs" — this is useless to an agent. Either provide the method or provide a WebFetch URL.
-- Do NOT include code examples with uncertain method names. A wrong method name is worse than no example.
+- For migration skills: distinguish between SOURCE system limitations (e.g., "Cognito doesn't export hashes") and WorkOS limitations (e.g., "WorkOS doesn't support X"). Do NOT conflate them — WorkOS supports password hash import even if the source system doesn't export them.
+
+## Thin APIs / Generic Guides
+
+- Some API domains have very few endpoints (e.g., Widgets API = just token generation). This is ACCEPTABLE — do not pad thin APIs with invented content. Instead, add usage context and integration patterns.
+- Some migration guides are intentionally generic (e.g., "other services"). Compensate by adding MORE decision trees and edge case branches, not by inventing provider-specific content.
 
 ## Related Skills References (CRITICAL)
 

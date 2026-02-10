@@ -13,3 +13,12 @@ rules:
     must_not_contain:
       - pattern: "WORKOS_COOKIE_PASSWORD"
         context: "This is AuthKit-Next.js specific, not universal for Cognito migration"
+  - id: cognito-password-hash-accuracy
+    description: "Must not conflate Cognito limitations with WorkOS limitations"
+    severity: error
+    promoted: true
+    must_not_contain:
+      - pattern: "WorkOS does NOT support importing password hashes"
+        context: "Incorrect — WorkOS supports password hash import, Cognito just doesn't export them"
+      - pattern: "WorkOS cannot import.*password"
+        context: "WorkOS CAN import password hashes — the limitation is on Cognito's export side"

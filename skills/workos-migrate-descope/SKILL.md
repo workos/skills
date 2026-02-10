@@ -13,287 +13,318 @@ description: Migrate to WorkOS from Descope.
 
 WebFetch: `https://workos.com/docs/migrate/descope`
 
-The WorkOS docs are the source of truth. If this skill conflicts with the fetched docs, follow the docs.
+The migration guide is the source of truth. If this skill conflicts with the guide, follow the guide.
 
-## Step 2: Pre-Flight Validation
+## Step 2: Pre-Migration Validation
 
-### Environment Variables
+### WorkOS Environment
 
-Check for required WorkOS credentials:
+- Confirm WorkOS account exists
+- Verify `WORKOS_API_KEY` in environment (starts with `sk_`)
+- Verify `WORKOS_CLIENT_ID` in environment (starts with `client_`)
+- Confirm WorkOS SDK installed in project
 
-- `WORKOS_API_KEY` - starts with `sk_`
-- `WORKOS_CLIENT_ID` - starts with `client_`
+**Verify:** Run `npm ls @workos-inc/node` or equivalent to confirm SDK presence.
 
-**Verify:** Both variables are set and non-empty before continuing.
+### Descope Access
 
-### SDK Installation
+- Confirm access to Descope Management API
+- Verify Descope API credentials are valid
+- Test connection: `curl -H "Authorization: Bearer <descope-api-key>" https://api.descope.com/v1/mgmt/user/search`
 
-Confirm WorkOS SDK is installed:
+## Step 3: Password Export (Decision Tree)
+
+```
+Do users sign in with passwords?
+  |
+  +-- NO --> Skip to Step 4
+  |
+  +-- YES --> Contact Descope support for password export
+              |
+              +-- Wait for CSV with password hashes
+              |
+              +-- Note hashing algorithm (bcrypt, argon2, pbkdf2, etc.)
+```
+
+**CRITICAL:** Descope does NOT expose password hashes via API. You MUST contact support to obtain them. See: https://docs.descope.com/management/user-management/user-exporting
+
+**What to request from support:**
+- CSV export with user data AND password hashes
+- Explicit confirmation of hashing algorithm used
+- Secure transfer method (encrypted, time-limited link, etc.)
+
+## Step 4: Export User Data
+
+Use Descope Management API to export users:
 
 ```bash
-# Check package.json for WorkOS SDK dependency
-grep -E "@workos-inc/(node|authkit)" package.json || echo "FAIL: WorkOS SDK not installed"
+# Example: Search all users
+curl -X POST https://api.descope.com/v1/mgmt/user/search \
+  -H "Authorization: Bearer $DESCOPE_PROJECT_ID:$DESCOPE_MANAGEMENT_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{}'
 ```
 
-If SDK is missing, install appropriate package for your framework (see related skills for framework-specific setup).
+**Required fields to capture:**
+- `email` (maps to `email`)
+- `givenName` (maps to `first_name`)
+- `familyName` (maps to `last_name`)
+- `verifiedEmail` (maps to `email_verified`)
+- `tenantIds` (for organization memberships — capture this association)
 
-## Step 3: Export Users from Descope (Decision Tree)
+**Verify:** Save raw export to JSON/CSV before processing. Do not transform inline.
 
-```
-User authentication type?
-  |
-  +-- Passwords --> Contact Descope support for password hash export (REQUIRED)
-  |                 Note the hash algorithm (bcrypt/argon2/pbkdf2)
-  |
-  +-- Social auth only --> Use Descope Management API to export user data
-  |
-  +-- Both --> Get both password hashes AND social auth user data
-```
+## Step 5: Import Users to WorkOS
 
-### Password Export (Manual Process)
+### Rate Limiting Strategy
 
-Descope does NOT expose password hashes via API. You MUST contact Descope support:
+WorkOS Create User API has rate limits. For migrations >1000 users, implement batching:
 
-1. Open support ticket requesting user export with password hashes
-2. Descope will generate a CSV file
-3. **Record the hashing algorithm used** (bcrypt, argon2, or pbkdf2)
-4. Arrange secure data transfer with Descope team
-
-**BLOCKING:** Wait for Descope to provide the export before proceeding to import.
-
-### Social Auth User Export (API)
-
-Use Descope Management API to fetch user data:
-
-WebFetch the current API docs: `https://docs.descope.com/management/user-management/sdks`
-
-## Step 4: Import Users into WorkOS
-
-### Field Mapping Reference
-
-Map Descope user fields to WorkOS Create User API parameters:
-
-| Descope Field    | WorkOS Parameter |
-| ---------------- | ---------------- |
-| `email`          | `email`          |
-| `givenName`      | `first_name`     |
-| `familyName`     | `last_name`      |
-| `verifiedEmail`  | `email_verified` |
-
-### Import Script Pattern (Password Users)
-
-```typescript
-// For each user from Descope export
-async function importUser(descopeUser, passwordData) {
-  const userData = {
-    email: descopeUser.email,
-    first_name: descopeUser.givenName,
-    last_name: descopeUser.familyName,
-    email_verified: descopeUser.verifiedEmail,
-  };
-
-  // If password hash available from Descope support
-  if (passwordData) {
-    userData.password_hash = passwordData.hash;
-    userData.password_hash_type = passwordData.algorithm; // 'bcrypt', 'argon2', or 'pbkdf2'
-  }
-
-  // Call WorkOS Create User API
-  // WebFetch https://workos.com/docs/reference/authkit/user/create for current method signature
-}
+```bash
+# Check current rate limits
+curl https://api.workos.com/rate_limit \
+  -H "Authorization: Bearer $WORKOS_API_KEY"
 ```
 
-**Critical:** WorkOS Create User API is rate-limited. Check current limits: `https://workos.com/docs/reference/rate-limits`
+**Batching pattern:**
+- Process 100 users per batch
+- 1-second delay between batches
+- Retry on 429 with exponential backoff
 
-For large migrations, implement batching with delays between requests.
+### Create Users (Without Passwords)
 
-### Import Script Pattern (Social Auth Users)
+For each user in Descope export:
 
-Social auth users do NOT need password import. Create users with basic profile data only:
-
-```typescript
-async function importSocialAuthUser(descopeUser) {
-  const userData = {
-    email: descopeUser.email,
-    first_name: descopeUser.givenName,
-    last_name: descopeUser.familyName,
-    email_verified: descopeUser.verifiedEmail,
-  };
-
-  // No password_hash or password_hash_type needed
-  // WorkOS will auto-link when user signs in via social provider
-}
+```bash
+curl https://api.workos.com/user_management/users \
+  -X POST \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "<descope.email>",
+    "first_name": "<descope.givenName>",
+    "last_name": "<descope.familyName>",
+    "email_verified": <descope.verifiedEmail>
+  }'
 ```
 
-**Auto-linking:** When social auth users sign in post-migration, WorkOS matches by email address and links the account automatically.
+**Store mapping:** `descope_user_id` → `workos_user_id` for later steps.
 
-## Step 5: Configure Social Auth Providers (If Applicable)
+### Import Passwords (If Obtained)
 
-If migrating social auth users, configure providers in WorkOS Dashboard BEFORE users attempt sign-in:
+If you received password hashes from Descope support:
 
-- Google OAuth: `https://workos.com/docs/integrations/google-oauth`
-- Microsoft OAuth: `https://workos.com/docs/integrations/microsoft-oauth`
+```bash
+curl https://api.workos.com/user_management/users \
+  -X POST \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "<email>",
+    "password_hash": "<hash_from_descope>",
+    "password_hash_type": "bcrypt"
+  }'
+```
 
-**Verification:** Test sign-in with each configured provider before announcing migration to users.
+**Supported hash types:** `bcrypt`, `argon2`, `pbkdf2` (must match what Descope used).
+
+**CRITICAL:** If hash type is wrong, users cannot sign in. Confirm with Descope support before importing.
+
+## Step 6: Migrate Social Auth Users (OAuth)
+
+If Descope users signed in via Google, Microsoft, or other OAuth providers:
+
+### Configure Providers in WorkOS
+
+1. Go to WorkOS Dashboard → Authentication → Social Providers
+2. For each provider (Google, Microsoft, etc.):
+   - Add OAuth client credentials
+   - See provider-specific docs: https://workos.com/docs/integrations
+
+**CRITICAL:** WorkOS links users by **email address**. If a user signs in with Google OAuth using the same email as their Descope account, they are automatically matched.
 
 ### Email Verification Behavior
 
-- Providers with verified domains (e.g., `@gmail.com` via Google) skip additional verification
-- Other providers may trigger email verification flow if enabled in environment settings
-- Check Dashboard → Authentication Settings for current verification requirements
+- **Trusted providers** (e.g., `@gmail.com` via Google OAuth): No additional verification
+- **Untrusted domains**: User may need to verify email if environment settings require it
 
-## Step 6: Export and Import Organizations (Decision Tree)
+**Check environment settings:** Dashboard → Authentication → Email Verification
 
-```
-Using Descope Tenants?
-  |
-  +-- YES --> Export tenants via Descope Management API
-  |           Create matching WorkOS Organizations
-  |
-  +-- NO  --> Skip this step
-```
+## Step 7: Export Descope Tenants
 
-### Field Mapping Reference
+Descope "Tenants" = WorkOS "Organizations". Use Descope Management API to list tenants:
 
-Map Descope Tenant fields to WorkOS Organization API:
-
-| Descope Field | WorkOS Parameter |
-| ------------- | ---------------- |
-| `name`        | `name`           |
-| `id`          | `external_id`    |
-
-Storing Descope tenant ID as `external_id` maintains cross-reference during migration.
-
-### Import Script Pattern
-
-```typescript
-async function importOrganization(descopeTenant) {
-  const orgData = {
-    name: descopeTenant.name,
-    external_id: descopeTenant.id, // Preserves Descope tenant ID
-  };
-
-  // Call WorkOS Create Organization API
-  // WebFetch https://workos.com/docs/reference/organization/create for current method signature
-  
-  // Store returned org.id for membership creation in Step 7
-  return workosOrgId;
-}
+```bash
+# Example: List all tenants (check Descope docs for exact endpoint)
+curl https://api.descope.com/v1/mgmt/tenant/list \
+  -H "Authorization: Bearer $DESCOPE_PROJECT_ID:$DESCOPE_MANAGEMENT_KEY"
 ```
 
-## Step 7: Create Organization Memberships
+**Required fields:**
+- `id` (store as WorkOS `external_id`)
+- `name` (maps to WorkOS `name`)
 
-Once organizations exist, assign users to organizations using the Organization Membership API.
+**Verify:** Save tenant export before proceeding. You need tenant→user mappings for Step 8.
 
-### Data Source
+## Step 8: Create WorkOS Organizations
 
-Descope's Search Users API returns tenant associations. Use this data to determine which users belong to which organizations.
+For each Descope tenant:
 
-### Import Script Pattern
-
-```typescript
-async function createMembership(workosUserId, workosOrgId, roleSlug?) {
-  const membershipData = {
-    user_id: workosUserId,
-    organization_id: workosOrgId,
-  };
-
-  // Optional: Assign role if migrating RBAC
-  if (roleSlug) {
-    membershipData.role_slug = roleSlug;
-  }
-
-  // Call WorkOS Create Organization Membership API
-  // WebFetch https://workos.com/docs/reference/authkit/organization-membership/create for current method signature
-}
+```bash
+curl https://api.workos.com/organizations \
+  -X POST \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "<descope_tenant_name>",
+    "external_id": "<descope_tenant_id>"
+  }'
 ```
 
-### RBAC Migration (Optional)
+**Store mapping:** `descope_tenant_id` → `workos_org_id` for Step 9.
 
-If using Descope roles:
+## Step 9: Add Organization Memberships
 
-1. Identify Descope role definitions
-2. Create equivalent roles in WorkOS Dashboard: `https://dashboard.workos.com/environment/roles-and-permissions`
-3. Pass `role_slug` parameter when creating memberships
+Use the user-tenant associations from Step 4 to create memberships:
+
+```bash
+curl https://api.workos.com/user_management/organization_memberships \
+  -X POST \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "<workos_user_id>",
+    "organization_id": "<workos_org_id>"
+  }'
+```
+
+### Role Migration (Optional)
+
+If using RBAC:
+
+1. Identify roles defined in Descope (if any)
+2. Create equivalent roles in WorkOS Dashboard: Dashboard → Roles & Permissions
+3. Assign roles during membership creation:
+
+```bash
+curl https://api.workos.com/user_management/organization_memberships \
+  -X POST \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "<workos_user_id>",
+    "organization_id": "<workos_org_id>",
+    "role_slug": "<role_slug>"
+  }'
+```
+
+**CRITICAL:** Roles must exist in WorkOS before assignment. Create them in Dashboard first.
 
 ## Verification Checklist (ALL MUST PASS)
 
-Run these checks to confirm successful migration:
+Run these checks before marking migration complete:
 
 ```bash
-# 1. Verify WorkOS API credentials are set
-echo $WORKOS_API_KEY | grep -q "^sk_" && echo "PASS: API key valid" || echo "FAIL: API key invalid"
+# 1. Verify users imported
+curl https://api.workos.com/user_management/users \
+  -H "Authorization: Bearer $WORKOS_API_KEY" | jq '.data | length'
+# Expected: Count matches Descope export
 
-# 2. Test Create User API connectivity
-curl -X POST https://api.workos.com/user_management/users \
+# 2. Verify organizations created
+curl https://api.workos.com/organizations \
+  -H "Authorization: Bearer $WORKOS_API_KEY" | jq '.data | length'
+# Expected: Count matches Descope tenant count
+
+# 3. Test password sign-in (if passwords imported)
+curl https://api.workos.com/user_management/authenticate \
+  -X POST \
   -H "Authorization: Bearer $WORKOS_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com"}' | grep -q "id" && echo "PASS: API accessible" || echo "FAIL: API call failed"
+  -d '{
+    "email": "<test_user_email>",
+    "password": "<known_password>",
+    "client_id": "$WORKOS_CLIENT_ID"
+  }'
+# Expected: Returns user session
 
-# 3. Verify social auth providers configured (if applicable)
-# Check WorkOS Dashboard → Integrations for active OAuth providers
+# 4. Test OAuth sign-in (if social auth used)
+# Open browser to WorkOS OAuth URL for test user
+# Expected: User signs in and is matched to existing WorkOS user
 
-# 4. Test user sign-in post-migration
-# Attempt sign-in with migrated user credentials
+# 5. Verify organization memberships
+curl https://api.workos.com/user_management/organization_memberships \
+  -H "Authorization: Bearer $WORKOS_API_KEY" | jq '.data | length'
+# Expected: Count matches sum of all user-tenant associations
 ```
-
-**Critical:** Test sign-in with sample users from each category (password, social auth, different organizations) before announcing migration.
 
 ## Error Recovery
 
-### "Rate limit exceeded" during import
+### "User already exists" (409 on Create User)
 
-**Cause:** Exceeding WorkOS API rate limits during bulk user import.
+**Cause:** Duplicate email in import batch, or user already created.
 
 **Fix:**
-1. Check current rate limits: `https://workos.com/docs/reference/rate-limits`
-2. Add delays between API calls (e.g., 100ms per request)
-3. Implement exponential backoff for 429 responses
-4. Consider splitting import into smaller batches
+1. Check if user exists: `GET /user_management/users?email=<email>`
+2. If exists, use Update User API instead: `PUT /user_management/users/:id`
+3. Deduplicate import data by email before batch processing
 
 ### "Invalid password hash type"
 
-**Cause:** Using unsupported hashing algorithm or incorrect `password_hash_type` value.
+**Cause:** `password_hash_type` does not match Descope's actual algorithm.
 
 **Fix:**
-1. Verify Descope provided hash algorithm is bcrypt, argon2, or pbkdf2
-2. Confirm `password_hash_type` parameter exactly matches: `'bcrypt'`, `'argon2'`, or `'pbkdf2'`
-3. If Descope used a different algorithm, contact WorkOS support
+1. Confirm algorithm with Descope support (bcrypt, argon2, pbkdf2)
+2. Update import script with correct type
+3. Re-import failed users
 
-### Social auth users not auto-linking
+### "Rate limit exceeded" (429)
 
-**Cause:** Email mismatch or provider not configured in WorkOS.
-
-**Fix:**
-1. Verify email addresses match exactly between Descope export and WorkOS import
-2. Check provider is configured in WorkOS Dashboard → Integrations
-3. Confirm provider client credentials are correct
-4. Test sign-in flow manually to isolate issue
-
-### Organization memberships not created
-
-**Cause:** Invalid user_id or organization_id references.
+**Cause:** Too many API requests in short time.
 
 **Fix:**
-1. Verify WorkOS user and organization were created successfully
-2. Check IDs are stored correctly from creation responses
-3. Use WorkOS Dashboard to manually verify user and org exist
-4. Retry membership creation with correct IDs
+1. Implement exponential backoff: wait 1s, 2s, 4s, etc.
+2. Check rate limit headers in response: `X-RateLimit-Remaining`
+3. Reduce batch size if consistently hitting limits
 
-### "User already exists" errors
+### "Organization not found" (creating membership)
 
-**Cause:** Attempting to re-import users that already exist in WorkOS.
+**Cause:** Organization ID mapping is incorrect or org was not created.
 
 **Fix:**
-1. Query existing WorkOS users before import: WebFetch `https://workos.com/docs/reference/authkit/user/list` for List Users API
-2. Skip users that already exist, or use Update User API instead
-3. Implement idempotency checks in import script
+1. Verify organization exists: `GET /organizations/:id`
+2. Check `descope_tenant_id` → `workos_org_id` mapping
+3. Create missing organization before retrying membership
+
+### "Role not found" (assigning role)
+
+**Cause:** `role_slug` does not exist in WorkOS environment.
+
+**Fix:**
+1. List roles: Dashboard → Roles & Permissions
+2. Create missing role in Dashboard first
+3. Retry membership creation with correct slug
+
+### OAuth user not auto-linked
+
+**Cause:** Email mismatch or user not email-verified in WorkOS.
+
+**Fix:**
+1. Confirm user email matches OAuth provider email exactly (case-sensitive)
+2. Check `email_verified: true` was set during import
+3. If provider is untrusted, user must verify email manually
+
+### Descope Management API 401 Unauthorized
+
+**Cause:** Invalid API credentials or missing authorization header.
+
+**Fix:**
+1. Verify format: `Authorization: Bearer PROJECT_ID:MANAGEMENT_KEY`
+2. Check credentials in Descope Dashboard → Project Settings
+3. Ensure management key has appropriate permissions
 
 ## Related Skills
 
-- `workos-authkit-nextjs` - Post-migration AuthKit integration for Next.js
-- `workos-authkit-react` - Post-migration AuthKit integration for React
-- `workos-sso` - If migrating to SSO instead of password auth
-- `workos-rbac` - Advanced RBAC configuration post-migration
-- `workos-api-organization` - Organization management APIs
-- `workos-api-authkit` - User management APIs
+- `workos-authkit-nextjs` - Integrate WorkOS AuthKit after migration
+- `workos-api-authkit` - Use AuthKit APIs for user management
+- `workos-api-organization` - Manage organizations post-migration
+- `workos-rbac` - Configure roles and permissions
