@@ -1,10 +1,10 @@
 # WorkOS Skills
 
-A collection of 44 task-based skills that help AI agents implement WorkOS features. Skills encode procedural knowledge — decision trees, verification commands, error recovery — not documentation.
+A collection of 39 task-based skills that help AI agents implement WorkOS features. Skills encode procedural knowledge — decision trees, verification commands, error recovery — not documentation.
 
 ## How to Use
 
-**Start with the router.** Load `skills/workos-router/SKILL.md` for any WorkOS task. It maps user intent to the right skill.
+**Start with the router.** Load `skills/workos/SKILL.md` for any WorkOS task. It maps user intent to the right skill.
 
 ```
 User Request
@@ -27,7 +27,7 @@ User Request
 
 ```
 skills/
-├── workos-router/              # Master dispatcher — start here
+├── workos/                     # Master dispatcher — start here
 ├── workos-integrations/        # Provider lookup table (60+ IdPs)
 │
 ├── workos-authkit-nextjs/      # AuthKit framework skills (hand-crafted)
@@ -40,18 +40,13 @@ skills/
 ├── workos-sso/                 # Feature skills (generated + refined)
 ├── workos-directory-sync/
 ├── workos-rbac/
-├── workos-fga/
 ├── workos-vault/
 ├── workos-events/
 ├── workos-audit-logs/
 ├── workos-admin-portal/
 ├── workos-mfa/
-├── workos-magic-link/
-├── workos-feature-flags/
-├── workos-domain-verification/
 ├── workos-custom-domains/
 ├── workos-email/
-├── workos-pipes/
 ├── workos-widgets/
 │
 ├── workos-migrate-auth0/       # Migration skills

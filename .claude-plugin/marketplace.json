@@ -12,6 +12,23 @@
   },
   "plugins": [
     {
+      "name": "workos",
+      "description": "Identify which WorkOS skill to load based on the user's task — covers AuthKit, SSO, RBAC, migrations, and all API references.",
+      "version": "0.1.0",
+      "author": {
+        "name": "WorkOS",
+        "email": "support@workos.com"
+      },
+      "source": "./skills/workos",
+      "homepage": "https://workos.com/docs",
+      "repository": "https://github.com/workos/skills",
+      "license": "MIT",
+      "category": "enterprise",
+      "keywords": [
+        "workos"
+      ]
+    },
+    {
       "name": "workos-admin-portal",
       "description": "Enable self-service admin portal for your enterprise customers.",
       "version": "0.1.0",
@@ -713,24 +730,6 @@
       "keywords": [
         "workos",
         "rbac"
-      ]
-    },
-    {
-      "name": "workos-router",
-      "description": "Identify which WorkOS skill to load based on the user's task — covers AuthKit, SSO, RBAC, migrations, and all API references.",
-      "version": "0.1.0",
-      "author": {
-        "name": "WorkOS",
-        "email": "support@workos.com"
-      },
-      "source": "./skills/workos-router",
-      "homepage": "https://workos.com/docs",
-      "repository": "https://github.com/workos/skills",
-      "license": "MIT",
-      "category": "enterprise",
-      "keywords": [
-        "workos",
-        "router"
       ]
     },
     {

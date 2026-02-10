@@ -43,7 +43,7 @@ Works with Claude Code, Cursor, Codex, Goose, and any agent that supports the sk
 
 | Skill                 | Description                                                |
 | --------------------- | ---------------------------------------------------------- |
-| `workos-router`       | Identify which skill to load based on the user's task      |
+| `workos`       | Identify which skill to load based on the user's task      |
 | `workos-integrations` | Provider lookup table for 60+ IdP integrations             |
 
 ### Migrations

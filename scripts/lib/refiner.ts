@@ -82,7 +82,7 @@ export async function refineSkill(
   const existingMarker = parseMarker(skill.content);
   const sourceHash = skill.sourceHash ?? existingMarker.hash;
 
-  const isRouter = skillName === "workos-router";
+  const isRouter = skillName === "workos";
   const isApiRef = skillName.startsWith("workos-api-");
   const prompt = isRouter
     ? buildRouterRefinePrompt(skillName, frontmatter, body)

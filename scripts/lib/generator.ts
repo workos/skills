@@ -95,7 +95,7 @@ export function generateRouter(
   const sourceHash = computeSourceHash(sourceContent);
 
   const content = `---
-name: workos-router
+name: workos
 description: Identify which WorkOS skill to load based on the user's task — covers AuthKit, SSO, RBAC, migrations, and all API references.
 ---
 
@@ -158,8 +158,8 @@ User request about WorkOS?
 `;
 
   return {
-    name: "workos-router",
-    path: "skills/workos-router/SKILL.md",
+    name: "workos",
+    path: "skills/workos/SKILL.md",
     content,
     sizeBytes: Buffer.byteLength(content, "utf8"),
     generated: true,

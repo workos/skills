@@ -113,8 +113,8 @@ describe("generateRouter", () => {
 
   it("has correct name and path", () => {
     const result = generateRouter([], "");
-    expect(result.name).toBe("workos-router");
-    expect(result.path).toBe("skills/workos-router/SKILL.md");
+    expect(result.name).toBe("workos");
+    expect(result.path).toBe("skills/workos/SKILL.md");
   });
 
   it("includes generated marker with source hash", () => {

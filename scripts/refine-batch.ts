@@ -17,7 +17,7 @@ import type { GeneratedSkill } from "./lib/types.ts";
 const SKIP = new Set(["workos-integrations"]);
 
 const GENERATED_SKILLS = [
-  "workos-router",
+  "workos",
   "workos-email",
   "workos-widgets",
   "workos-vault",
