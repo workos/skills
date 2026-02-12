@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { loadRules, evaluateRules, formatRulesForPrompt } from "../lib/rules.ts";
+import {
+  loadRules,
+  evaluateRules,
+  formatRulesForPrompt,
+} from "../lib/rules.ts";
 import type { SkillRule } from "../lib/types.ts";
 
 describe("loadRules", () => {
@@ -141,7 +145,9 @@ describe("formatRulesForPrompt", () => {
         description: "Test rule description",
         severity: "warn",
         promoted: false,
-        must_contain: [{ pattern: "webhook", context: "Must mention webhooks" }],
+        must_contain: [
+          { pattern: "webhook", context: "Must mention webhooks" },
+        ],
         must_not_contain: [
           { pattern: "polling", context: "Polling not supported" },
         ],

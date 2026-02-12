@@ -344,7 +344,10 @@ function ensureMarkers(
 
   // Strip any marker the LLM included (generated or refined, with or without hash)
   cleanBody = cleanBody
-    .replace(/<!--\s*(?:generated|refined)(?::sha256:[a-f0-9]+)?\s*-->\s*\n?/, "")
+    .replace(
+      /<!--\s*(?:generated|refined)(?::sha256:[a-f0-9]+)?\s*-->\s*\n?/,
+      "",
+    )
     .trim();
 
   const marker = sourceHash

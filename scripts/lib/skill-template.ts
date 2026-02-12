@@ -8,10 +8,7 @@ export function renderFrontmatter(spec: SkillSpec): string {
 }
 
 /** Generate the full SKILL.md content from a SkillSpec */
-export function renderSkill(
-  spec: SkillSpec,
-  sourceHash?: string,
-): string {
+export function renderSkill(spec: SkillSpec, sourceHash?: string): string {
   const parts: string[] = [];
 
   parts.push(renderFrontmatter(spec));

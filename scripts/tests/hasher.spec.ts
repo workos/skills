@@ -26,13 +26,17 @@ describe("computeSourceHash", () => {
 
 describe("parseMarker", () => {
   it("parses generated marker with hash", () => {
-    const result = parseMarker("some\n<!-- generated:sha256:abc123def456 -->\ncontent");
+    const result = parseMarker(
+      "some\n<!-- generated:sha256:abc123def456 -->\ncontent",
+    );
     expect(result.state).toBe("generated");
     expect(result.hash).toBe("abc123def456");
   });
 
   it("parses refined marker with hash", () => {
-    const result = parseMarker("some\n<!-- refined:sha256:abc123def456 -->\ncontent");
+    const result = parseMarker(
+      "some\n<!-- refined:sha256:abc123def456 -->\ncontent",
+    );
     expect(result.state).toBe("refined");
     expect(result.hash).toBe("abc123def456");
   });

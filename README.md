@@ -14,37 +14,37 @@ Works with Claude Code, Cursor, Codex, Goose, and any agent that supports the sk
 
 ### AuthKit
 
-| Skill                           | Description                    |
-| ------------------------------- | ------------------------------ |
-| `workos-authkit-nextjs`         | Next.js App Router integration |
-| `workos-authkit-react`          | React SPA integration          |
-| `workos-authkit-react-router`   | React Router v6/v7 integration |
-| `workos-authkit-tanstack-start` | TanStack Start integration     |
-| `workos-authkit-vanilla-js`     | Vanilla JS integration         |
+| Skill                           | Description                     |
+| ------------------------------- | ------------------------------- |
+| `workos-authkit-nextjs`         | Next.js App Router integration  |
+| `workos-authkit-react`          | React SPA integration           |
+| `workos-authkit-react-router`   | React Router v6/v7 integration  |
+| `workos-authkit-tanstack-start` | TanStack Start integration      |
+| `workos-authkit-vanilla-js`     | Vanilla JS integration          |
 | `workos-authkit-base`           | Framework detection and routing |
 
 ### Features
 
-| Skill                   | Description                    |
-| ----------------------- | ------------------------------ |
-| `workos-sso`            | Single Sign-On with SAML/OIDC  |
-| `workos-directory-sync` | User directory sync from IdPs  |
-| `workos-rbac`           | Role-based access control      |
-| `workos-vault`          | Encrypted data storage         |
-| `workos-events`         | Webhook event handling         |
-| `workos-audit-logs`     | Compliance audit logging       |
-| `workos-admin-portal`   | Self-service admin portal      |
-| `workos-mfa`            | Multi-factor authentication    |
-| `workos-custom-domains` | Custom domain configuration    |
-| `workos-email`          | Email delivery configuration   |
-| `workos-widgets`        | Embeddable UI components       |
+| Skill                   | Description                   |
+| ----------------------- | ----------------------------- |
+| `workos-sso`            | Single Sign-On with SAML/OIDC |
+| `workos-directory-sync` | User directory sync from IdPs |
+| `workos-rbac`           | Role-based access control     |
+| `workos-vault`          | Encrypted data storage        |
+| `workos-events`         | Webhook event handling        |
+| `workos-audit-logs`     | Compliance audit logging      |
+| `workos-admin-portal`   | Self-service admin portal     |
+| `workos-mfa`            | Multi-factor authentication   |
+| `workos-custom-domains` | Custom domain configuration   |
+| `workos-email`          | Email delivery configuration  |
+| `workos-widgets`        | Embeddable UI components      |
 
 ### Routers
 
-| Skill                 | Description                                                |
-| --------------------- | ---------------------------------------------------------- |
-| `workos`       | Identify which skill to load based on the user's task      |
-| `workos-integrations` | Provider lookup table for 60+ IdP integrations             |
+| Skill                 | Description                                           |
+| --------------------- | ----------------------------------------------------- |
+| `workos`              | Identify which skill to load based on the user's task |
+| `workos-integrations` | Provider lookup table for 60+ IdP integrations        |
 
 ### Migrations
 
@@ -54,7 +54,7 @@ Works with Claude Code, Cursor, Codex, Goose, and any agent that supports the sk
 | `workos-migrate-firebase`               | Migrate from Firebase Auth        |
 | `workos-migrate-clerk`                  | Migrate from Clerk                |
 | `workos-migrate-aws-cognito`            | Migrate from AWS Cognito          |
-| `workos-migrate-stytch`                 | Migrate from Stytch              |
+| `workos-migrate-stytch`                 | Migrate from Stytch               |
 | `workos-migrate-supabase-auth`          | Migrate from Supabase Auth        |
 | `workos-migrate-descope`                | Migrate from Descope              |
 | `workos-migrate-better-auth`            | Migrate from Better Auth          |

@@ -62,7 +62,9 @@ function scoreSkill(skill: GeneratedSkill): QualityResult {
   }
 
   // 2. Generated/refined marker (5 pts)
-  if (/<!--\s*(?:generated|refined)(?::sha256:[a-f0-9]+)?\s*-->/.test(content)) {
+  if (
+    /<!--\s*(?:generated|refined)(?::sha256:[a-f0-9]+)?\s*-->/.test(content)
+  ) {
     score += 5;
   } else {
     issues.push("Missing generated/refined marker");
@@ -141,7 +143,9 @@ function scoreSkill(skill: GeneratedSkill): QualityResult {
 
   // Check for "check docs" overuse (>3 deferrals)
   const checkDocsCount = (
-    content.match(/check\s+(the\s+)?(docs|documentation)\s+for\s+(exact|current|specific|actual)/gi) || []
+    content.match(
+      /check\s+(the\s+)?(docs|documentation)\s+for\s+(exact|current|specific|actual)/gi,
+    ) || []
   ).length;
   if (checkDocsCount > 3) {
     issues.push(

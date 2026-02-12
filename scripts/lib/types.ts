@@ -41,7 +41,7 @@ export interface SkillSpec {
 /** A generated skill ready to write to disk */
 export interface GeneratedSkill {
   name: string;
-  /** Relative path, e.g. "skills/workos-sso/SKILL.md" */
+  /** Relative path, e.g. "skills/workos-sso.md" or "skills/workos/SKILL.md" */
   path: string;
   content: string;
   sizeBytes: number;

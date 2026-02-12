@@ -62,7 +62,7 @@ describe("generateSkill", () => {
 
   it("sets correct path", () => {
     const result = generateSkill(makeSpec());
-    expect(result.path).toBe("skills/workos-sso/SKILL.md");
+    expect(result.path).toBe("skills/workos-sso.md");
   });
 
   it("calculates sizeBytes", () => {
@@ -173,7 +173,7 @@ describe("generateIntegrationRouter", () => {
     const urls = new Map<string, string[]>();
     const result = generateIntegrationRouter(integrationsSection, urls);
     expect(result.name).toBe("workos-integrations");
-    expect(result.path).toBe("skills/workos-integrations/SKILL.md");
+    expect(result.path).toBe("skills/workos-integrations.md");
   });
 
   it("includes generated marker with source hash", () => {

@@ -11,7 +11,7 @@ export function generateSkill(spec: SkillSpec): GeneratedSkill {
   const content = renderSkill(spec, sourceHash);
   return {
     name: spec.name,
-    path: `skills/${spec.name}/SKILL.md`,
+    path: `skills/${spec.name}.md`,
     content,
     sizeBytes: Buffer.byteLength(content, "utf8"),
     generated: true,
@@ -27,71 +27,57 @@ export function generateRouter(
   specs: SkillSpec[],
   llmsTxtContent: string,
 ): GeneratedSkill {
-  const rows: string[] = [];
-
-  // Add hand-crafted AuthKit skills
+  // AuthKit skills — loaded via Skill tool (registered plugins)
   const authkitSkills = [
-    {
-      intent: "Install AuthKit in Next.js",
-      name: "workos-authkit-nextjs",
-      doc: "workos.com/docs/sdks/authkit-nextjs",
-    },
-    {
-      intent: "Install AuthKit in React SPA",
-      name: "workos-authkit-react",
-      doc: "workos.com/docs/sdks/authkit-react",
-    },
+    { intent: "Install AuthKit in Next.js", name: "workos-authkit-nextjs" },
+    { intent: "Install AuthKit in React SPA", name: "workos-authkit-react" },
     {
       intent: "Install AuthKit with React Router",
       name: "workos-authkit-react-router",
-      doc: "workos.com/docs/sdks/authkit-react-router",
     },
     {
       intent: "Install AuthKit with TanStack Start",
       name: "workos-authkit-tanstack-start",
-      doc: "workos.com/docs/sdks/authkit-tanstack-start",
     },
     {
       intent: "Install AuthKit in vanilla JS",
       name: "workos-authkit-vanilla-js",
-      doc: "workos.com/docs/sdks/authkit-js",
     },
-    {
-      intent: "AuthKit architecture reference",
-      name: "workos-authkit-base",
-      doc: "workos.com/docs/authkit",
-    },
+    { intent: "AuthKit architecture reference", name: "workos-authkit-base" },
   ];
 
-  for (const s of authkitSkills) {
-    rows.push(`| ${s.intent.padEnd(45)} | ${s.name.padEnd(35)} | ${s.doc} |`);
-  }
+  const authkitRows = authkitSkills
+    .map((s) => `| ${s.intent.padEnd(45)} | ${s.name.padEnd(35)} |`)
+    .join("\n");
 
-  // Add generated feature skills
+  // Feature skills — loaded via Read (bundled files)
+  const featureRows: string[] = [];
+  const apiRefRows: string[] = [];
+  const migrateRows: string[] = [];
+
   for (const spec of specs) {
-    // Skip migration sub-skills from the main table — group them
-    if (spec.anchor === "migrate") continue;
-    const doc =
-      spec.docUrls[0]?.replace("https://", "") ??
-      `workos.com/docs/${spec.anchor}`;
-    const intent = intentFromSpec(spec);
-    rows.push(`| ${intent.padEnd(45)} | ${spec.name.padEnd(35)} | ${doc} |`);
-  }
-
-  // Add migration skills as a group
-  const migrateSpecs = specs.filter((s) => s.anchor === "migrate");
-  if (migrateSpecs.length > 0) {
-    for (const ms of migrateSpecs) {
-      const provider = ms.title.replace("WorkOS Migration: ", "");
-      const doc =
-        ms.docUrls[0]?.replace("https://", "") ?? `workos.com/docs/migrate`;
-      rows.push(
-        `| Migrate from ${provider.padEnd(31)} | ${ms.name.padEnd(35)} | ${doc} |`,
+    if (spec.anchor === "migrate") {
+      const provider = spec.title.replace("WorkOS Migration: ", "");
+      migrateRows.push(
+        `| Migrate from ${provider.padEnd(31)} | \`skills/${spec.name}.md\` |`,
       );
+    } else if (spec.name.startsWith("workos-api-")) {
+      const domain = spec.name.replace("workos-api-", "").replace(/-/g, " ");
+      const label =
+        domain.charAt(0).toUpperCase() + domain.slice(1) + " API Reference";
+      apiRefRows.push(`| ${label.padEnd(45)} | \`skills/${spec.name}.md\` |`);
+    } else {
+      const intent = intentFromSpec(spec);
+      featureRows.push(`| ${intent.padEnd(45)} | \`skills/${spec.name}.md\` |`);
     }
   }
 
-  const sourceContent = rows.join("\n") + llmsTxtContent;
+  const sourceContent =
+    authkitRows +
+    featureRows.join("\n") +
+    apiRefRows.join("\n") +
+    migrateRows.join("\n") +
+    llmsTxtContent;
   const sourceHash = computeSourceHash(sourceContent);
 
   const content = `---
@@ -105,35 +91,56 @@ description: Identify which WorkOS skill to load based on the user's task — co
 
 ## How to Use
 
-When a user needs help with WorkOS, consult this table to load the right skill.
+When a user needs help with WorkOS, consult the tables below to route to the right skill.
+
+## Loading Skills
+
+**AuthKit skills** are registered plugins — load them directly via the Skill tool.
+
+**All other skills** are bundled files. To load one, Read \`skills/{name}.md\` from this plugin directory and follow its instructions.
 
 ## Disambiguation Rules
 
 - **Feature skill vs API reference**: Prefer feature skills (e.g., \`workos-sso\`) unless the user explicitly asks about API endpoints, request/response formats, or references "API docs."
 - **AuthKit vs feature**: If the user mentions authentication, login, or sign-up, route to AuthKit (detect framework below). If they mention a specific feature like SSO or MFA by name, route to that feature skill instead.
-- **Multiple features**: Load the most specific skill first. The user can ask for additional skills later.
+- **Multiple features**: Route to the most specific skill first. The user can ask for additional skills later.
 
 ## Topic → Skill Map
 
-| User wants to...                              | Load skill                          | Doc reference |
-| --------------------------------------------- | ----------------------------------- | ------------- |
-${rows.join("\n")}
+### AuthKit (load via Skill tool)
 
-## If No Skill Matches
+| User wants to...                              | Skill tool name                     |
+| --------------------------------------------- | ----------------------------------- |
+${authkitRows}
 
-WebFetch the full docs index: https://workos.com/docs/llms.txt
-Then WebFetch the specific section URL for the user's topic.
+### Features (Read \`skills/{name}.md\`)
+
+| User wants to...                              | Read file                                       |
+| --------------------------------------------- | ----------------------------------------------- |
+${featureRows.join("\n")}
+
+### API References (Read \`skills/{name}.md\`)
+
+| User wants to...                              | Read file                                       |
+| --------------------------------------------- | ----------------------------------------------- |
+${apiRefRows.join("\n")}
+
+### Migrations (Read \`skills/{name}.md\`)
+
+| User wants to...                              | Read file                                       |
+| --------------------------------------------- | ----------------------------------------------- |
+${migrateRows.join("\n")}
 
 ## AuthKit Installation Detection
 
 If the user wants to install AuthKit, detect their framework. Check in this order (first match wins):
 
 \`\`\`
-1. @tanstack/start in deps     → workos-authkit-tanstack-start
-2. react-router in deps         → workos-authkit-react-router
-3. next.config.*                 → workos-authkit-nextjs
-4. vite.config.* + react in deps → workos-authkit-react
-5. No framework detected         → workos-authkit-vanilla-js
+1. @tanstack/start in deps     → Skill tool: workos-authkit-tanstack-start
+2. react-router in deps         → Skill tool: workos-authkit-react-router
+3. next.config.*                 → Skill tool: workos-authkit-nextjs
+4. vite.config.* + react in deps → Skill tool: workos-authkit-react
+5. No framework detected         → Skill tool: workos-authkit-vanilla-js
 \`\`\`
 
 Note: Check framework-specific deps (TanStack, React Router) BEFORE generic ones (Next.js, Vite+React) to avoid misrouting projects that use both.
@@ -143,18 +150,23 @@ Note: Check framework-specific deps (TanStack, React Router) BEFORE generic ones
 \`\`\`
 User request about WorkOS?
   |
-  +-- Mentions specific feature? → Load that feature skill
+  +-- Migration context? → Read skills/workos-migrate-[provider].md
   |
-  +-- Wants AuthKit/auth setup? → Detect framework → Load AuthKit skill
+  +-- Mentions specific feature? → Read skills/workos-[feature].md
   |
-  +-- Wants API reference? → Load workos-api-* skill for that domain
+  +-- Wants API reference? → Read skills/workos-api-[feature].md
   |
-  +-- Wants integration setup? → Load workos-integrations
+  +-- Wants AuthKit/auth setup? → Detect framework → Skill tool: workos-authkit-[framework]
   |
-  +-- Wants to migrate? → Identify source → Load migration skill
+  +-- Wants integration setup? → Read skills/workos-integrations.md
   |
-  +-- Not sure? → WebFetch llms.txt → Find matching section
+  +-- Not sure? → WebFetch https://workos.com/docs/llms.txt → Find matching section
 \`\`\`
+
+## If No Skill Matches
+
+WebFetch the full docs index: https://workos.com/docs/llms.txt
+Then WebFetch the specific section URL for the user's topic.
 `;
 
   return {
@@ -390,7 +402,7 @@ Connection not working?
 
   return {
     name: "workos-integrations",
-    path: "skills/workos-integrations/SKILL.md",
+    path: "skills/workos-integrations.md",
     content,
     sizeBytes: Buffer.byteLength(content, "utf8"),
     generated: true,
