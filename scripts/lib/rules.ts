@@ -8,7 +8,12 @@ import type { SkillRule, RuleViolation } from "./types.ts";
  * Returns empty array if no file exists or on parse error.
  */
 export function loadRules(skillName: string): SkillRule[] {
-  const rulesPath = join(process.cwd(), "skills", `${skillName}.rules.yml`);
+  const rulesPath = join(
+    process.cwd(),
+    "skills",
+    "workos",
+    `${skillName}.rules.yml`,
+  );
 
   if (!existsSync(rulesPath)) {
     return [];

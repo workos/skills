@@ -3,7 +3,7 @@ name: workos
 description: Identify which WorkOS skill to load based on the user's task — covers AuthKit, SSO, RBAC, migrations, and all API references.
 ---
 
-<!-- refined:sha256:d608227a2b5f -->
+<!-- refined:sha256:4bc2401b2288 -->
 
 # WorkOS Skill Router
 
@@ -15,35 +15,42 @@ When a user needs help with WorkOS, consult the tables below to route to the rig
 
 **AuthKit skills** are registered plugins — load them directly via the Skill tool.
 
-**All other skills** are bundled files. To load one, Read `skills/{name}.md` from this plugin directory and follow its instructions.
+**All other skills** are bundled files. To load one, Read `skills/workos/{name}.md` from this plugin directory and follow its instructions.
 
 ## Disambiguation Rules
 
 ### Feature Skill vs API Reference
+- **User asks about implementation** (how to set up, configure, integrate) → Load the feature skill
+- **User explicitly asks for "API reference", "endpoints", "request/response format", or "API docs"** → Load the API reference skill
+- **User asks "how does X work" or "what does X do"** → Load the feature skill (conceptual guide)
 
-- **Default**: Route to feature skills (e.g., `workos-sso.md`) for implementation guidance.
-- **Exception**: Route to API reference skills (e.g., `workos-api-sso.md`) ONLY when the user explicitly asks about:
-  - API endpoints, HTTP methods, or request/response formats
-  - References "API docs", "API reference", or "REST API"
-  - Asks "what parameters does X endpoint take"
+### AuthKit vs Feature-Specific Skills
+- **User mentions "login", "sign-up", "authentication", "sign-in", "session management" WITHOUT naming a specific feature** → Route to AuthKit (detect framework below)
+- **User mentions "SSO", "SAML", "OAuth connection" explicitly** → Load `workos-sso.md` (not AuthKit)
+- **User mentions "MFA", "multi-factor", "2FA", "TOTP" explicitly** → Load `workos-mfa.md`
+- **User mentions "roles", "permissions", "RBAC" explicitly** → Load `workos-rbac.md`
+- **User mentions "directory sync", "SCIM", "user provisioning" explicitly** → Load `workos-directory-sync.md`
 
-### AuthKit vs Specific Features
-
-- **If user mentions**: "authentication", "login", "sign-up", "auth flow", "session management" WITHOUT naming a specific feature → Route to AuthKit (detect framework below).
-- **If user mentions**: "SSO", "single sign-on", "SAML", "OIDC", "directory sync", "MFA", "roles", "RBAC" → Route to that feature skill directly, even if they also mention "auth".
-- **Rationale**: Specific feature names indicate the user wants that capability, not generic authentication setup.
+**Priority rule**: If the user mentions BOTH AuthKit AND a feature (e.g., "set up AuthKit with SSO"), load AuthKit first. The AuthKit skill will reference SSO configuration as a next step.
 
 ### Multiple Features Mentioned
+Route to the MOST SPECIFIC skill first. Examples:
+- "SSO with MFA" → Load `workos-sso.md` (SSO is the primary integration, MFA is a configuration option)
+- "Audit logs for admin portal" → Load `workos-audit-logs.md` (audit logs is the feature being configured)
+- "Directory sync with RBAC" → Load `workos-directory-sync.md` (directory sync is the primary feature)
 
-- Route to the MOST SPECIFIC skill first.
-- If the user says "I need SSO and directory sync", start with `workos-sso.md` (most explicitly requested).
-- After completing the first skill, ask: "Would you like to set up directory sync now?"
+The user can request additional skills after completing the first one.
 
 ### Migration Context
+- **User says "migrate from [provider]" or "switch from [provider]"** → Load the migration skill for that provider
+- **User asks "how to import users" or "bring existing users" WITHOUT naming a source** → Load `workos-migrate-other-services.md` (generic migration guide)
+- **User mentions a provider not in the migration table** → Load `workos-migrate-other-services.md`
 
-- **If user mentions**: "migrate from X", "coming from X", "replace X with WorkOS" → Route to migration skill for provider X.
-- **If migration skill doesn't exist**: Route to `workos-migrate-other-services.md` for generic migration guidance.
-- **Edge case**: If user says "migrate SSO from Auth0" → Start with `workos-migrate-auth0.md` (migration context takes priority over feature name).
+### Ambiguous Requests
+- **"How do I use WorkOS?"** → Load `workos-authkit-base` for architectural overview, then detect framework if they want to proceed with installation
+- **"WorkOS setup"** → Ask: "Are you setting up authentication (AuthKit), or a specific feature like SSO, MFA, or Directory Sync?"
+- **"WorkOS API"** → Ask: "Which WorkOS feature are you working with?" Then route to the corresponding API reference
+- **"WorkOS integration"** → Ask: "Are you integrating an identity provider (SSO/Directory Sync), or embedding WorkOS features in your app?"
 
 ## Topic → Skill Map
 
@@ -58,138 +65,138 @@ When a user needs help with WorkOS, consult the tables below to route to the rig
 | Install AuthKit in vanilla JS                 | workos-authkit-vanilla-js           |
 | AuthKit architecture reference                | workos-authkit-base                 |
 
-### Features (Read `skills/{name}.md`)
+### Features (Read `skills/workos/{name}.md`)
 
 | User wants to...                              | Read file                                       |
 | --------------------------------------------- | ----------------------------------------------- |
-| Configure email delivery                      | `skills/workos-email.md` |
-| Add WorkOS Widgets                            | `skills/workos-widgets.md` |
-| Encrypt data with Vault                       | `skills/workos-vault.md` |
-| Configure Single Sign-On                      | `skills/workos-sso.md` |
-| Implement RBAC / roles                        | `skills/workos-rbac.md` |
-| Add Multi-Factor Auth                         | `skills/workos-mfa.md` |
-| Set up IdP integration                        | `skills/workos-integrations.md` |
-| Handle WorkOS Events / webhooks               | `skills/workos-events.md` |
-| Set up Directory Sync                         | `skills/workos-directory-sync.md` |
-| Set up Custom Domains                         | `skills/workos-custom-domains.md` |
-| Set up Audit Logs                             | `skills/workos-audit-logs.md` |
-| Enable Admin Portal                           | `skills/workos-admin-portal.md` |
+| Configure email delivery                      | `skills/workos/workos-email.md` |
+| Add WorkOS Widgets                            | `skills/workos/workos-widgets.md` |
+| Encrypt data with Vault                       | `skills/workos/workos-vault.md` |
+| Configure Single Sign-On                      | `skills/workos/workos-sso.md` |
+| Implement RBAC / roles                        | `skills/workos/workos-rbac.md` |
+| Add Multi-Factor Auth                         | `skills/workos/workos-mfa.md` |
+| Set up IdP integration                        | `skills/workos/workos-integrations.md` |
+| Handle WorkOS Events / webhooks               | `skills/workos/workos-events.md` |
+| Set up Directory Sync                         | `skills/workos/workos-directory-sync.md` |
+| Set up Custom Domains                         | `skills/workos/workos-custom-domains.md` |
+| Set up Audit Logs                             | `skills/workos/workos-audit-logs.md` |
+| Enable Admin Portal                           | `skills/workos/workos-admin-portal.md` |
 
-### API References (Read `skills/{name}.md`)
-
-| User wants to...                              | Read file                                       |
-| --------------------------------------------- | ----------------------------------------------- |
-| Admin portal API Reference                    | `skills/workos-api-admin-portal.md` |
-| Audit logs API Reference                      | `skills/workos-api-audit-logs.md` |
-| Authkit API Reference                         | `skills/workos-api-authkit.md` |
-| Directory sync API Reference                  | `skills/workos-api-directory-sync.md` |
-| Events API Reference                          | `skills/workos-api-events.md` |
-| Organization API Reference                    | `skills/workos-api-organization.md` |
-| Roles API Reference                           | `skills/workos-api-roles.md` |
-| Sso API Reference                             | `skills/workos-api-sso.md` |
-| Vault API Reference                           | `skills/workos-api-vault.md` |
-| Widgets API Reference                         | `skills/workos-api-widgets.md` |
-
-### Migrations (Read `skills/{name}.md`)
+### API References (Read `skills/workos/{name}.md`)
 
 | User wants to...                              | Read file                                       |
 | --------------------------------------------- | ----------------------------------------------- |
-| Migrate from Supabase Auth                   | `skills/workos-migrate-supabase-auth.md` |
-| Migrate from Stytch                          | `skills/workos-migrate-stytch.md` |
-| Migrate from the standalone SSO API          | `skills/workos-migrate-the-standalone-sso-api.md` |
-| Migrate from other services                  | `skills/workos-migrate-other-services.md` |
-| Migrate from Firebase                        | `skills/workos-migrate-firebase.md` |
-| Migrate from Descope                         | `skills/workos-migrate-descope.md` |
-| Migrate from Clerk                           | `skills/workos-migrate-clerk.md` |
-| Migrate from Better Auth                     | `skills/workos-migrate-better-auth.md` |
-| Migrate from AWS Cognito                     | `skills/workos-migrate-aws-cognito.md` |
-| Migrate from Auth0                           | `skills/workos-migrate-auth0.md` |
+| Admin portal API Reference                    | `skills/workos/workos-api-admin-portal.md` |
+| Audit logs API Reference                      | `skills/workos/workos-api-audit-logs.md` |
+| Authkit API Reference                         | `skills/workos/workos-api-authkit.md` |
+| Directory sync API Reference                  | `skills/workos/workos-api-directory-sync.md` |
+| Events API Reference                          | `skills/workos/workos-api-events.md` |
+| Organization API Reference                    | `skills/workos/workos-api-organization.md` |
+| Roles API Reference                           | `skills/workos/workos-api-roles.md` |
+| Sso API Reference                             | `skills/workos/workos-api-sso.md` |
+| Vault API Reference                           | `skills/workos/workos-api-vault.md` |
+| Widgets API Reference                         | `skills/workos/workos-api-widgets.md` |
+
+### Migrations (Read `skills/workos/{name}.md`)
+
+| User wants to...                              | Read file                                       |
+| --------------------------------------------- | ----------------------------------------------- |
+| Migrate from Supabase Auth                   | `skills/workos/workos-migrate-supabase-auth.md` |
+| Migrate from Stytch                          | `skills/workos/workos-migrate-stytch.md` |
+| Migrate from the standalone SSO API          | `skills/workos/workos-migrate-the-standalone-sso-api.md` |
+| Migrate from other services                  | `skills/workos/workos-migrate-other-services.md` |
+| Migrate from Firebase                        | `skills/workos/workos-migrate-firebase.md` |
+| Migrate from Descope                         | `skills/workos/workos-migrate-descope.md` |
+| Migrate from Clerk                           | `skills/workos/workos-migrate-clerk.md` |
+| Migrate from Better Auth                     | `skills/workos/workos-migrate-better-auth.md` |
+| Migrate from AWS Cognito                     | `skills/workos/workos-migrate-aws-cognito.md` |
+| Migrate from Auth0                           | `skills/workos/workos-migrate-auth0.md` |
 
 ## AuthKit Installation Detection
 
-If the user wants to install AuthKit, detect their framework. Check in this order (first match wins):
+If the user wants to install AuthKit, detect their framework by checking their project in this **exact priority order** (first match wins):
 
 ```
-1. @tanstack/start in package.json      → Skill tool: workos-authkit-tanstack-start
-2. react-router-dom in package.json     → Skill tool: workos-authkit-react-router
-3. next.config.js OR next.config.mjs    → Skill tool: workos-authkit-nextjs
-4. vite.config.* + react in deps        → Skill tool: workos-authkit-react
-5. No framework detected                → Skill tool: workos-authkit-vanilla-js
+1. package.json contains "@tanstack/start"           → Skill tool: workos-authkit-tanstack-start
+2. package.json contains "react-router"              → Skill tool: workos-authkit-react-router
+3. next.config.js OR next.config.mjs exists          → Skill tool: workos-authkit-nextjs
+4. vite.config.* exists AND package.json has "react" → Skill tool: workos-authkit-react
+5. None of the above detected                        → Skill tool: workos-authkit-vanilla-js
 ```
 
-**Priority rationale**: TanStack and React Router are specialized frameworks that ALSO use React — check them BEFORE generic React/Vite detection to avoid misrouting.
+**Why this order?**
+- TanStack Start and React Router are checked FIRST because they can coexist with Vite+React, and we need the most specific match.
+- Next.js is checked BEFORE generic Vite+React because Next.js projects may also have React in deps.
+- Vanilla JS is the fallback for projects with no detectable framework (plain HTML/JS, non-React SPAs, or server-rendered apps without a supported framework).
 
-**Edge case — User has multiple frameworks**: If `package.json` contains both Next.js and React Router, ask the user: "I see both Next.js and React Router in your project. Which framework is this component for?" Then route based on their answer.
-
-**Edge case — No package.json found**: Ask: "What framework are you using?" If they say "none" or "just HTML/JS", route to `workos-authkit-vanilla-js`.
+**Edge cases:**
+- **Multiple frameworks detected** (e.g., Next.js config + TanStack Start dep): Follow the priority order — TanStack Start wins.
+- **Monorepo with multiple frameworks**: Ask the user which app/package they want to add AuthKit to, then detect framework in that specific directory.
+- **Framework not listed** (e.g., SvelteKit, Remix, Angular): Load `workos-authkit-base` for architectural guidance, then direct the user to https://workos.com/docs/llms.txt to check if their framework is supported.
 
 ## General Decision Flow
 
 ```
-User request mentions WorkOS?
+User request about WorkOS?
   |
-  +-- Migration keyword ("migrate from", "coming from", "replace X")?
-  |     YES → Read skills/workos-migrate-[provider].md
-  |     |     (If provider not in list → workos-migrate-other-services.md)
-  |     NO  ↓
+  +-- Mentions "migrate", "switch from", or "import from [provider]"?
+  |     → Read skills/workos/workos-migrate-[provider].md
+  |     → If provider not in table → Read skills/workos/workos-migrate-other-services.md
   |
-  +-- Specific feature keyword ("SSO", "MFA", "directory sync", "audit logs", etc.)?
-  |     YES → Feature skill OR API skill?
-  |     |       |
-  |     |       +-- User says "API", "endpoint", "request/response"?
-  |     |       |     YES → Read skills/workos-api-[feature].md
-  |     |       |     NO  → Read skills/workos-[feature].md
-  |     NO  ↓
+  +-- Mentions SPECIFIC feature by name (SSO, MFA, RBAC, Directory Sync, Audit Logs, Vault, etc.)?
+  |     → Read skills/workos/workos-[feature].md
+  |     → Exception: If also mentions "API reference" → Read skills/workos/workos-api-[feature].md
   |
-  +-- Generic auth keyword ("login", "authentication", "sign-up") AND no feature name?
-  |     YES → Detect framework → Skill tool: workos-authkit-[framework]
-  |     NO  ↓
+  +-- Explicitly asks for "API reference", "endpoints", or "request/response format"?
+  |     → Read skills/workos/workos-api-[feature].md
+  |     → If feature unclear → Ask which feature's API they need
   |
-  +-- Integration setup keyword ("connect IdP", "third-party integration")?
-  |     YES → Read skills/workos-integrations.md
-  |     NO  ↓
+  +-- Mentions "login", "sign-up", "authentication", "sign-in", or "session" WITHOUT naming a feature?
+  |     → Detect framework using AuthKit Installation Detection rules above
+  |     → Skill tool: workos-authkit-[framework]
   |
-  +-- Webhook/event handling keyword ("webhook", "event subscription")?
-  |     YES → Read skills/workos-events.md
-  |     NO  ↓
+  +-- Mentions "IdP", "identity provider", "SAML setup", or "OAuth provider setup"?
+  |     → Read skills/workos/workos-integrations.md
   |
-  +-- Vague or unclear request?
-        → WebFetch https://workos.com/docs/llms.txt
-        → Parse index, find section matching user intent
-        → WebFetch section URL
-        → Provide guidance based on fetched content
+  +-- Mentions "webhooks" or "events"?
+  |     → Read skills/workos/workos-events.md
+  |
+  +-- Request is vague ("How do I use WorkOS?", "WorkOS setup", "WorkOS integration")?
+  |     → Ask clarifying question (see "Ambiguous Requests" above)
+  |
+  +-- No clear match?
+  |     → WebFetch https://workos.com/docs/llms.txt
+  |     → Find the relevant section URL
+  |     → WebFetch that section
+  |     → Synthesize an answer OR route to the closest skill if one exists
 ```
 
-## Edge Case Handling
+## Edge Cases
 
 ### Multiple Features in One Request
+Examples:
+- **"Set up SSO with MFA"** → Load `workos-sso.md` first (SSO is the primary integration). The skill will reference MFA configuration.
+- **"AuthKit with custom domains"** → Load the AuthKit skill for their framework first. After installation, load `workos-custom-domains.md`.
+- **"Directory Sync with RBAC"** → Load `workos-directory-sync.md` first (directory sync is the source of user data). RBAC is configured after users are synced.
 
-Example: "I need to add SSO and MFA"
+**General rule**: Route to the skill that represents the PRIMARY integration or feature being configured. Dependent features can be loaded as follow-up steps.
 
-1. Route to `workos-sso.md` first (SSO mentioned first).
-2. After completing SSO setup, say: "SSO setup is complete. Would you like to configure MFA now?"
-3. If yes, Read `skills/workos-mfa.md`.
+### Framework Detection Failures
+- **No framework detected** → Load `workos-authkit-vanilla-js` (covers plain HTML/JS and server-rendered apps)
+- **Unsupported framework** (e.g., Laravel, Django, Ruby on Rails) → Load `workos-authkit-base` for architecture overview, then WebFetch https://workos.com/docs/llms.txt to check for backend SDK docs
 
-### Unknown Framework for AuthKit
+### User Asks About Multiple Topics
+Examples:
+- **"How do SSO and Directory Sync work together?"** → Load `workos-sso.md` first (explains SSO connections), then load `workos-directory-sync.md` (explains user provisioning from IdP)
+- **"What's the difference between SSO and AuthKit?"** → Load `workos-authkit-base` (explains AuthKit's role), then explain that SSO is a CONNECTION TYPE that AuthKit can use
 
-If the user wants AuthKit but framework detection fails:
-
-1. Ask: "What framework are you using? (Next.js, React, React Router, TanStack Start, or vanilla JS)"
-2. Route based on their answer.
-3. If they say "I don't know", inspect `package.json` with them and explain what was found.
-
-### User Asks "What Can WorkOS Do?"
-
-Do NOT route to a specific skill. Instead:
-
-1. WebFetch https://workos.com/docs/llms.txt
-2. Summarize WorkOS capabilities (AuthKit, SSO, Directory Sync, MFA, RBAC, Audit Logs, etc.).
-3. Ask: "Which of these features would you like to implement?"
-
-### API Reference vs SDK Usage
-
-- **If user asks**: "How do I call the SSO API?" → This is SDK usage, not API reference. Route to `workos-sso.md`.
-- **If user asks**: "What's the endpoint for SSO profile lookup?" → This is API reference. Route to `workos-api-sso.md`.
+### No Skill Matches
+If the user's request does not match ANY skill in the tables above:
+1. WebFetch https://workos.com/docs/llms.txt to get the full documentation index
+2. Identify the relevant section URL from the index
+3. WebFetch that section URL
+4. If the fetched content suggests a skill exists but wasn't matched, re-evaluate routing rules
+5. Otherwise, synthesize an answer from the fetched documentation
 
 ## If No Skill Matches
 

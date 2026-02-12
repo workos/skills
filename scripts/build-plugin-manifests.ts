@@ -153,8 +153,9 @@ writeFileSync(
   JSON.stringify(marketplace, null, 2) + "\n",
 );
 
-const hiddenFiles = entries.filter(
-  (e) => e.endsWith(".md") && !e.startsWith("."),
+const routerEntries = readdirSync(join(skillsDir, "workos")).sort();
+const hiddenFiles = routerEntries.filter(
+  (e) => e.endsWith(".md") && e !== "SKILL.md",
 );
 console.log(
   `Generated ${plugins.length} exposed plugin entries (${hiddenFiles.length} hidden docs on disk)`,
