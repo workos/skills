@@ -1,6 +1,6 @@
 {
   "name": "@workos/skills",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "description": "WorkOS Skills for AI coding agents — AuthKit, SSO, Directory Sync, RBAC, and more",
   "keywords": [
     "ai-agents",
