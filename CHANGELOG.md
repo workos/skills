@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/workos/skills/compare/v0.2.0...v0.2.1) (2026-03-07)
+
+
+### Bug Fixes
+
+* add packageManager field for pnpm/action-setup ([ced5ca8](https://github.com/workos/skills/commit/ced5ca8a28ff965f469df2a314777eb1b151cc42))
+
 ## [0.2.0](https://github.com/workos/skills/compare/v0.1.0...v0.2.0) (2026-03-07)
 
 
