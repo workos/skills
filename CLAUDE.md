@@ -100,3 +100,26 @@ pnpm eval:calibrate                            # scorer vs human agreement repor
 - **Single case debugging**: `--case=<id>`
 - **Variance analysis**: `--samples=2` (or 3) — costs ~Nx, auto-disables cache
 - **Token costs**: ~$1.70 per full 42-case run, ~$3.40 with `--samples=2`
+
+## Do / Don't
+
+**Do:**
+- Edit topic files (`plugins/workos/skills/workos/references/*.md`) directly -- they are human-maintained
+- Start every topic file with doc URLs and "If this file conflicts with fetched docs, follow the docs."
+- Add gotcha bullets when you discover the LLM produces incorrect output for a topic
+- Update the router table in `plugins/workos/skills/workos/SKILL.md` when adding new topic files
+- Write `.spec.ts` tests in `scripts/tests/` for eval framework changes
+
+**Don't:**
+- Modify the `workos-widgets` skill when working on reference files
+- Add frontmatter to topic files -- the router handles discovery
+- Change the plugin directory structure under `plugins/workos/` without considering caching boundaries
+- Skip `--dry-run` before running full evals
+
+## PR Checklist
+
+- [ ] `pnpm test` passes (vitest)
+- [ ] `pnpm lint` passes (oxlint)
+- [ ] `pnpm format` passes (oxfmt)
+- [ ] `pnpm eval -- --dry-run` loads all cases without error
+- [ ] Topic file changes include doc URLs as source of truth
