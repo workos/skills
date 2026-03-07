@@ -1,3 +1,4 @@
+import { readFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -16,4 +17,14 @@ export function getSkillsDir(): string {
 /** Resolve path to a specific skill's SKILL.md */
 export function getSkillPath(skillName: string): string {
   return join(__dirname, 'skills', skillName, 'SKILL.md');
+}
+
+/** Read a reference file's content by name (without .md extension) */
+export async function getReference(name: string): Promise<string> {
+  return readFile(getReferencePath(name), 'utf-8');
+}
+
+/** Read a skill's SKILL.md content by name */
+export async function getSkill(skillName: string): Promise<string> {
+  return readFile(getSkillPath(skillName), 'utf-8');
 }

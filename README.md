@@ -19,23 +19,31 @@ npm install @workos/skills
 ```
 
 ```typescript
+import { getReference, getSkill } from '@workos/skills';
+
+// Read reference content directly
+const content = await getReference('workos-authkit-nextjs');
+
+// Read a skill's SKILL.md content
+const router = await getSkill('workos');
+```
+
+Path helpers are also available for consumers that need file paths (e.g., skill discovery):
+
+```typescript
 import { getReferencePath, getSkillsDir, getSkillPath } from '@workos/skills';
-import { readFileSync } from 'fs';
 
-// Read a reference file
-const content = readFileSync(getReferencePath('workos-authkit-nextjs'), 'utf-8');
-
-// Get the skills directory (contains workos/ and workos-widgets/)
-const skillsDir = getSkillsDir();
-
-// Get a skill's SKILL.md path
-const routerPath = getSkillPath('workos');
+const refPath = getReferencePath('workos-authkit-nextjs'); // absolute path to .md file
+const skillsDir = getSkillsDir();                          // directory containing workos/ and workos-widgets/
+const skillPath = getSkillPath('workos');                   // absolute path to SKILL.md
 ```
 
 ### Exports
 
 | Function | Returns |
 | --- | --- |
+| `getReference(name)` | `Promise<string>` — reference file content |
+| `getSkill(skillName)` | `Promise<string>` — skill SKILL.md content |
 | `getReferencePath(name)` | Absolute path to `references/{name}.md` |
 | `getSkillsDir()` | Absolute path to the `skills/` directory |
 | `getSkillPath(skillName)` | Absolute path to `skills/{skillName}/SKILL.md` |
