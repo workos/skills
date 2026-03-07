@@ -1,33 +1,48 @@
 ---
 name: workos
-description: Identify which WorkOS skill to load based on the user's task — covers AuthKit, SSO, RBAC, migrations, and all API references.
+description: Identify which WorkOS reference to load based on the user's task — covers AuthKit, backend SDKs, SSO, RBAC, migrations, management, and all API references.
 ---
 
 # WorkOS Skill Router
 
 ## How to Use
 
-When a user needs help with WorkOS, consult the tables below to route to the right skill.
+When a user needs help with WorkOS, consult the tables below to route to the right reference.
 
-## Loading Skills
+## Loading References
 
-**AuthKit skills** are registered plugins — load them directly via the Skill tool.
+**All references** are topic files in the `references/` directory. Read the file and follow its instructions (fetch docs first, then use gotchas to avoid common traps).
 
-**All other skills** are topic files in the `references/` directory. Read the file and follow its instructions (fetch docs first, then use gotchas to avoid common traps).
+**Exception**: Widget requests use the `workos-widgets` skill via the Skill tool — it has its own multi-framework orchestration.
 
-## Topic → Skill Map
+## Topic → Reference Map
 
-### AuthKit (load via Skill tool)
+### AuthKit Installation (Read `references/{name}.md`)
 
-| User wants to...                    | Skill tool name               |
-| ----------------------------------- | ----------------------------- |
-| Install AuthKit in Next.js          | workos-authkit-nextjs         |
-| Install AuthKit in React SPA        | workos-authkit-react          |
-| Install AuthKit with React Router   | workos-authkit-react-router   |
-| Install AuthKit with TanStack Start | workos-authkit-tanstack-start |
-| Install AuthKit in vanilla JS       | workos-authkit-vanilla-js     |
-| AuthKit architecture reference      | workos-authkit-base           |
-| Add WorkOS Widgets                  | workos-widgets                |
+| User wants to...                    | Read file                                         |
+| ----------------------------------- | ------------------------------------------------- |
+| Install AuthKit in Next.js          | `references/workos-authkit-nextjs.md`              |
+| Install AuthKit in React SPA        | `references/workos-authkit-react.md`               |
+| Install AuthKit with React Router   | `references/workos-authkit-react-router.md`        |
+| Install AuthKit with TanStack Start | `references/workos-authkit-tanstack-start.md`      |
+| Install AuthKit with SvelteKit      | `references/workos-authkit-sveltekit.md`           |
+| Install AuthKit in vanilla JS       | `references/workos-authkit-vanilla-js.md`          |
+| AuthKit architecture reference      | `references/workos-authkit-base.md`                |
+| Add WorkOS Widgets                  | Load `workos-widgets` skill via Skill tool         |
+
+### Backend SDK Installation (Read `references/{name}.md`)
+
+| User wants to...                     | Read file                              |
+| ------------------------------------ | -------------------------------------- |
+| Install AuthKit in Node.js backend   | `references/workos-node.md`            |
+| Install AuthKit in Python            | `references/workos-python.md`          |
+| Install AuthKit in .NET              | `references/workos-dotnet.md`          |
+| Install AuthKit in Go                | `references/workos-go.md`              |
+| Install AuthKit in Ruby              | `references/workos-ruby.md`            |
+| Install AuthKit in PHP               | `references/workos-php.md`             |
+| Install AuthKit in PHP Laravel       | `references/workos-php-laravel.md`     |
+| Install AuthKit in Kotlin            | `references/workos-kotlin.md`          |
+| Install AuthKit in Elixir            | `references/workos-elixir.md`          |
 
 ### Features (Read `references/{name}.md`)
 
@@ -69,6 +84,12 @@ Feature topic files above include endpoint tables for their respective APIs. Use
 | Migrate from the standalone SSO API | `references/workos-migrate-the-standalone-sso-api.md` |
 | Migrate from other services         | `references/workos-migrate-other-services.md`         |
 
+### Management (Read `references/{name}.md`)
+
+| User wants to...                         | Read file                          |
+| ---------------------------------------- | ---------------------------------- |
+| Manage WorkOS resources via CLI commands | `references/workos-management.md`  |
+
 ## Routing Decision Tree
 
 Apply these rules in order. First match wins.
@@ -99,7 +120,7 @@ Apply these rules in order. First match wins.
 
 **Action**: Read `references/workos-[feature].md` where `[feature]` is the lowercase slug (sso, mfa, directory-sync, audit-logs, vault, rbac, admin-portal, custom-domains, events, integrations, email).
 
-**Exception**: Widget requests route to the `workos-widgets` skill via the Skill tool (see table above), not to a `references/` file.
+**Exception**: Widget requests load the `workos-widgets` skill via the Skill tool — it has its own orchestration.
 
 **Disambiguation**: If user mentions BOTH a feature and "API", route to the feature topic file (it includes endpoints). If they mention MULTIPLE features, route to the MOST SPECIFIC one first (e.g., "SSO with MFA" → route to SSO; user can request MFA separately).
 
@@ -109,13 +130,13 @@ Apply these rules in order. First match wins.
 
 **Triggers**: User mentions authentication setup, login flow, sign-up, session management, or explicitly says "AuthKit" WITHOUT mentioning a specific feature like SSO or MFA.
 
-**Action**: Detect framework using priority-ordered checks below. Load the corresponding AuthKit skill via the Skill tool.
+**Action**: Detect framework and language using the priority-ordered checks below. Read the corresponding reference file.
 
 **Disambiguation**:
 
 - If user says "SSO login via AuthKit", route to `workos-sso` (#3) — feature wins over framework.
 - If user says "React login with Google", route to AuthKit React (#4) — this is AuthKit-level auth, not SSO API.
-- If user is ALREADY using AuthKit and wants to add a feature (e.g., "add MFA to my AuthKit app"), route to the feature skill (#3), not back to AuthKit installation.
+- If user is ALREADY using AuthKit and wants to add a feature (e.g., "add MFA to my AuthKit app"), route to the feature reference (#3), not back to AuthKit installation.
 
 #### Framework Detection Priority (AuthKit only)
 
@@ -123,26 +144,62 @@ Check in this exact order. First match wins:
 
 ```
 1. `@tanstack/start` in package.json dependencies
-   → Load: workos-authkit-tanstack-start
+   → Read: references/workos-authkit-tanstack-start.md
 
-2. `react-router` or `react-router-dom` in package.json dependencies
-   → Load: workos-authkit-react-router
+2. `@sveltejs/kit` in package.json dependencies
+   → Read: references/workos-authkit-sveltekit.md
 
-3. `next.config.js` OR `next.config.mjs` OR `next.config.ts` exists in project root
-   → Load: workos-authkit-nextjs
+3. `react-router` or `react-router-dom` in package.json dependencies
+   → Read: references/workos-authkit-react-router.md
 
-4. (`vite.config.js` OR `vite.config.ts` exists) AND `react` in package.json dependencies
-   → Load: workos-authkit-react
+4. `next.config.js` OR `next.config.mjs` OR `next.config.ts` exists in project root
+   → Read: references/workos-authkit-nextjs.md
 
-5. NONE of the above detected
-   → Load: workos-authkit-vanilla-js
+5. (`vite.config.js` OR `vite.config.ts` exists) AND `react` in package.json dependencies
+   → Read: references/workos-authkit-react.md
+
+6. NONE of the above detected
+   → Read: references/workos-authkit-vanilla-js.md
 ```
 
-**Why this order**: TanStack and React Router are MORE specific than Next.js/Vite+React. A project can have both Next.js AND React Router (e.g., Next.js with RR for client routing); in that case, React Router wins because it's more specific. Vanilla JS is the fallback when no framework is detected.
+#### Language Detection (Backend SDKs)
+
+If the project is NOT a JavaScript/TypeScript frontend framework, check:
+
+```
+1. `pyproject.toml` OR `requirements.txt` OR `setup.py` exists
+   → Read: references/workos-python.md
+
+2. `go.mod` exists
+   → Read: references/workos-go.md
+
+3. `Gemfile` exists OR `config/routes.rb` exists
+   → Read: references/workos-ruby.md
+
+4. `composer.json` exists AND `laravel/framework` in dependencies
+   → Read: references/workos-php-laravel.md
+
+5. `composer.json` exists (without Laravel)
+   → Read: references/workos-php.md
+
+6. `*.csproj` OR `*.sln` exists
+   → Read: references/workos-dotnet.md
+
+7. `build.gradle.kts` OR `build.gradle` exists
+   → Read: references/workos-kotlin.md
+
+8. `mix.exs` exists
+   → Read: references/workos-elixir.md
+
+9. `package.json` exists with `express` / `fastify` / `hono` / `koa` (backend JS)
+   → Read: references/workos-node.md
+```
+
+**Why this order**: TanStack, SvelteKit, and React Router are MORE specific than Next.js/Vite+React. A project can have both Next.js AND React Router; in that case, React Router wins because it's more specific. Vanilla JS is the fallback when no framework is detected. Backend languages are checked when no frontend framework is found.
 
 **Edge case — multiple frameworks detected**: If you detect conflicting signals (e.g., both `next.config.js` and `@tanstack/start`), ASK the user which one they want to use. Do NOT guess.
 
-**Edge case — framework unclear from context**: If the user says "add login" but you cannot scan files (remote repo, no access), ASK: "Which framework are you using? (Next.js, React SPA, React Router, TanStack Start, or vanilla JS)". Do NOT default to vanilla JS without confirmation.
+**Edge case — framework unclear from context**: If the user says "add login" but you cannot scan files (remote repo, no access), ASK: "Which framework/language are you using?" Do NOT default without confirmation.
 
 ---
 
@@ -156,7 +213,15 @@ Check in this exact order. First match wins:
 
 ---
 
-### 6. Vague or General Request
+### 6. Management / CLI Operations
+
+**Triggers**: User mentions managing WorkOS resources (organizations, users, roles, permissions), seeding data, or CLI management commands.
+
+**Action**: Read `references/workos-management.md`.
+
+---
+
+### 7. Vague or General Request
 
 **Triggers**: User says "help with WorkOS", "WorkOS setup", "what can WorkOS do", or provides no feature-specific context.
 
@@ -171,7 +236,7 @@ Check in this exact order. First match wins:
 
 ---
 
-### 7. No Match / Ambiguous
+### 8. No Match / Ambiguous
 
 **Triggers**: None of the above rules match, OR the request is genuinely ambiguous.
 
@@ -188,7 +253,7 @@ Check in this exact order. First match wins:
 
 ### User mentions multiple features
 
-Route to the MOST SPECIFIC skill first. Example: "SSO with MFA and directory sync" → route to `workos-sso` first. After completing SSO setup, the user can request MFA and Directory Sync separately.
+Route to the MOST SPECIFIC reference first. Example: "SSO with MFA and directory sync" → route to `workos-sso` first. After completing SSO setup, the user can request MFA and Directory Sync separately.
 
 ### User mentions a feature + API reference
 
@@ -196,7 +261,7 @@ Route to the feature topic file — it includes an endpoint table. Example: "SSO
 
 ### User wants to ADD a feature to an existing AuthKit setup
 
-Route to the feature skill (#3), not back to AuthKit installation. Example: "I'm using AuthKit in Next.js and want to add SSO" → `workos-sso.md`.
+Route to the feature reference (#3), not back to AuthKit installation. Example: "I'm using AuthKit in Next.js and want to add SSO" → `workos-sso.md`.
 
 ### User mentions a provider but no feature
 
@@ -204,11 +269,11 @@ Route to Integrations (#5). Example: "How do I connect Okta?" → `workos-integr
 
 ### User mentions a provider AND a feature
 
-Route to the feature skill (#3). Example: "Set up Okta SSO" → `workos-sso.md` (it will reference Integrations for Okta setup).
+Route to the feature reference (#3). Example: "Set up Okta SSO" → `workos-sso.md` (it will reference Integrations for Okta setup).
 
 ### Unknown framework for AuthKit
 
-If you cannot detect framework and the user hasn't specified, ASK: "Which framework are you using?" Do NOT default to vanilla JS.
+If you cannot detect framework and the user hasn't specified, ASK: "Which framework/language are you using?" Do NOT default without confirmation.
 
 ### Framework conflicts (multiple frameworks detected)
 
@@ -216,4 +281,4 @@ If detection finds conflicting signals (e.g., both Next.js and TanStack Start co
 
 ### User provides no context at all
 
-Follow step #6 (Vague or General Request): fetch llms.txt, show options, and force disambiguation.
+Follow step #7 (Vague or General Request): fetch llms.txt, show options, and force disambiguation.

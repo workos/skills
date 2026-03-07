@@ -2,14 +2,6 @@ import { join } from 'path';
 import { createHash } from 'crypto';
 import { readdirSync, readFileSync } from 'fs';
 import { parse } from 'yaml';
-const HAND_CRAFTED_SKILLS = [
-  'workos-authkit-base',
-  'workos-authkit-nextjs',
-  'workos-authkit-react',
-  'workos-authkit-react-router',
-  'workos-authkit-tanstack-start',
-  'workos-authkit-vanilla-js',
-] as const;
 import { generateCode } from './api.ts';
 import { getCacheKey, readCache, writeCache } from './cache.ts';
 import { scoreOutput, categorizeErrors } from './scorer.ts';
@@ -63,37 +55,22 @@ export function loadCases(
   });
 }
 
-/** Load skill content from disk. Concatenates summary + guide for generated skills. */
+/** Load skill content from disk. All skills are now reference files. */
 export function loadSkillContent(skillName: string): string {
-  const isHandCrafted = (HAND_CRAFTED_SKILLS as readonly string[]).includes(skillName);
-
-  if (isHandCrafted) {
-    return readFileSync(join(PLUGIN_DIR, skillName, 'SKILL.md'), 'utf8');
-  }
-
-  // Generated: summary + guide
-  const summaryPath = join(REFS_DIR, `${skillName}.md`);
-  const guidePath = join(REFS_DIR, `${skillName}.guide.md`);
-
-  const parts: string[] = [];
+  // All skills (including former hand-crafted) are now reference files
+  const refPath = join(REFS_DIR, `${skillName}.md`);
 
   try {
-    parts.push(readFileSync(summaryPath, 'utf8'));
+    return readFileSync(refPath, 'utf8');
   } catch {
-    // Summary may not exist for some skills
+    // Fallback: try legacy guide path
+    const guidePath = join(REFS_DIR, `${skillName}.guide.md`);
+    try {
+      return readFileSync(guidePath, 'utf8');
+    } catch {
+      throw new Error(`No skill files found for ${skillName} (tried ${refPath})`);
+    }
   }
-
-  try {
-    parts.push(readFileSync(guidePath, 'utf8'));
-  } catch {
-    // Guide may not exist
-  }
-
-  if (parts.length === 0) {
-    throw new Error(`No skill files found for ${skillName}`);
-  }
-
-  return parts.join('\n\n---\n\n');
 }
 
 /** Hash unique skill file contents for cache provenance. */

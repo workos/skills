@@ -1,8 +1,3 @@
----
-name: workos-authkit-react
-description: Integrate WorkOS AuthKit with React single-page applications. Client-side only authentication. Use when the project is a React SPA without Next.js or React Router.
----
-
 # WorkOS AuthKit for React (SPA)
 
 ## Decision Tree
@@ -11,7 +6,7 @@ description: Integrate WorkOS AuthKit with React single-page applications. Clien
 START
   │
   ├─► Fetch README (BLOCKING)
-  │   github.com/workos/authkit-react/blob/main/README.md
+  │   raw.githubusercontent.com/workos/authkit-react/main/README.md
   │   README is source of truth. Stop if fetch fails.
   │
   ├─► Detect Build Tool
@@ -53,16 +48,25 @@ Just ensure redirect URI env var matches WorkOS Dashboard exactly.
 
 No `WORKOS_API_KEY` needed. Client-side only SDK.
 
-## Verification Checklist
+## Verification Checklist (ALL MUST PASS)
 
-- [ ] README fetched and read
-- [ ] Build tool detected correctly
-- [ ] Env var prefix matches build tool
-- [ ] `.env` or `.env.local` has required vars
-- [ ] No `next` dependency (wrong skill)
-- [ ] No `react-router` dependency (wrong skill)
-- [ ] AuthKitProvider wraps app root
-- [ ] `pnpm build` exits 0
+Run these commands to confirm integration. **Do not mark complete until all pass:**
+
+```bash
+# 1. Check env var prefix matches build tool
+grep -E "VITE_WORKOS_CLIENT_ID|REACT_APP_WORKOS_CLIENT_ID" .env .env.local 2>/dev/null
+
+# 2. Check AuthKitProvider wraps app root
+grep "AuthKitProvider" src/main.tsx src/index.tsx 2>/dev/null || echo "FAIL: AuthKitProvider missing"
+
+# 3. Check no server framework present (wrong skill if found)
+grep -E '"next"|"react-router"' package.json && echo "WARN: Server framework detected"
+
+# 4. Build succeeds
+pnpm build
+```
+
+**If check #2 fails:** AuthKitProvider must wrap the app root in main.tsx/index.tsx. This is required for useAuth() to work.
 
 ## Error Recovery
 

@@ -1,8 +1,3 @@
----
-name: workos-authkit-tanstack-start
-description: Integrate WorkOS AuthKit with TanStack Start applications. Full-stack TypeScript with server functions. Use when project uses TanStack Start, @tanstack/start, or vinxi.
----
-
 # WorkOS AuthKit for TanStack Start
 
 ## Decision Tree
@@ -24,7 +19,7 @@ description: Integrate WorkOS AuthKit with TanStack Start applications. Full-sta
 
 **STOP - Do not proceed until complete.**
 
-WebFetch: `https://github.com/workos/authkit-tanstack-start/blob/main/README.md`
+WebFetch: `https://raw.githubusercontent.com/workos/authkit-tanstack-start/main/README.md`
 
 From README, extract:
 
@@ -86,34 +81,31 @@ Default redirect URI: `http://localhost:3000/api/auth/callback`
 
 **authkitMiddleware MUST be configured or auth will fail silently.**
 
-Create or update `src/start.ts` (or `app/start.ts` for legacy):
+**WARNING: Do NOT add middleware to `createRouter()` in `router.tsx` or `app.tsx`. That is TanStack Router (client-side only). Server middleware belongs in `start.ts` using `requestMiddleware`.**
 
-```typescript
-import { authkitMiddleware } from '@workos/authkit-tanstack-react-start';
+### If `start.ts` already exists
 
-export default {
-  requestMiddleware: [authkitMiddleware()],
-};
-```
+Read the existing file first. Add `authkitMiddleware` to the existing `requestMiddleware` array (or create the array if missing). Preserve the existing export style. Do not rewrite the file from scratch.
 
-Alternative pattern with createStart:
+### If `start.ts` does not exist
+
+Create `src/start.ts` (or `app/start.ts` for legacy) using `createStart`:
 
 ```typescript
 import { createStart } from '@tanstack/react-start';
 import { authkitMiddleware } from '@workos/authkit-tanstack-react-start';
 
-export default createStart({
+export const startInstance = createStart(() => ({
   requestMiddleware: [authkitMiddleware()],
-});
+}));
 ```
 
-### Verification Checklist
+**Two things matter here:**
 
-- [ ] `authkitMiddleware` imported from `@workos/authkit-tanstack-react-start`
-- [ ] Middleware in `requestMiddleware` array
-- [ ] File exports the config (default export or named `startInstance`)
+1. **Named export `startInstance`** — the build plugin generates `import type { startInstance }` from this file. A `default` export will cause a build error.
+2. **`createStart` takes a function** returning the options object, not the options directly. `createStart({ ... })` will fail.
 
-Verify: `grep -r "authkitMiddleware" src/ app/ 2>/dev/null`
+**WARNING: Do NOT add middleware to `createRouter()` in `router.tsx` or `app.tsx`. That is TanStack Router (client-side only). Server middleware belongs in `start.ts` using `requestMiddleware`.**
 
 ## Callback Route (CRITICAL)
 
@@ -207,6 +199,60 @@ function Profile() {
 ```
 
 **Note:** Server-side `getAuth()` is preferred for most use cases.
+
+## Finalize (REQUIRED before declaring success)
+
+After creating/editing all files, run these steps in order. Skipping them is the most common cause of build failures.
+
+### 1. Regenerate the route tree
+
+Adding new route files (callback, signout, etc.) makes the existing `routeTree.gen.ts` stale. The build will fail with type errors about missing routes until it is regenerated.
+
+```bash
+pnpm build 2>/dev/null || npx tsr generate
+```
+
+The build itself triggers route tree regeneration. If it fails for other reasons, use `tsr generate` directly.
+
+### 2. Ensure Vite type declarations exist
+
+TanStack Start projects import CSS with `import styles from './styles.css?url'`. Without Vite's type declarations, TypeScript will error on these imports. Check if `src/vite-env.d.ts` (or `app/vite-env.d.ts`) exists — if not, create it now (before attempting the build):
+
+```typescript
+/// <reference types="vite/client" />
+```
+
+### 3. Verify the build
+
+```bash
+pnpm build
+```
+
+Do not skip this step. If the build fails, fix the errors before finishing. Common causes:
+
+- Stale route tree → re-run step 1
+- Missing Vite types → re-run step 2
+- Wrong import paths → check package name is `@workos/authkit-tanstack-react-start`
+
+## Verification Checklist (ALL MUST PASS)
+
+Run these commands to confirm integration. **Do not mark complete until all pass:**
+
+```bash
+# 1. Check authkitMiddleware is configured
+grep -r "authkitMiddleware" src/ app/ 2>/dev/null || echo "FAIL: Middleware not configured"
+
+# 2. Check callback route exists
+find src/routes app/routes -name "*callback*" 2>/dev/null
+
+# 3. Check environment variables
+grep -c "WORKOS_" .env 2>/dev/null || echo "FAIL: No env vars found"
+
+# 4. Build succeeds
+pnpm build
+```
+
+**If check #1 fails:** authkitMiddleware must be in src/start.ts (or app/start.ts for legacy) requestMiddleware array. Auth will fail silently without it.
 
 ## Error Recovery
 

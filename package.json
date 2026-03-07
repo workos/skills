@@ -15,6 +15,9 @@
     "type": "git",
     "url": "https://github.com/workos/skills"
   },
+  "exports": {
+    ".": "./plugins/workos/index.ts"
+  },
   "files": [
     "plugins"
   ],
