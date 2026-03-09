@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/workos/skills/compare/v0.2.1...v0.2.2) (2026-03-09)
+
+
+### Bug Fixes
+
+* compile TypeScript to dist/ instead of shipping raw .ts ([e23f8f9](https://github.com/workos/skills/commit/e23f8f90191d6360e63193eccdb1c41630f7cb12))
+
 ## [0.2.1](https://github.com/workos/skills/compare/v0.2.0...v0.2.1) (2026-03-07)
 
 
