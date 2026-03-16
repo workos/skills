@@ -162,6 +162,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 Add auth UI to `app/page.tsx` using SDK functions. See README for auth helper usage (`withAuth`/`getUser`, `getSignInUrl`, `signOut`).
 
+**IMPORTANT: Server Component Cookie Safety (Next.js 15+/16)**
+
+`getSignInUrl()` internally sets a PKCE cookie via `cookies()`. In Next.js 15+, `cookies()` can only be called in:
+- Route Handlers
+- Server Actions
+- Middleware/Proxy
+
+It **cannot** be called in a Server Component (like `app/page.tsx`). If you call `getSignInUrl()` directly in a page component, you'll get:
+> "Cookies can only be modified in a Server Action or Route Handler"
+
+**Correct patterns:**
+1. Use `getSignInUrl()` in a Server Action, then pass the URL to the page
+2. Use a simple link to `/auth/callback` or the AuthKit-managed sign-in endpoint
+3. Use `withAuth()` / `getUser()` for checking auth state (read-only, safe in Server Components)
+
+See README for the recommended approach for your SDK version.
+
 **Note:** The SDK renamed `getUser` to `withAuth` in newer versions. Use whichever function the installed SDK version exports — do NOT rename existing working imports.
 
 ## Verification Checklist (ALL MUST PASS)
@@ -198,6 +215,15 @@ Fix for callback route:
 4. **Never** call `cookies()` at module level - only inside request handlers
 
 This error causes OAuth codes to expire ("invalid_grant"), so fix the handler first.
+
+### "Cookies can only be modified in a Server Action or Route Handler"
+
+**Cause:** `getSignInUrl()` or `getSignUpUrl()` called directly in a Server Component. These functions set a PKCE cookie internally and must run in a Server Action or Route Handler.
+
+**Fix:**
+1. Move the `getSignInUrl()` call to a Server Action
+2. Or create a Route Handler that redirects to the sign-in URL
+3. Do NOT call `getSignInUrl()` at the top level of a page component
 
 ### "middleware.ts not found"
 
