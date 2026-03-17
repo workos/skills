@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/workos/skills/compare/v0.2.2...v0.2.3) (2026-03-17)
+
+
+### Bug Fixes
+
+* broaden skill description for more reliable triggering ([#10](https://github.com/workos/skills/issues/10)) ([4340e7e](https://github.com/workos/skills/commit/4340e7ec70e135aa727ee51a0c9738f5cbf4858d))
+
 ## [0.2.2](https://github.com/workos/skills/compare/v0.2.1...v0.2.2) (2026-03-09)
 
 
