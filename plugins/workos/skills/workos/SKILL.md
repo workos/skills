@@ -1,6 +1,6 @@
 ---
 name: workos
-description: Identify which WorkOS reference to load based on the user's task — covers AuthKit, backend SDKs, SSO, RBAC, migrations, management, and all API references.
+description: Use when the user is implementing, debugging, or asking about WorkOS in any way — authentication, login, sign-up, sessions, access tokens, organization-scoped tokens, device authorization, SSO, SAML, SCIM, Directory Sync, RBAC, roles, permissions, FGA, MFA, Vault, Audit Logs, Admin Portal, webhooks, events, user management, email, custom domains, AuthKit (any framework), backend SDKs, migrations from Auth0/Clerk/Cognito/Firebase/Supabase/Stytch, or WorkOS API references. Routes to the right reference and gotchas.
 ---
 
 # WorkOS Skill Router
