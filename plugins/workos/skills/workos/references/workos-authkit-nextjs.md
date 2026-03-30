@@ -160,24 +160,53 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 ## Step 8: UI Integration
 
-Add auth UI to `app/page.tsx` using SDK functions. See README for auth helper usage (`withAuth`/`getUser`, `getSignInUrl`, `signOut`).
+Use **server helpers only for read-only auth checks** in Server Components. Use **client helpers for interactive auth UI** like shared nav/header buttons.
 
-**IMPORTANT: Server Component Cookie Safety (Next.js 15+/16)**
+### Server Components (safe)
 
-`getSignInUrl()` internally sets a PKCE cookie via `cookies()`. In Next.js 15+, `cookies()` can only be called in:
-- Route Handlers
-- Server Actions
-- Middleware/Proxy
+Use `withAuth()` / `getUser()` in `app/page.tsx`, `app/dashboard/page.tsx`, layouts, and route handlers to read auth state.
 
-It **cannot** be called in a Server Component (like `app/page.tsx`). If you call `getSignInUrl()` directly in a page component, you'll get:
-> "Cookies can only be modified in a Server Action or Route Handler"
+**Do not** call `getSignInUrl()` / `getSignUpUrl()` during Server Component render. Those helpers set PKCE cookies via `cookies()` and will throw in Next.js 15+/16.
 
-**Correct patterns:**
-1. Use `getSignInUrl()` in a Server Action, then pass the URL to the page
-2. Use a simple link to `/auth/callback` or the AuthKit-managed sign-in endpoint
-3. Use `withAuth()` / `getUser()` for checking auth state (read-only, safe in Server Components)
+### Shared nav/header auth UI (preferred)
 
-See README for the recommended approach for your SDK version.
+If you need a reusable `nav-auth.tsx` / header auth button, make it a **client component** and use `useAuth()` from the same client entrypoint as `AuthKitProvider` (check README for the exact import path for your SDK version).
+
+Use `refreshAuth({ ensureSignedIn: true })` from a click handler to start sign-in instead of computing a sign-in URL during render.
+
+```tsx
+'use client';
+// Check README for exact import path for your SDK version
+import { useAuth } from '@workos-inc/authkit-nextjs/components';
+
+export function NavAuth() {
+  const { user, isLoading, refreshAuth } = useAuth();
+
+  if (isLoading) return null;
+
+  if (user) {
+    return <a href="/dashboard">Dashboard</a>;
+  }
+
+  return (
+    <button type="button" onClick={() => void refreshAuth({ ensureSignedIn: true })}>
+      Sign in
+    </button>
+  );
+}
+```
+
+### If you need a server-generated sign-in URL
+
+Call `getSignInUrl()` **only** inside a Server Action or Route Handler. It is the safe wrapper for AuthKit sign-in/sign-up flows.
+
+### Critical auth URL gotchas
+
+- **Never** call `getSignInUrl()` / `getSignUpUrl()` inside a Server Component render (`page.tsx`, `layout.tsx`, async `nav-auth.tsx`, etc.).
+- **Never** use raw `getAuthorizationUrl()` for AuthKit UI flows. It returns an object like `{ url, sealedState }`, **not** a URL string.
+- If you bypass `getSignInUrl()`, the PKCE cookie is never set (`sealedState` is discarded), which causes `OAuth state mismatch` on the callback.
+- If you pass the raw `getAuthorizationUrl()` result to `window.location.href`, the browser will navigate to `/[object Object]`.
+- For server-side redirects, use `getSignInUrl()` in a Server Action / Route Handler. For client-side nav buttons, use `refreshAuth({ ensureSignedIn: true })`.
 
 **Note:** The SDK renamed `getUser` to `withAuth` in newer versions. Use whichever function the installed SDK version exports — do NOT rename existing working imports.
 
@@ -195,11 +224,23 @@ grep "AuthKitProvider" app/layout.tsx || echo "FAIL: AuthKitProvider missing fro
 # 3. Check callback route exists
 find app -name "route.ts" -path "*/callback/*"
 
-# 4. Build succeeds
+# 4. Audit for raw getAuthorizationUrl usage — always unsafe in app sign-in/sign-up flows
+rg -n "getAuthorizationUrl|window\.location\.href\s*=\s*auth\.signInUrl" app src/app src 2>/dev/null || true
+
+# 5. Audit getSignInUrl() usage — safe in Server Actions/Route Handlers, unsafe in page/layout/component render
+rg -n "getSignInUrl\(" app src/app 2>/dev/null || true
+
+# 6. Build succeeds
 npm run build
 ```
 
 **If check #2 fails:** Go back to Step 6 and add AuthKitProvider. This is not optional.
+
+**Manual verification before marking complete:**
+1. Click **Sign in** and confirm the browser goes to a real WorkOS URL — **not** `/[object Object]`
+2. Complete auth and confirm callback succeeds without `OAuth state mismatch`
+3. If `rg` finds `getSignInUrl(` in `page.tsx`, `layout.tsx`, or async server-rendered nav components, move that logic to a client component, Server Action, or Route Handler
+4. If `rg` finds `getAuthorizationUrl` in sign-in/sign-up code paths, replace it with `getSignInUrl()` / `getSignUpUrl()`
 
 ## Error Recovery
 
@@ -223,7 +264,26 @@ This error causes OAuth codes to expire ("invalid_grant"), so fix the handler fi
 **Fix:**
 1. Move the `getSignInUrl()` call to a Server Action
 2. Or create a Route Handler that redirects to the sign-in URL
-3. Do NOT call `getSignInUrl()` at the top level of a page component
+3. Or convert the shared auth UI to a client component and call `refreshAuth({ ensureSignedIn: true })`
+4. Do NOT call `getSignInUrl()` at the top level of a page component
+
+### `GET /[object%20Object]` or `window.location.href = "[object Object]"`
+
+**Cause:** Code used raw `getAuthorizationUrl()` output as `signInUrl`. That helper returns `{ url, sealedState }`, not a string.
+
+**Fix:**
+1. Replace raw `getAuthorizationUrl()` usage with `getSignInUrl()` (or `getSignUpUrl()`)
+2. If you must inspect the lower-level helper, extract `.url` and preserve `sealedState` — but prefer the AuthKit wrapper
+3. Verify the provider/browser redirect receives a real string URL before assigning `window.location.href`
+
+### "OAuth state mismatch"
+
+**Cause:** The code bypassed `getSignInUrl()` and discarded `sealedState`, so the PKCE state cookie was never set.
+
+**Fix:**
+1. Use `getSignInUrl()` in a Server Action or Route Handler so AuthKit sets the PKCE cookie
+2. For client-side sign-in buttons, use `refreshAuth({ ensureSignedIn: true })`
+3. Do not hand-roll the sign-in action with raw `getAuthorizationUrl()` unless you also persist `sealedState` exactly as the SDK expects
 
 ### "middleware.ts not found"
 

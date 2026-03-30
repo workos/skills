@@ -637,3 +637,85 @@ const url = workos.sso.getAuthorizationUrl({ clientId });
     expect(errors).not.toContain('missing_env_var');
   });
 });
+
+describe('authkit nextjs regression coverage', () => {
+  const expected: ExpectedSignals = {
+    methods: ['AuthKitProvider', 'useAuth', 'refreshAuth', 'getSignInUrl'],
+    envVars: [],
+    imports: [],
+    params: ['ensureSignedIn'],
+    flowSteps: [
+      'wrap app in AuthKitProvider',
+      'make nav auth a client component',
+      'call refreshAuth ensureSignedIn',
+      'use getSignInUrl in a server action',
+      'avoid getAuthorizationUrl',
+    ],
+    antiPatterns: [
+      'getSignInUrl in server component',
+      'use getAuthorizationUrl directly',
+      'window.location.href = auth.signInUrl',
+      'discard sealedState',
+    ],
+    hallucinations: [],
+  };
+
+  const brokenOutput = `
+// app/components/nav-auth.tsx
+import { getSignInUrl } from '@workos-inc/authkit-nextjs';
+
+export default async function NavAuth() {
+  const signInUrl = await getSignInUrl(); // getSignInUrl in server component
+  return <a href={signInUrl}>Sign in</a>;
+}
+
+// dist/esm/actions.js
+import { getAuthorizationUrl } from './get-authorization-url.js';
+
+export async function refreshAuthAction() {
+  const signInUrl = await getAuthorizationUrl({ screenHint: 'sign-in' });
+  return { signInUrl };
+}
+
+window.location.href = auth.signInUrl;
+The implementation discards sealedState after calling getAuthorizationUrl directly.
+  `;
+
+  const fixedOutput = `
+Wrap the app in AuthKitProvider in app/layout.tsx.
+
+Use getUser() or withAuth() in Server Components only to read auth state.
+
+Create a client nav auth component:
+'use client'
+function NavAuth() {
+  const { user, isLoading, refreshAuth } = useAuth();
+  if (isLoading) return null;
+  if (user) return <a href="/dashboard">Dashboard</a>;
+  return (
+    <button type="button" onClick={() => void refreshAuth({ ensureSignedIn: true })}>
+      Sign in
+    </button>
+  );
+}
+
+If you need a server-generated URL, use getSignInUrl() in a Server Action or Route Handler.
+Do not use getAuthorizationUrl directly for AuthKit sign-in, because it returns { url, sealedState }.
+Do not discard sealedState, and do not assign window.location.href = auth.signInUrl.
+  `;
+
+  it('scores the fixed pattern higher than the broken pattern', () => {
+    const broken = scoreOutput(brokenOutput, expected);
+    const fixed = scoreOutput(fixedOutput, expected);
+
+    expect(fixed.composite).toBeGreaterThan(broken.composite);
+    expect(fixed.antiPatternAvoidance).toBeGreaterThan(broken.antiPatternAvoidance);
+    expect(fixed.composite).toBeGreaterThanOrEqual(80);
+    expect(broken.composite).toBeLessThanOrEqual(60);
+  });
+
+  it('flags the broken pattern as an anti-pattern regression', () => {
+    const errors = categorizeErrors(brokenOutput, expected);
+    expect(errors).toContain('security_issue');
+  });
+});

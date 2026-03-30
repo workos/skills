@@ -53,7 +53,6 @@
       - getUser
       - withAuth
       - signOut
-      - getSignInUrl
     envVars: []
     imports:
       - '@workos-inc/authkit-nextjs'
@@ -64,6 +63,8 @@
       - redirect unauthenticated users
       - render dashboard for authenticated users
     antiPatterns:
+      - getSignInUrl in server component
+      - form action={await getSignInUrl()}
       - use client for auth check
       - localStorage for session
       - manual JWT parsing
@@ -97,4 +98,41 @@
     antiPatterns:
       - call cookies at module level
       - synchronous cookie access
+    hallucinations: []
+
+- id: authkit-nextjs-nav-auth-pkce
+  product: authkit
+  skill: workos-authkit-nextjs
+  skillType: hand-crafted
+  language: node
+  framework: nextjs
+  prompt: |
+    I'm on Next.js 16 with WorkOS AuthKit. I added a shared nav-auth.tsx
+    component and a provider that redirects with window.location.href =
+    auth.signInUrl, but I hit three issues: calling getSignInUrl() in the
+    server component throws "Cookies can only be modified in a Server Action or
+    Route Handler", sometimes the browser goes to /[object Object], and after
+    that the callback fails with "OAuth state mismatch". What's the correct
+    implementation pattern?
+  expected:
+    methods:
+      - AuthKitProvider
+      - useAuth
+      - refreshAuth
+      - getSignInUrl
+    envVars: []
+    imports: []
+    params:
+      - ensureSignedIn
+    flowSteps:
+      - wrap app in AuthKitProvider
+      - make nav auth a client component
+      - call refreshAuth ensureSignedIn
+      - use getSignInUrl in a server action
+      - avoid getAuthorizationUrl
+    antiPatterns:
+      - getSignInUrl in server component
+      - use getAuthorizationUrl directly
+      - window.location.href = auth.signInUrl
+      - discard sealedState
     hallucinations: []
