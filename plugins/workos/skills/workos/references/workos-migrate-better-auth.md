@@ -1,10 +1,12 @@
 # WorkOS Migration: Better Auth
 
 ## Docs
+
 - https://workos.com/docs/migrate/better-auth
-If this file conflicts with fetched docs, follow the docs.
+  If this file conflicts with fetched docs, follow the docs.
 
 ## Gotchas
+
 - Password hashes live in the `account` table (not `user`), filtered by `providerId = 'credential'`. Do NOT skip this table.
 - Better Auth uses scrypt by default. If you customized the hash algorithm, you must know which one it is before importing to WorkOS.
 - The `password` column contains the full hash string including algorithm parameters. Do NOT strip prefixes or decode it.

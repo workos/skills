@@ -1,6 +1,7 @@
 # WorkOS Audit Logs
 
 ## Docs
+
 - https://workos.com/docs/audit-logs/metadata-schema
 - https://workos.com/docs/audit-logs/log-streams
 - https://workos.com/docs/audit-logs/index
@@ -12,9 +13,10 @@
 - https://workos.com/docs/reference/audit-logs/event
 - https://workos.com/docs/reference/audit-logs/event/create
 - https://workos.com/docs/reference/audit-logs/export
-If this file conflicts with fetched docs, follow the docs.
+  If this file conflicts with fetched docs, follow the docs.
 
 ## Gotchas
+
 - Event type naming MUST follow `{group}.{object}.{action}` convention (e.g., `user.account.created`). Flat names like `shareCreated` are rejected.
 - Metadata limits: 50 keys max per metadata object, 40 chars per key name, 500 chars per value. Exceeding silently truncates or fails.
 - Log Streams to customer SIEMs via HTTP POST require IP allowlisting. WorkOS US egress IPs: `3.217.146.166`, `23.21.184.92`, `34.204.154.149`, `44.213.245.178`, `44.215.236.82`, `50.16.203.9`. EU region uses different IPs — check docs.
@@ -22,6 +24,7 @@ If this file conflicts with fetched docs, follow the docs.
 - Log Stream must show "Active" status in Dashboard to deliver events. Credential or network issues silently stop delivery without failing the event creation call.
 
 ## Endpoints
+
 | Endpoint               | Description                        |
 | ---------------------- | ---------------------------------- |
 | `/audit-logs`          | audit-logs                         |

@@ -237,6 +237,7 @@ npm run build
 **If check #2 fails:** Go back to Step 6 and add AuthKitProvider. This is not optional.
 
 **Manual verification before marking complete:**
+
 1. Click **Sign in** and confirm the browser goes to a real WorkOS URL — **not** `/[object Object]`
 2. Complete auth and confirm callback succeeds without `OAuth state mismatch`
 3. If `rg` finds `getSignInUrl(` in `page.tsx`, `layout.tsx`, or async server-rendered nav components, move that logic to a client component, Server Action, or Route Handler
@@ -262,6 +263,7 @@ This error causes OAuth codes to expire ("invalid_grant"), so fix the handler fi
 **Cause:** `getSignInUrl()` or `getSignUpUrl()` called directly in a Server Component. These functions set a PKCE cookie internally and must run in a Server Action or Route Handler.
 
 **Fix:**
+
 1. Move the `getSignInUrl()` call to a Server Action
 2. Or create a Route Handler that redirects to the sign-in URL
 3. Or convert the shared auth UI to a client component and call `refreshAuth({ ensureSignedIn: true })`
@@ -272,6 +274,7 @@ This error causes OAuth codes to expire ("invalid_grant"), so fix the handler fi
 **Cause:** Code used raw `getAuthorizationUrl()` output as `signInUrl`. That helper returns `{ url, sealedState }`, not a string.
 
 **Fix:**
+
 1. Replace raw `getAuthorizationUrl()` usage with `getSignInUrl()` (or `getSignUpUrl()`)
 2. If you must inspect the lower-level helper, extract `.url` and preserve `sealedState` — but prefer the AuthKit wrapper
 3. Verify the provider/browser redirect receives a real string URL before assigning `window.location.href`
@@ -281,6 +284,7 @@ This error causes OAuth codes to expire ("invalid_grant"), so fix the handler fi
 **Cause:** The code bypassed `getSignInUrl()` and discarded `sealedState`, so the PKCE state cookie was never set.
 
 **Fix:**
+
 1. Use `getSignInUrl()` in a Server Action or Route Handler so AuthKit sets the PKCE cookie
 2. For client-side sign-in buttons, use `refreshAuth({ ensureSignedIn: true })`
 3. Do not hand-roll the sign-in action with raw `getAuthorizationUrl()` unless you also persist `sealedState` exactly as the SDK expects

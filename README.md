@@ -34,27 +34,27 @@ Path helpers are also available for consumers that need file paths (e.g., skill 
 import { getReferencePath, getSkillsDir, getSkillPath } from '@workos/skills';
 
 const refPath = getReferencePath('workos-authkit-nextjs'); // absolute path to .md file
-const skillsDir = getSkillsDir();                          // directory containing workos/ and workos-widgets/
-const skillPath = getSkillPath('workos');                   // absolute path to SKILL.md
+const skillsDir = getSkillsDir(); // directory containing workos/ and workos-widgets/
+const skillPath = getSkillPath('workos'); // absolute path to SKILL.md
 ```
 
 ### Exports
 
-| Function | Returns |
-| --- | --- |
-| `getReference(name)` | `Promise<string>` — reference file content |
-| `getSkill(skillName)` | `Promise<string>` — skill SKILL.md content |
-| `getReferencePath(name)` | Absolute path to `references/{name}.md` |
-| `getSkillsDir()` | Absolute path to the `skills/` directory |
+| Function                  | Returns                                        |
+| ------------------------- | ---------------------------------------------- |
+| `getReference(name)`      | `Promise<string>` — reference file content     |
+| `getSkill(skillName)`     | `Promise<string>` — skill SKILL.md content     |
+| `getReferencePath(name)`  | Absolute path to `references/{name}.md`        |
+| `getSkillsDir()`          | Absolute path to the `skills/` directory       |
 | `getSkillPath(skillName)` | Absolute path to `skills/{skillName}/SKILL.md` |
 
 ## Skills
 
 Two registered skills:
 
-| Skill | Description |
-| --- | --- |
-| `workos` | Router — identifies which reference to load based on the user's task |
+| Skill            | Description                                                             |
+| ---------------- | ----------------------------------------------------------------------- |
+| `workos`         | Router — identifies which reference to load based on the user's task    |
 | `workos-widgets` | Multi-framework widget integration with on-demand OpenAPI spec querying |
 
 Everything else is a **reference file** under `references/`. The router dispatches to the right reference via progressive disclosure.
@@ -63,72 +63,72 @@ Everything else is a **reference file** under `references/`. The router dispatch
 
 #### AuthKit Installation
 
-| Reference | Description |
-| --- | --- |
-| `workos-authkit-nextjs` | Next.js App Router integration |
-| `workos-authkit-react` | React SPA integration |
-| `workos-authkit-react-router` | React Router v6/v7 integration |
-| `workos-authkit-tanstack-start` | TanStack Start integration |
-| `workos-authkit-sveltekit` | SvelteKit integration |
-| `workos-authkit-vanilla-js` | Vanilla JS integration |
-| `workos-authkit-base` | AuthKit architecture reference |
+| Reference                       | Description                    |
+| ------------------------------- | ------------------------------ |
+| `workos-authkit-nextjs`         | Next.js App Router integration |
+| `workos-authkit-react`          | React SPA integration          |
+| `workos-authkit-react-router`   | React Router v6/v7 integration |
+| `workos-authkit-tanstack-start` | TanStack Start integration     |
+| `workos-authkit-sveltekit`      | SvelteKit integration          |
+| `workos-authkit-vanilla-js`     | Vanilla JS integration         |
+| `workos-authkit-base`           | AuthKit architecture reference |
 
 #### Backend SDK Installation
 
-| Reference | Description |
-| --- | --- |
-| `workos-node` | Node.js (Express/Fastify/Hono/Koa) |
-| `workos-python` | Python (Django/Flask/FastAPI) |
-| `workos-dotnet` | .NET (ASP.NET Core) |
-| `workos-go` | Go |
-| `workos-ruby` | Ruby (Rails) |
-| `workos-php` | PHP |
-| `workos-php-laravel` | PHP Laravel |
-| `workos-kotlin` | Kotlin |
-| `workos-elixir` | Elixir |
+| Reference            | Description                        |
+| -------------------- | ---------------------------------- |
+| `workos-node`        | Node.js (Express/Fastify/Hono/Koa) |
+| `workos-python`      | Python (Django/Flask/FastAPI)      |
+| `workos-dotnet`      | .NET (ASP.NET Core)                |
+| `workos-go`          | Go                                 |
+| `workos-ruby`        | Ruby (Rails)                       |
+| `workos-php`         | PHP                                |
+| `workos-php-laravel` | PHP Laravel                        |
+| `workos-kotlin`      | Kotlin                             |
+| `workos-elixir`      | Elixir                             |
 
 #### Features
 
-| Reference | Description |
-| --- | --- |
-| `workos-sso` | Single Sign-On with SAML/OIDC |
-| `workos-directory-sync` | User directory sync from IdPs |
-| `workos-rbac` | Role-based access control |
-| `workos-vault` | Encrypted data storage |
-| `workos-events` | Webhook event handling |
-| `workos-audit-logs` | Compliance audit logging |
-| `workos-admin-portal` | Self-service admin portal |
-| `workos-mfa` | Multi-factor authentication |
-| `workos-custom-domains` | Custom domain configuration |
-| `workos-email` | Email delivery configuration |
-| `workos-integrations` | Provider lookup table for 60+ IdP integrations |
+| Reference               | Description                                    |
+| ----------------------- | ---------------------------------------------- |
+| `workos-sso`            | Single Sign-On with SAML/OIDC                  |
+| `workos-directory-sync` | User directory sync from IdPs                  |
+| `workos-rbac`           | Role-based access control                      |
+| `workos-vault`          | Encrypted data storage                         |
+| `workos-events`         | Webhook event handling                         |
+| `workos-audit-logs`     | Compliance audit logging                       |
+| `workos-admin-portal`   | Self-service admin portal                      |
+| `workos-mfa`            | Multi-factor authentication                    |
+| `workos-custom-domains` | Custom domain configuration                    |
+| `workos-email`          | Email delivery configuration                   |
+| `workos-integrations`   | Provider lookup table for 60+ IdP integrations |
 
 #### Migrations
 
-| Reference | Description |
-| --- | --- |
-| `workos-migrate-auth0` | Migrate from Auth0 |
-| `workos-migrate-firebase` | Migrate from Firebase Auth |
-| `workos-migrate-clerk` | Migrate from Clerk |
-| `workos-migrate-aws-cognito` | Migrate from AWS Cognito |
-| `workos-migrate-stytch` | Migrate from Stytch |
-| `workos-migrate-supabase-auth` | Migrate from Supabase Auth |
-| `workos-migrate-descope` | Migrate from Descope |
-| `workos-migrate-better-auth` | Migrate from Better Auth |
-| `workos-migrate-other-services` | Migrate from custom auth |
+| Reference                               | Description                       |
+| --------------------------------------- | --------------------------------- |
+| `workos-migrate-auth0`                  | Migrate from Auth0                |
+| `workos-migrate-firebase`               | Migrate from Firebase Auth        |
+| `workos-migrate-clerk`                  | Migrate from Clerk                |
+| `workos-migrate-aws-cognito`            | Migrate from AWS Cognito          |
+| `workos-migrate-stytch`                 | Migrate from Stytch               |
+| `workos-migrate-supabase-auth`          | Migrate from Supabase Auth        |
+| `workos-migrate-descope`                | Migrate from Descope              |
+| `workos-migrate-better-auth`            | Migrate from Better Auth          |
+| `workos-migrate-other-services`         | Migrate from custom auth          |
 | `workos-migrate-the-standalone-sso-api` | Upgrade standalone SSO to AuthKit |
 
 #### API References
 
-| Reference | Description |
-| --- | --- |
-| `workos-api-authkit` | AuthKit/User Management API endpoints |
-| `workos-api-organization` | Organizations API endpoints |
+| Reference                 | Description                           |
+| ------------------------- | ------------------------------------- |
+| `workos-api-authkit`      | AuthKit/User Management API endpoints |
+| `workos-api-organization` | Organizations API endpoints           |
 
 #### Management
 
-| Reference | Description |
-| --- | --- |
+| Reference           | Description                                                     |
+| ------------------- | --------------------------------------------------------------- |
 | `workos-management` | CLI resource management (orgs, users, roles, webhooks, seeding) |
 
 ## Development

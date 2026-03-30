@@ -1,10 +1,12 @@
 # WorkOS Migration: Stytch
 
 ## Docs
+
 - https://workos.com/docs/migrate/stytch
-If this file conflicts with fetched docs, follow the docs.
+  If this file conflicts with fetched docs, follow the docs.
 
 ## Gotchas
+
 - Stytch password export requires a support ticket (support@stytch.com). Start this FIRST — it's the bottleneck with variable turnaround time. Do not proceed with password import until hashes are received.
 - Stytch uses scrypt for password hashing. Verify the hash format from the Stytch export matches WorkOS requirements before bulk import — test with ONE user first.
 - Stytch Search API has a 100 requests/minute rate limit. For large datasets, add delays between batches or you'll get throttled during export.

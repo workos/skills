@@ -1,15 +1,17 @@
 # WorkOS Single Sign-On
 
 ## Docs
+
 - https://workos.com/docs/sso/guide
 - https://workos.com/docs/sso/login-flows
 - https://workos.com/docs/reference/sso/get-authorization-url
 - https://workos.com/docs/sso/redirect-uris
 - https://workos.com/docs/sso/test-sso
 - https://workos.com/docs/sso/launch-checklist
-If this file conflicts with fetched docs, follow the docs.
+  If this file conflicts with fetched docs, follow the docs.
 
 ## Gotchas
+
 - Use exactly ONE connection selector (connection, organization, or provider) in getAuthorizationUrl — never combine them, causes error
 - domain_hint and login_hint are UX params, NOT connection selectors — they pre-fill fields but don't route the request
 - IdP-initiated flow sends state="" (empty string, not missing) — skip CSRF verification for empty string, reject for null/missing
@@ -21,19 +23,19 @@ If this file conflicts with fetched docs, follow the docs.
 
 ## Endpoints
 
-| Endpoint | Description |
-|----------|-------------|
-| `/sso` | SSO overview |
-| `/connection` | SSO connection management |
-| `/connection/delete` | Delete a connection |
-| `/connection/get` | Get a connection |
-| `/connection/list` | List connections |
-| `/get-authorization-url` | Generate authorization URL |
-| `/get-authorization-url/error-codes` | Authorization error codes |
-| `/get-authorization-url/redirect-uri` | Redirect URI configuration |
-| `/logout` | SSO logout |
-| `/logout/authorize` | Authorize logout |
-| `/logout/redirect` | Logout redirect |
-| `/profile` | User profile |
-| `/profile/get-profile-and-token` | Exchange code for profile + token |
-| `/profile/get-user-profile` | Get user profile by ID |
+| Endpoint                              | Description                       |
+| ------------------------------------- | --------------------------------- |
+| `/sso`                                | SSO overview                      |
+| `/connection`                         | SSO connection management         |
+| `/connection/delete`                  | Delete a connection               |
+| `/connection/get`                     | Get a connection                  |
+| `/connection/list`                    | List connections                  |
+| `/get-authorization-url`              | Generate authorization URL        |
+| `/get-authorization-url/error-codes`  | Authorization error codes         |
+| `/get-authorization-url/redirect-uri` | Redirect URI configuration        |
+| `/logout`                             | SSO logout                        |
+| `/logout/authorize`                   | Authorize logout                  |
+| `/logout/redirect`                    | Logout redirect                   |
+| `/profile`                            | User profile                      |
+| `/profile/get-profile-and-token`      | Exchange code for profile + token |
+| `/profile/get-user-profile`           | Get user profile by ID            |

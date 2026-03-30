@@ -1,14 +1,16 @@
 # WorkOS Custom Domains
 
 ## Docs
+
 - https://workos.com/docs/custom-domains/index
 - https://workos.com/docs/custom-domains/email
 - https://workos.com/docs/custom-domains/authkit
 - https://workos.com/docs/custom-domains/auth-api
 - https://workos.com/docs/custom-domains/admin-portal
-If this file conflicts with fetched docs, follow the docs.
+  If this file conflicts with fetched docs, follow the docs.
 
 ## Gotchas
+
 - Custom domains are production-environment only. Staging environments always use `workos.dev` and cannot be customized.
 - AuthKit custom domains require updating ALL callback URLs in production code, environment variables (`WORKOS_REDIRECT_URI`), and OAuth app registration in the WorkOS Dashboard. Missing any one causes "Invalid redirect_uri" errors.
 - DNS verification can take 24-48 hours. Do not proceed with code changes until Dashboard shows "Verified" status.

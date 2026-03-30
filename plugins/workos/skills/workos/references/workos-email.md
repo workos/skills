@@ -1,10 +1,12 @@
 # WorkOS Email Delivery
 
 ## Docs
+
 - https://workos.com/docs/email
-If this file conflicts with fetched docs, follow the docs.
+  If this file conflicts with fetched docs, follow the docs.
 
 ## Gotchas
+
 - WorkOS sends auth emails automatically (Magic Auth, invitations, password resets). This feature is about configuring the sender domain, not writing email-sending code.
 - Do NOT manually configure SPF/DKIM TXT records. WorkOS uses SendGrid's automated security via CNAMEs. Adding custom SPF/DKIM records will break authentication.
 - You must set up actual inboxes for `welcome@<your-domain>` and `access@<your-domain>`. Email providers check if sender addresses are real — no inbox means higher spam score.

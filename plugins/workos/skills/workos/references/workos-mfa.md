@@ -1,13 +1,15 @@
 # WorkOS Multi-Factor Authentication
 
 ## Docs
+
 - https://workos.com/docs/mfa/index
 - https://workos.com/docs/mfa/example-apps
 - https://workos.com/docs/mfa/ux/sign-in
 - https://workos.com/docs/mfa/ux/enrollment
-If this file conflicts with fetched docs, follow the docs.
+  If this file conflicts with fetched docs, follow the docs.
 
 ## Gotchas
+
 - MFA API is NOT compatible with WorkOS SSO. For SSO users, use the IdP's built-in MFA features instead.
 - You must persist `factor.id` in your user database. Without it, the enrolled factor cannot be used for future challenges.
 - Challenges are single-use. Attempting to verify a challenge twice returns "challenge already verified." Create a new challenge for each sign-in attempt.

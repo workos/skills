@@ -69,7 +69,7 @@ pnpm build 2>/dev/null || echo "CDN project — verify manually in browser"
 ## Error Recovery
 
 | Error                            | Cause               | Fix                                                    |
-| -------------------------------- | -------------------- | ------------------------------------------------------ |
+| -------------------------------- | ------------------- | ------------------------------------------------------ |
 | `WorkOS is not defined`          | CDN not loaded      | Add script to `<head>` before your code                |
 | `createClient is not a function` | Wrong import        | npm: check import path; CDN: use `WorkOS.createClient` |
 | `clientId is required`           | Undefined env var   | Check env prefix matches build tool                    |

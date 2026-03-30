@@ -19,30 +19,30 @@ When a user needs help with WorkOS, consult the tables below to route to the rig
 
 ### AuthKit Installation (Read `references/{name}.md`)
 
-| User wants to...                    | Read file                                         |
-| ----------------------------------- | ------------------------------------------------- |
-| Install AuthKit in Next.js          | `references/workos-authkit-nextjs.md`              |
-| Install AuthKit in React SPA        | `references/workos-authkit-react.md`               |
-| Install AuthKit with React Router   | `references/workos-authkit-react-router.md`        |
-| Install AuthKit with TanStack Start | `references/workos-authkit-tanstack-start.md`      |
-| Install AuthKit with SvelteKit      | `references/workos-authkit-sveltekit.md`           |
-| Install AuthKit in vanilla JS       | `references/workos-authkit-vanilla-js.md`          |
-| AuthKit architecture reference      | `references/workos-authkit-base.md`                |
-| Add WorkOS Widgets                  | Load `workos-widgets` skill via Skill tool         |
+| User wants to...                    | Read file                                     |
+| ----------------------------------- | --------------------------------------------- |
+| Install AuthKit in Next.js          | `references/workos-authkit-nextjs.md`         |
+| Install AuthKit in React SPA        | `references/workos-authkit-react.md`          |
+| Install AuthKit with React Router   | `references/workos-authkit-react-router.md`   |
+| Install AuthKit with TanStack Start | `references/workos-authkit-tanstack-start.md` |
+| Install AuthKit with SvelteKit      | `references/workos-authkit-sveltekit.md`      |
+| Install AuthKit in vanilla JS       | `references/workos-authkit-vanilla-js.md`     |
+| AuthKit architecture reference      | `references/workos-authkit-base.md`           |
+| Add WorkOS Widgets                  | Load `workos-widgets` skill via Skill tool    |
 
 ### Backend SDK Installation (Read `references/{name}.md`)
 
-| User wants to...                     | Read file                              |
-| ------------------------------------ | -------------------------------------- |
-| Install AuthKit in Node.js backend   | `references/workos-node.md`            |
-| Install AuthKit in Python            | `references/workos-python.md`          |
-| Install AuthKit in .NET              | `references/workos-dotnet.md`          |
-| Install AuthKit in Go                | `references/workos-go.md`              |
-| Install AuthKit in Ruby              | `references/workos-ruby.md`            |
-| Install AuthKit in PHP               | `references/workos-php.md`             |
-| Install AuthKit in PHP Laravel       | `references/workos-php-laravel.md`     |
-| Install AuthKit in Kotlin            | `references/workos-kotlin.md`          |
-| Install AuthKit in Elixir            | `references/workos-elixir.md`          |
+| User wants to...                   | Read file                          |
+| ---------------------------------- | ---------------------------------- |
+| Install AuthKit in Node.js backend | `references/workos-node.md`        |
+| Install AuthKit in Python          | `references/workos-python.md`      |
+| Install AuthKit in .NET            | `references/workos-dotnet.md`      |
+| Install AuthKit in Go              | `references/workos-go.md`          |
+| Install AuthKit in Ruby            | `references/workos-ruby.md`        |
+| Install AuthKit in PHP             | `references/workos-php.md`         |
+| Install AuthKit in PHP Laravel     | `references/workos-php-laravel.md` |
+| Install AuthKit in Kotlin          | `references/workos-kotlin.md`      |
+| Install AuthKit in Elixir          | `references/workos-elixir.md`      |
 
 ### Features (Read `references/{name}.md`)
 
@@ -86,9 +86,9 @@ Feature topic files above include endpoint tables for their respective APIs. Use
 
 ### Management (Read `references/{name}.md`)
 
-| User wants to...                         | Read file                          |
-| ---------------------------------------- | ---------------------------------- |
-| Manage WorkOS resources via CLI commands | `references/workos-management.md`  |
+| User wants to...                         | Read file                         |
+| ---------------------------------------- | --------------------------------- |
+| Manage WorkOS resources via CLI commands | `references/workos-management.md` |
 
 ## Routing Decision Tree
 

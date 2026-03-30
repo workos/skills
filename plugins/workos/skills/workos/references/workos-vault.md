@@ -1,6 +1,7 @@
 # WorkOS Vault
 
 ## Docs
+
 - https://workos.com/docs/vault/quick-start
 - https://workos.com/docs/vault/key-context
 - https://workos.com/docs/vault/index
@@ -10,9 +11,10 @@
 - https://workos.com/docs/reference/vault/key/create-data-key
 - https://workos.com/docs/reference/vault/key/decrypt-data
 - https://workos.com/docs/reference/vault/key/decrypt-data-key
-If this file conflicts with fetched docs, follow the docs.
+  If this file conflicts with fetched docs, follow the docs.
 
 ## Gotchas
+
 - BYOK requires customer-side IAM permissions granting WorkOS access to their KMS. Your app cannot do this programmatically — provide customers with IAM policy templates from the BYOK docs.
 - Vault encrypts data per WorkOS organization. Every operation requires an `organization_id` — there is no global/unscoped access.
 - Do NOT use internal customer IDs as `organization_id`. WorkOS organization IDs have format `org_*`. Always map through WorkOS APIs.
@@ -21,6 +23,7 @@ If this file conflicts with fetched docs, follow the docs.
 - BYOK KMS IAM changes can take 5-10 minutes to propagate. Customer must grant `kms:Decrypt` and `kms:Encrypt` on their key.
 
 ## Endpoints
+
 | Endpoint                | Description                    |
 | ----------------------- | ------------------------------ |
 | `/vault`                | vault                          |

@@ -104,6 +104,7 @@ pnpm eval:calibrate                            # scorer vs human agreement repor
 ## Do / Don't
 
 **Do:**
+
 - Edit topic files (`plugins/workos/skills/workos/references/*.md`) directly -- they are human-maintained
 - Start every topic file with doc URLs and "If this file conflicts with fetched docs, follow the docs."
 - Add gotcha bullets when you discover the LLM produces incorrect output for a topic
@@ -111,6 +112,7 @@ pnpm eval:calibrate                            # scorer vs human agreement repor
 - Write `.spec.ts` tests in `scripts/tests/` for eval framework changes
 
 **Don't:**
+
 - Modify the `workos-widgets` skill when working on reference files
 - Add frontmatter to topic files -- the router handles discovery
 - Change the plugin directory structure under `plugins/workos/` without considering caching boundaries

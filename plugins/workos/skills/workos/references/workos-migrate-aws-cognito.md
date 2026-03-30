@@ -1,10 +1,12 @@
 # WorkOS Migration: AWS Cognito
 
 ## Docs
+
 - https://workos.com/docs/migrate/aws-cognito
-If this file conflicts with fetched docs, follow the docs.
+  If this file conflicts with fetched docs, follow the docs.
 
 ## Gotchas
+
 - AWS Cognito does not export password hashes or MFA keys (Cognito platform limitation). WorkOS supports hash import for other providers (bcrypt, scrypt, argon2, pbkdf2, ssha, firebase-scrypt), but since Cognito won't export them, all migrated users must reset their password.
 - There is NO JIT (just-in-time) migration path for Cognito. Cognito does not expose a password verification endpoint. The only path is bulk import of user attributes + forced password reset.
 - OAuth users do NOT need password resets — their provider tokens continue working after migration.

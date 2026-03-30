@@ -1,6 +1,7 @@
 # WorkOS Events
 
 ## Docs
+
 - https://workos.com/docs/events/index
 - https://workos.com/docs/events/observability/datadog
 - https://workos.com/docs/events/data-syncing/webhooks
@@ -9,9 +10,10 @@
 - https://workos.com/docs/events/data-syncing/data-reconciliation
 - https://workos.com/docs/reference/events
 - https://workos.com/docs/reference/events/list
-If this file conflicts with fetched docs, follow the docs.
+  If this file conflicts with fetched docs, follow the docs.
 
 ## Gotchas
+
 - Do not implement both webhooks and Events API polling simultaneously — this causes duplicate event processing.
 - Webhook endpoints must return 200 OK within 5 seconds. Acknowledge immediately, process asynchronously.
 - Verify webhook signature before processing using the raw request body. JSON-parsing the body before verification breaks the signature check.
@@ -21,6 +23,7 @@ If this file conflicts with fetched docs, follow the docs.
 - Do NOT backfill by replaying webhooks. Webhook signatures expire. Always use the Events API for historical data.
 
 ## Endpoints
+
 | Endpoint  | Description   |
 | --------- | ------------- |
 | `/events` | events        |
