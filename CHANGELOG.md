@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4](https://github.com/workos/skills/compare/v0.2.3...v0.2.4) (2026-03-31)
+
+
+### Bug Fixes
+
+* harden Next.js AuthKit skill against Server Component cookie violations ([#13](https://github.com/workos/skills/issues/13)) ([21853e2](https://github.com/workos/skills/commit/21853e2cd57984231536b803de562bbce6b3cb36))
+
 ## [0.2.3](https://github.com/workos/skills/compare/v0.2.2...v0.2.3) (2026-03-17)
 
 
