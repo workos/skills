@@ -8,6 +8,8 @@ WorkOS skills for AI coding agents. Two skills and 40 reference files covering A
 npx skills add workos/skills
 ```
 
+This installs two skills: `workos` and `workos-widgets`. The `workos` skill acts as a router that automatically loads the right reference for your task (AuthKit setup, SSO, migrations, etc.) so you don't need to install references individually.
+
 Works with Claude Code, Cursor, Codex, Goose, and any agent that supports the skills.sh format.
 
 ## Install as npm Package
@@ -60,6 +62,11 @@ Two registered skills:
 Everything else is a **reference file** under `references/`. The router dispatches to the right reference via progressive disclosure.
 
 ### References
+
+> **Note:** References are not standalone skills. They are loaded automatically by the `workos` skill based on your task. You do not need to install them individually.
+
+<details>
+<summary>Full reference list (40+ files)</summary>
 
 #### AuthKit Installation
 
@@ -130,6 +137,8 @@ Everything else is a **reference file** under `references/`. The router dispatch
 | Reference           | Description                                                     |
 | ------------------- | --------------------------------------------------------------- |
 | `workos-management` | CLI resource management (orgs, users, roles, webhooks, seeding) |
+
+</details>
 
 ## Development
 
