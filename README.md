@@ -10,7 +10,11 @@ npx skills add workos/skills
 
 This installs two skills: `workos` and `workos-widgets`. The `workos` skill acts as a router that automatically loads the right reference for your task (AuthKit setup, SSO, migrations, etc.) so you don't need to install references individually.
 
-Works with Claude Code, Cursor, Codex, Goose, and any agent that supports the skills.sh format.
+Works with Claude Code, Codex, Goose, and any agent that supports the skills.sh format.
+
+## Install as Cursor Plugin
+
+Install from the [Cursor Marketplace](https://cursor.com/marketplace) (search "WorkOS"), or clone and symlink locally — see [Local Development](#local-cursor-development) below.
 
 ## Install as npm Package
 
@@ -147,6 +151,16 @@ pnpm test          # vitest
 pnpm lint          # oxlint
 pnpm format        # oxfmt
 ```
+
+### Local Cursor development
+
+Cursor loads local plugins from `~/.cursor/plugins/local/`. Symlink this repo's plugin directory, then reload Cursor:
+
+```bash
+ln -s "$(pwd)/plugins/workos" ~/.cursor/plugins/local/workos
+```
+
+Then in Cursor: **Cmd+Shift+P → Developer: Reload Window** (or fully quit and relaunch Cursor if the reload doesn't pick up new skills).
 
 ### Eval framework
 
