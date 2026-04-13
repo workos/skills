@@ -1,6 +1,6 @@
 ---
 name: workos-widgets
-description: Build, integrate, or migrate WorkOS Widgets in modern web apps. Use this skill when implementing User Management, User Profile, Admin Portal SSO Connection, or Admin Portal Domain Verification widgets across Next.js, React Router, TanStack Router, TanStack Start, Vite, SvelteKit, Ruby, Python, Go, PHP, or Java stacks. Detect the active stack, auth/token strategy, data-layer style, and UI conventions; then implement widget integration with correct access-token flow and API calls based on the bundled Widgets OpenAPI spec.
+description: Use when the user is implementing, embedding, or debugging a WorkOS Widget — specifically the User Management, User Profile, Admin Portal SSO Connection, or Admin Portal Domain Verification widgets. Handles the full stack — detecting the frontend (Next.js, React, React Router, TanStack Start, Vite, SvelteKit), generating access tokens via the backend SDK in use (Node, Python, Go, Ruby, PHP, Java, .NET), and wiring up the widget component correctly per the bundled OpenAPI spec. Also use when code imports from @workos-inc/widgets or the user pastes <UserManagement /> or <UserProfile /> JSX.
 ---
 
 # WorkOS Widgets

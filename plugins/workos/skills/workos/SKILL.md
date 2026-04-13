@@ -1,6 +1,6 @@
 ---
 name: workos
-description: Use when the user is implementing, debugging, or asking about WorkOS in any way — authentication, login, sign-up, sessions, access tokens, organization-scoped tokens, device authorization, SSO, SAML, SCIM, Directory Sync, RBAC, roles, permissions, FGA, MFA, Vault, Audit Logs, Admin Portal, webhooks, events, user management, email, custom domains, AuthKit (any framework), backend SDKs, migrations from Auth0/Clerk/Cognito/Firebase/Supabase/Stytch, or WorkOS API references. Routes to the right reference and gotchas.
+description: Use when the user is implementing, debugging, migrating to, or asking about WorkOS products — AuthKit, SSO/SAML, Directory Sync/SCIM, RBAC, FGA, MFA, Vault, Audit Logs, Admin Portal, webhooks/events, Custom Domains, backend SDKs (Node, Python, Go, Ruby, PHP, .NET, Kotlin, Elixir), or migrations from Auth0, Clerk, Cognito, Firebase, Supabase, Stytch, Descope, or Better Auth. Also use when code imports from @workos-inc/* packages or references workos.com docs. Routes the task to the correct reference file and surfaces non-obvious gotchas the model tends to get wrong from training data.
 ---
 
 # WorkOS Skill Router
