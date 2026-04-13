@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Official WorkOS skills for AI coding agents",
-    "version": "0.2.4"
+    "version": "0.2.5"
   },
   "plugins": [
     {
