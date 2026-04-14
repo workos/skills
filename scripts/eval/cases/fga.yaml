@@ -1,0 +1,165 @@
+- id: fga-node-access-check
+  product: fga
+  skill: workos-fga
+  skillType: generated
+  language: node
+  prompt: |
+    I have a project management app with workspaces and projects. A user should
+    only edit a project if they have the "project:edit" permission on that specific
+    project. Implement the access check using the WorkOS Node.js SDK before allowing
+    the edit operation.
+  expected:
+    methods:
+      - workos.authorization.check
+    envVars:
+      - WORKOS_API_KEY
+    imports:
+      - '@workos-inc/node'
+    params:
+      - organizationMembershipId
+      - permissionSlug
+      - resourceExternalId
+      - resourceTypeSlug
+    flowSteps:
+      - get organization membership ID for user
+      - call authorization check with permission and resource
+      - check authorized boolean in response
+      - deny access if not authorized
+    antiPatterns:
+      - check role slug instead of permission
+      - manually check parent and child resources separately
+    hallucinations:
+      - workos.fga.check
+      - workos.fga.authorize
+      - workos.authorization.hasPermission
+      - workos.warrants.check
+
+- id: fga-node-assign-role
+  product: fga
+  skill: workos-fga
+  skillType: generated
+  language: node
+  prompt: |
+    I need to assign the "editor" role to a user on a specific project resource
+    in my WorkOS FGA setup. The project has external ID "proj_123" and type "project".
+    Show me how to do the role assignment using the Node.js SDK.
+  expected:
+    methods:
+      - workos.authorization.assignRole
+      - workos.userManagement.listOrganizationMemberships
+    envVars:
+      - WORKOS_API_KEY
+    imports:
+      - '@workos-inc/node'
+    params:
+      - organizationMembershipId
+      - roleSlug
+      - resourceExternalId
+      - resourceTypeSlug
+    flowSteps:
+      - get organization membership ID for user
+      - assign role on specific resource using membership ID
+      - role grants permissions defined in Dashboard
+    antiPatterns:
+      - use userId instead of organizationMembershipId
+      - create resource type via API
+    hallucinations:
+      - workos.fga.assignRole
+      - workos.warrants.create
+      - workos.authorization.createWarrant
+
+- id: fga-node-resource-discovery
+  product: fga
+  skill: workos-fga
+  skillType: generated
+  language: node
+  prompt: |
+    I need to list all projects that the current user can view in their workspace.
+    Using WorkOS FGA, how do I discover which resources a user has access to?
+  expected:
+    methods:
+      - workos.authorization.listResourcesForMembership
+    envVars:
+      - WORKOS_API_KEY
+    imports:
+      - '@workos-inc/node'
+    params:
+      - organizationMembershipId
+      - permissionSlug
+    flowSteps:
+      - get organization membership ID
+      - list resources for membership with permission filter
+      - optionally filter by parent resource
+      - paginate results
+    antiPatterns:
+      - list all resources then filter by permission client-side
+    hallucinations:
+      - workos.fga.listResources
+      - workos.authorization.listAccessibleResources
+      - workos.warrants.query
+
+- id: fga-node-create-resource
+  product: fga
+  skill: workos-fga
+  skillType: generated
+  language: node
+  prompt: |
+    When a user creates a new project in my app, I need to register it as a
+    resource in WorkOS FGA so I can manage permissions on it. The project belongs
+    to a workspace. Show me how to create the resource with the correct parent.
+  expected:
+    methods:
+      - workos.authorization.createResource
+    envVars:
+      - WORKOS_API_KEY
+    imports:
+      - '@workos-inc/node'
+    params:
+      - resourceTypeSlug
+      - externalId
+      - parentResourceExternalId
+      - parentResourceTypeSlug
+      - organizationId
+    flowSteps:
+      - create resource with external ID and type
+      - set parent resource reference
+      - resource inherits parent role permissions automatically
+    antiPatterns:
+      - create resource type via API
+      - forget to set parent reference
+    hallucinations:
+      - workos.fga.createResource
+      - workos.warrants.create
+      - workos.authorization.registerResource
+
+- id: fga-python-access-check
+  product: fga
+  skill: workos-fga
+  skillType: generated
+  language: python
+  prompt: |
+    Check if the current user has "document:view" permission on a specific
+    document resource using the WorkOS Python SDK and FGA.
+  expected:
+    methods:
+      - workos_client.authorization.check
+    envVars:
+      - WORKOS_API_KEY
+    imports:
+      - workos
+    params:
+      - organization_membership_id
+      - permission_slug
+      - resource_external_id
+      - resource_type_slug
+    flowSteps:
+      - get organization membership ID
+      - call authorization check
+      - read authorized boolean
+      - deny if not authorized
+    antiPatterns:
+      - check role name instead of permission
+    hallucinations:
+      - workos_client.fga.check
+      - workos_client.warrants.check
+      - workos_client.authorization.has_permission

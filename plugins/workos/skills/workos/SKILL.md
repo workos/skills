@@ -1,6 +1,6 @@
 ---
 name: workos
-description: Use when the user asks for a WorkOS docs URL, term, or dashboard field (Sign-in endpoint, initiate_login_uri, Redirect URI, `WORKOS_*` env vars), or is implementing, debugging, or migrating WorkOS — AuthKit, SSO/SAML, Directory Sync, RBAC, FGA, MFA, Vault, Audit Logs, Admin Portal, webhooks, Custom Domains, or migrating from Auth0, Clerk, Cognito, Firebase, Supabase, Stytch, Descope, or Better Auth. Also triggers on @workos-inc/* imports.
+description: Use when the user asks for a WorkOS docs URL, term, or dashboard field (Sign-in endpoint, initiate_login_uri, Redirect URI, `WORKOS_*` env vars), or is implementing, debugging, or migrating WorkOS — AuthKit, SSO/SAML, Directory Sync, RBAC, FGA, MFA, Vault, Audit Logs, Admin Portal, Pipes (Connected Apps), Feature Flags, Radar (bot/fraud detection), webhooks, Custom Domains, or migrating from Auth0, Clerk, Cognito, Firebase, Supabase, Stytch, Descope, or Better Auth. Also triggers on @workos-inc/* imports.
 ---
 
 # WorkOS Skill Router
@@ -70,6 +70,10 @@ These apply regardless of which routing rule fires. They exist because the most 
 | Configure email delivery        | `references/workos-email.md`          |
 | Set up Custom Domains           | `references/workos-custom-domains.md` |
 | Set up IdP integration          | `references/workos-integrations.md`   |
+| Implement FGA / fine-grained authz | `references/workos-fga.md`         |
+| Set up Pipes / Connected Apps   | `references/workos-pipes.md`          |
+| Configure Feature Flags         | `references/workos-feature-flags.md`  |
+| Set up Radar / fraud detection  | `references/workos-radar.md`          |
 
 ### API References (Read `references/{name}.md`)
 
@@ -146,13 +150,13 @@ Apply these rules in order. First match wins.
 
 ### 3. Feature-Specific Request
 
-**Triggers**: User mentions a specific WorkOS feature by name (SSO, MFA, Directory Sync, Audit Logs, Vault, RBAC, Admin Portal, Custom Domains, Events, Integrations, Email).
+**Triggers**: User mentions a specific WorkOS feature by name (SSO, MFA, Directory Sync, Audit Logs, Vault, RBAC, FGA, Admin Portal, Custom Domains, Events, Integrations, Email, Pipes, Feature Flags, Radar).
 
-**Action**: Read `references/workos-[feature].md` where `[feature]` is the lowercase slug (sso, mfa, directory-sync, audit-logs, vault, rbac, admin-portal, custom-domains, events, integrations, email).
+**Action**: Read `references/workos-[feature].md` where `[feature]` is the lowercase slug (sso, mfa, directory-sync, audit-logs, vault, rbac, fga, admin-portal, custom-domains, events, integrations, email, pipes, feature-flags, radar).
 
 **Exception**: Widget requests load the `workos-widgets` skill via the Skill tool — it has its own orchestration.
 
-**Disambiguation**: If user mentions BOTH a feature and "API", route to the feature topic file (it includes endpoints). If they mention MULTIPLE features, route to the MOST SPECIFIC one first (e.g., "SSO with MFA" → route to SSO; user can request MFA separately).
+**Disambiguation**: If user mentions BOTH a feature and "API", route to the feature topic file (it includes endpoints). If they mention MULTIPLE features, route to the MOST SPECIFIC one first (e.g., "SSO with MFA" → route to SSO; user can request MFA separately). If user mentions "FGA" or "fine-grained authorization", route to `workos-fga` — NOT `workos-rbac`. RBAC is org-level roles; FGA is resource-scoped roles on top of RBAC.
 
 **Special case — IdP group → role mapping**: If the user asks about mapping Entra / Azure AD / Okta / Google Workspace / SCIM / directory / SSO groups to WorkOS roles (regardless of exact phrasing), read BOTH `workos-rbac.md` AND the source-specific reference:
 

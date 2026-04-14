@@ -1,0 +1,122 @@
+- id: pipes-node-get-token
+  product: pipes
+  skill: workos-pipes
+  skillType: generated
+  language: node
+  prompt: |
+    I need to fetch a user's GitHub access token through WorkOS Pipes so I can
+    list their repositories. The user has already connected their GitHub account.
+    Show me how to get the token using the Node.js SDK.
+  expected:
+    methods:
+      - workos.pipes.getAccessToken
+    envVars:
+      - WORKOS_API_KEY
+    imports:
+      - '@workos-inc/node'
+    params:
+      - provider
+      - userId
+    flowSteps:
+      - call getAccessToken with provider and userId
+      - check for error field in response
+      - handle needs_reauthorization error
+      - handle not_installed error
+      - use access_token for GitHub API calls
+    antiPatterns:
+      - implement own token refresh logic
+      - cache access tokens client-side
+      - store refresh tokens
+    hallucinations:
+      - workos.pipes.getToken
+      - workos.connectedAccounts.getToken
+      - workos.oauth.getAccessToken
+
+- id: pipes-node-authorize
+  product: pipes
+  skill: workos-pipes
+  skillType: generated
+  language: node
+  prompt: |
+    I want to let a user connect their Slack account through WorkOS Pipes.
+    How do I generate the authorization URL and handle the OAuth flow?
+  expected:
+    methods: []
+    envVars:
+      - WORKOS_API_KEY
+    imports:
+      - '@workos-inc/node'
+    params:
+      - slug
+      - userId
+    flowSteps:
+      - generate authorization URL via API
+      - redirect user to authorization URL
+      - user authorizes in Slack
+      - WorkOS handles callback and token storage
+    antiPatterns:
+      - implement own OAuth callback handler for token storage
+      - fetch authorization URL server-side without redirect
+    hallucinations:
+      - workos.pipes.authorize
+      - workos.pipes.createConnection
+      - workos.oauth.authorize
+
+- id: pipes-node-error-handling
+  product: pipes
+  skill: workos-pipes
+  skillType: generated
+  language: node
+  prompt: |
+    I'm calling WorkOS Pipes to get an access token for a user's connected
+    Salesforce account, but sometimes it fails. What errors can occur and
+    how should I handle them?
+  expected:
+    methods:
+      - workos.pipes.getAccessToken
+    envVars:
+      - WORKOS_API_KEY
+    imports:
+      - '@workos-inc/node'
+    params:
+      - provider
+      - userId
+    flowSteps:
+      - call getAccessToken
+      - check active boolean in response
+      - handle needs_reauthorization by prompting user to reconnect
+      - handle not_installed by showing connection flow
+    antiPatterns:
+      - retry on needs_reauthorization without user action
+      - ignore error field in response
+    hallucinations:
+      - workos.pipes.refreshToken
+      - workos.pipes.reconnect
+
+- id: pipes-python-get-token
+  product: pipes
+  skill: workos-pipes
+  skillType: generated
+  language: python
+  prompt: |
+    Get a user's connected GitHub access token via WorkOS Pipes using the
+    Python SDK so I can make GitHub API calls on their behalf.
+  expected:
+    methods:
+      - workos_client.pipes.get_access_token
+    envVars:
+      - WORKOS_API_KEY
+    imports:
+      - workos
+    params:
+      - provider
+      - user_id
+    flowSteps:
+      - call get_access_token with provider and user_id
+      - check for error in response
+      - use access_token for API calls
+    antiPatterns:
+      - implement own token refresh
+    hallucinations:
+      - workos_client.pipes.get_token
+      - workos_client.connected_accounts.get_token

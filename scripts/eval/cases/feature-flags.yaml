@@ -1,0 +1,120 @@
+- id: feature-flags-node-check-flag
+  product: feature-flags
+  skill: workos-feature-flags
+  skillType: generated
+  language: node
+  prompt: |
+    I want to check if the "new-dashboard" feature flag is enabled for the
+    current user before showing them the new UI. I'm using WorkOS AuthKit
+    in a Node.js app. How do I read feature flag values?
+  expected:
+    methods: []
+    envVars:
+      - WORKOS_API_KEY
+      - WORKOS_CLIENT_ID
+    imports:
+      - '@workos-inc/node'
+    params:
+      - feature_flags
+    flowSteps:
+      - get user session via sealed session or AuthKit
+      - read feature_flags claim from access token
+      - check if flag is enabled
+      - render UI based on flag value
+    antiPatterns:
+      - call a separate API endpoint for flag values
+      - hardcode flag values
+    hallucinations:
+      - workos.featureFlags.get
+      - workos.featureFlags.isEnabled
+      - workos.flags.evaluate
+      - workos.featureFlags.check
+
+- id: feature-flags-node-refresh
+  product: feature-flags
+  skill: workos-feature-flags
+  skillType: generated
+  language: node
+  prompt: |
+    A user's feature flags seem stale — I enabled a flag for their organization
+    in the Dashboard but they still see the old UI. How do I refresh feature
+    flag values in a running session?
+  expected:
+    methods:
+      - session.refresh
+    envVars: []
+    imports: []
+    params: []
+    flowSteps:
+      - feature flags are in access token claims
+      - stale tokens carry stale flag state
+      - call session.refresh to get new token with updated flags
+      - re-read feature_flags claim after refresh
+    antiPatterns:
+      - poll a feature flags API
+      - invalidate cache
+    hallucinations:
+      - workos.featureFlags.refresh
+      - workos.featureFlags.sync
+      - session.reloadFlags
+
+- id: feature-flags-node-targeting
+  product: feature-flags
+  skill: workos-feature-flags
+  skillType: generated
+  language: node
+  prompt: |
+    I want to enable a "beta-export" feature flag for only two specific
+    organizations in my SaaS app. How do I set up targeting with WorkOS
+    Feature Flags?
+  expected:
+    methods: []
+    envVars: []
+    imports: []
+    params: []
+    flowSteps:
+      - create flag in WorkOS Dashboard
+      - set targeting to Some
+      - add specific organization IDs to targeting rules
+      - flag value delivered via access token claims
+      - no API call needed at runtime
+    antiPatterns:
+      - configure targeting via API
+      - implement client-side targeting logic
+    hallucinations:
+      - workos.featureFlags.setTargeting
+      - workos.featureFlags.addOrganization
+      - workos.featureFlags.createRule
+
+- id: feature-flags-nextjs-check
+  product: feature-flags
+  skill: workos-feature-flags
+  skillType: generated
+  language: node
+  framework: nextjs
+  prompt: |
+    I'm using AuthKit with Next.js. How do I check a feature flag in a
+    server component to conditionally render a section of the page?
+  expected:
+    methods:
+      - getUser
+    envVars:
+      - WORKOS_API_KEY
+      - WORKOS_CLIENT_ID
+    imports:
+      - '@workos-inc/authkit-nextjs'
+    params:
+      - featureFlags
+    flowSteps:
+      - call getUser to get authenticated session
+      - read featureFlags from user or session object
+      - conditionally render based on flag value
+    antiPatterns:
+      - fetch flags from a client-side API
+      - use a separate feature flag service
+      - call WorkOS API directly instead of reading session claims
+    hallucinations:
+      - workos.featureFlags.get
+      - workos.featureFlags.isEnabled
+      - workos.userManagement.getUserFeatureFlag
+      - workos.userManagement.loadSealedSession

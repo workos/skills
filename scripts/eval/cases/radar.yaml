@@ -1,0 +1,126 @@
+- id: radar-node-assess-attempt
+  product: radar
+  skill: workos-radar
+  skillType: generated
+  language: node
+  prompt: |
+    I have a custom login form (not using AuthKit). Before authenticating the
+    user, I want to check if the login attempt is suspicious using WorkOS Radar.
+    Show me how to assess the risk and act on the verdict.
+  expected:
+    methods: []
+    envVars:
+      - WORKOS_API_KEY
+    imports:
+      - '@workos-inc/node'
+    params:
+      - ip_address
+      - user_agent
+      - email
+      - auth_method
+      - action
+    flowSteps:
+      - collect ip_address, user_agent, email from request
+      - POST to /radar/attempts with required fields
+      - read verdict from response
+      - block if verdict is block
+      - challenge if verdict is challenge
+      - allow if verdict is allow
+    antiPatterns:
+      - skip acting on verdict
+      - only check for block, ignore challenge
+    hallucinations:
+      - workos.radar.assess
+      - workos.radar.checkRisk
+      - workos.radar.evaluate
+      - workos.riskAssessment.check
+
+- id: radar-node-update-attempt
+  product: radar
+  skill: workos-radar
+  skillType: generated
+  language: node
+  prompt: |
+    After a user successfully logs in through my custom auth flow, I want to
+    report the successful attempt back to WorkOS Radar for better fraud
+    detection. How do I update the attempt status?
+  expected:
+    methods: []
+    envVars:
+      - WORKOS_API_KEY
+    imports:
+      - '@workos-inc/node'
+    params:
+      - attempt_id
+      - attempt_status
+    flowSteps:
+      - store attempt_id from initial verdict response
+      - after successful authentication
+      - PUT to /radar/attempts/:id with attempt_status success
+      - enables impossible travel detection
+    antiPatterns:
+      - skip reporting successful attempts
+      - report failures as successes
+    hallucinations:
+      - workos.radar.reportSuccess
+      - workos.radar.updateAttempt
+      - workos.radar.confirm
+
+- id: radar-node-blocklist
+  product: radar
+  skill: workos-radar
+  skillType: generated
+  language: node
+  prompt: |
+    I want to block a specific IP address and an email domain from signing up
+    using WorkOS Radar block lists. How do I add entries to the block list?
+  expected:
+    methods: []
+    envVars:
+      - WORKOS_API_KEY
+    imports:
+      - '@workos-inc/node'
+    params:
+      - entry
+      - type
+      - action
+    flowSteps:
+      - POST to /radar/lists/ip_address/block with entry value
+      - POST to /radar/lists/domain/block with entry value
+      - type and action are URL path segments not body params
+    antiPatterns:
+      - use a single generic blocklist endpoint
+      - send type in request body instead of URL path
+    hallucinations:
+      - workos.radar.addToBlocklist
+      - workos.radar.blockIP
+      - workos.radar.blockIpAddress
+      - workos.radar.blockDomain
+      - workos.radar.lists.add
+      - workos.radar.lists.create
+      - workos.userManagement.createBlocklistEntry
+
+- id: radar-node-authkit-native
+  product: radar
+  skill: workos-radar
+  skillType: generated
+  language: node
+  prompt: |
+    I'm using AuthKit for authentication. Do I need to integrate the Radar
+    API separately, or does it work automatically?
+  expected:
+    methods: []
+    envVars: []
+    imports: []
+    params: []
+    flowSteps:
+      - Radar is built into AuthKit natively
+      - fraud detection works automatically with AuthKit
+      - standalone API only needed for custom auth flows
+      - no additional integration required
+    antiPatterns:
+      - integrate standalone Radar API alongside AuthKit
+      - add redundant risk checks to AuthKit flows
+    hallucinations:
+      - workos.radar.enable
+      - workos.authkit.enableRadar
