@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/workos/skills/compare/v0.2.5...v0.3.0) (2026-04-20)
+
+
+### Features
+
+* **workos:** add terminology reference for docs URL lookups ([#21](https://github.com/workos/skills/issues/21)) ([c66e0d0](https://github.com/workos/skills/commit/c66e0d04c60d1594067bbb270c3b5f3b71a2b3c9))
+
 ## [0.2.5](https://github.com/workos/skills/compare/v0.2.4...v0.2.5) (2026-04-13)
 
 
