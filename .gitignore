@@ -7,3 +7,6 @@ scripts/eval/labels.jsonl
 
 # Keep ideation docs untracked
 /docs/ideation/
+
+# Skill-creator eval workspaces (iteration outputs, not source)
+plugins/**/*-workspace/
