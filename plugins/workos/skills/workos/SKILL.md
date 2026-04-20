@@ -1,21 +1,23 @@
 ---
 name: workos
-description: Use when the user is implementing, debugging, migrating to, or asking about WorkOS products — AuthKit, SSO/SAML, Directory Sync/SCIM, RBAC, FGA, MFA, Vault, Audit Logs, Admin Portal, webhooks/events, Custom Domains, backend SDKs (Node, Python, Go, Ruby, PHP, .NET, Kotlin, Elixir), or migrations from Auth0, Clerk, Cognito, Firebase, Supabase, Stytch, Descope, or Better Auth. Also use when code imports from @workos-inc/* packages or references workos.com docs. Routes the task to the correct reference file and surfaces non-obvious gotchas the model tends to get wrong from training data.
+description: Use when the user asks for a WorkOS docs URL, term, or dashboard field (Sign-in endpoint, initiate_login_uri, Redirect URI, `WORKOS_*` env vars), or is implementing, debugging, or migrating WorkOS — AuthKit, SSO/SAML, Directory Sync, RBAC, FGA, MFA, Vault, Audit Logs, Admin Portal, webhooks, Custom Domains, or migrating from Auth0, Clerk, Cognito, Firebase, Supabase, Stytch, Descope, or Better Auth. Also triggers on @workos-inc/* imports.
 ---
 
 # WorkOS Skill Router
 
 ## How to Use
 
-When a user needs help with WorkOS, consult the tables below to route to the right reference.
+**This file is a router, NOT the answer.** Before responding to the user:
 
-## Loading References
-
-**All references** are topic files in the `references/` directory. Read the file and follow its instructions (fetch docs first, then use gotchas to avoid common traps).
+1. Match the request to a reference file using Rule 0 and the decision tree below.
+2. **You MUST Read the matched reference file with the Read tool before producing any answer, URL, or code.** If you have not Read a reference, you have not followed this skill.
+3. Follow the instructions inside the reference (it will tell you which live docs to fetch with WebFetch and which gotchas to avoid).
 
 **Exception**: Widget requests use the `workos-widgets` skill via the Skill tool — it has its own multi-framework orchestration.
 
 ## Topic → Reference Map
+
+> Terminology lookups — "what is X", "docs URL for X" — are handled by **Rule 0** below, not this topic map. They route to `references/workos-terms.md`.
 
 ### AuthKit Installation (Read `references/{name}.md`)
 
@@ -93,6 +95,24 @@ Feature topic files above include endpoint tables for their respective APIs. Use
 ## Routing Decision Tree
 
 Apply these rules in order. First match wins.
+
+### 0. Terminology / Docs URL Lookup
+
+**Triggers**: Lookup-shaped phrasing — "what is X", "what does X mean", "docs URL for X", "where's the docs on X", "canonical link for X", "where do I configure X in the dashboard" — where X is a WorkOS-specific config field, endpoint, env var, or term. Examples: `initiate_login_uri`, "Sign-in endpoint", "Redirect URI", dashboard field names, `WORKOS_*` environment variables.
+
+**Do NOT fire Rule 0** for setup-shaped phrasing like "set up Vault", "enable Admin Portal", "configure MFA" — those route to Rule 3 (Feature-Specific).
+
+**Action**:
+
+1. Read `references/workos-terms.md` — a curated table mapping WorkOS terms to canonical docs URLs.
+2. If the term is in the table, use the summary to answer; WebFetch the listed URL only if the user wants more detail.
+3. If the term is NOT in the table, follow the "Still not here?" fallback at the bottom of that file. When you find the canonical URL, answer the user and suggest they open a PR to add a row.
+
+**For terminology lookups**, do NOT WebFetch `llms.txt` or guess `workos.com/docs/...` URLs before reading the terms file. (Rules 7 and 8 use `llms.txt` for different purposes — this prohibition is scoped to Rule 0 only.)
+
+**Why this wins**: Terminology lookups happen independent of feature/framework/migration context. They need to short-circuit routing, not fall through to "Vague or General" (Rule 7).
+
+---
 
 ### 1. Migration Context
 

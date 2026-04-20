@@ -1,0 +1,49 @@
+- id: terms-initiate-login-uri
+  product: authkit
+  skill: workos-terms
+  skillType: hand-crafted
+  prompt: |
+    What is `initiate_login_uri` in WorkOS? Give me the canonical docs URL
+    where I can configure this for my AuthKit app.
+  expected:
+    methods: []
+    envVars: []
+    imports: []
+    params: []
+    flowSteps:
+      - Sign-in endpoint
+      - Dashboard
+      - Redirects
+      - workos.com/docs
+    antiPatterns:
+      - fetch llms.txt first
+      - guess docs URL
+    hallucinations:
+      - /docs/initiate-login-uri
+      - /docs/oidc/initiate-login-uri
+      - /docs/reference/initiate_login_uri
+
+- id: terms-sign-in-endpoint
+  product: authkit
+  skill: workos-terms
+  skillType: hand-crafted
+  prompt: |
+    What is the "Sign-in endpoint" in WorkOS AuthKit, and where do I configure it?
+    Give me the docs URL.
+  expected:
+    methods: []
+    envVars: []
+    imports: []
+    params: []
+    flowSteps:
+      - Dashboard
+      - Redirects
+      - did not originate
+      - workos.com/docs
+    antiPatterns:
+      - guess the URL
+      - fetch llms.txt blind
+    hallucinations:
+      - /docs/sign-in-endpoint
+      - /docs/authkit/sign-in-endpoint
+      - /docs/reference/sign-in-endpoint
