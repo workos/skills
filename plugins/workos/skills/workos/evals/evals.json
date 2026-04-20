@@ -1,0 +1,54 @@
+{
+  "skill_name": "workos",
+  "evals": [
+    {
+      "id": 0,
+      "name": "initiate-login-uri-lookup",
+      "prompt": "I'm configuring an OIDC-style integration and saw the term `initiate_login_uri` mentioned. I'm using WorkOS AuthKit. What exactly is this and where do I actually configure it? Give me the canonical docs URL so I can read more. Keep the answer tight.",
+      "files": [],
+      "assertions": [
+        {"text": "Mentions Sign-in endpoint as the WorkOS-side term for this concept", "kind": "content_contains_any", "needles": ["Sign-in endpoint", "sign-in endpoint", "Sign-In endpoint"]},
+        {"text": "Points to Dashboard → Redirects as the config location", "kind": "content_contains_all", "needles": ["Dashboard", "Redirects"]},
+        {"text": "Cites an actual workos.com/docs URL (not llms.txt)", "kind": "content_contains_any", "needles": ["workos.com/docs/authkit", "workos.com/docs/sso", "workos.com/docs/reference"]},
+        {"text": "Does NOT invent a URL like /docs/initiate-login-uri", "kind": "content_contains_none", "needles": ["/docs/initiate-login-uri", "/docs/initiate_login_uri", "/docs/oidc/initiate-login-uri", "/docs/reference/initiate_login_uri"]},
+        {"text": "Does NOT use llms.txt as the primary source", "kind": "content_contains_none", "needles": ["fetch llms.txt", "fetched llms.txt", "from llms.txt"]}
+      ]
+    },
+    {
+      "id": 1,
+      "name": "sign-in-endpoint-lookup",
+      "prompt": "I'm staring at the WorkOS Dashboard and I see a field called 'Sign-in endpoint' in the Redirects section. What IS this exactly — why does WorkOS need it if I'm already passing a Redirect URI? Link me to the canonical docs page.",
+      "files": [],
+      "assertions": [
+        {"text": "Distinguishes Sign-in endpoint from Redirect URI", "kind": "content_contains_all", "needles": ["Sign-in endpoint", "Redirect URI"]},
+        {"text": "Explains the bookmark / password-reset use case", "kind": "content_contains_any", "needles": ["bookmark", "password reset", "password-reset", "did not originate", "didn't originate", "originate from your app"]},
+        {"text": "Cites a workos.com/docs URL", "kind": "content_contains_any", "needles": ["workos.com/docs/authkit", "workos.com/docs/reference"]},
+        {"text": "Does NOT invent /docs/sign-in-endpoint", "kind": "content_contains_none", "needles": ["/docs/sign-in-endpoint", "/docs/authkit/sign-in-endpoint", "/docs/reference/sign-in-endpoint"]}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "cookie-password-lookup",
+      "prompt": "My WorkOS AuthKit app is throwing an error about `WORKOS_COOKIE_PASSWORD` being invalid. What is this env var, what are the requirements (length, format), how do I generate a valid one, and where are the official docs?",
+      "files": [],
+      "assertions": [
+        {"text": "States the 32+ character requirement", "kind": "content_contains_any", "needles": ["32+ character", "32+ chars", "32 characters", "at least 32", "minimum 32", "32-character"]},
+        {"text": "Shows how to generate one with openssl", "kind": "content_contains_all", "needles": ["openssl", "rand"]},
+        {"text": "Mentions session cookie encryption / sealing", "kind": "content_contains_any", "needles": ["seal", "encrypt", "session cookie"]},
+        {"text": "Cites a workos.com/docs URL", "kind": "content_contains_any", "needles": ["workos.com/docs"]}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "org-vs-connection-id",
+      "prompt": "For my SSO integration I see both Organization ID and Connection ID as options when generating an authorization URL. What's the actual difference, and which one should I pass to getAuthorizationUrl in typical multi-tenant B2B setup? Docs link please.",
+      "files": [],
+      "assertions": [
+        {"text": "Recommends Organization ID for multi-tenant B2B", "kind": "content_contains_any", "needles": ["Organization ID", "organizationId", "organization_id"]},
+        {"text": "Explains what Connection ID is and when to use it", "kind": "content_contains_any", "needles": ["Connection ID", "connectionId", "connection_id"]},
+        {"text": "Explains why Organization ID is preferred (connection routing)", "kind": "content_contains_any", "needles": ["group of users", "preferred", "typically", "let the org", "org can pick", "active connection", "specific connection"]},
+        {"text": "Cites a workos.com/docs URL", "kind": "content_contains_any", "needles": ["workos.com/docs/sso", "workos.com/docs/authkit", "workos.com/docs/reference"]}
+      ]
+    }
+  ]
+}
