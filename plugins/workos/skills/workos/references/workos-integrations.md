@@ -232,18 +232,18 @@ Connection not working?
 | -------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------- |
 | Connection stuck in "Draft"      | IdP metadata not uploaded or invalid            | Upload valid IdP metadata XML or enter a reachable metadata URL in Dashboard |
 | Connection stuck in "Validating" | Certificate expired or ACS/Entity ID mismatch   | Re-upload fresh metadata; verify ACS URL and SP Entity ID match exactly      |
-| SAML "Recipient mismatch"        | ACS URL in IdP does not match WorkOS value      | Copy exact ACS URL from WorkOS Dashboard > Connection > Details              |
+| SAML "Recipient mismatch"        | ACS URL in IdP does not match WorkOS value      | Copy the exact ACS URL from the connection's details in the WorkOS Dashboard |
 | SAML "Audience mismatch"         | SP Entity ID in IdP does not match WorkOS       | Copy exact SP Entity ID from Dashboard; paste into IdP audience/entity field |
 | SAML "Signature invalid"         | IdP certificate rotated but WorkOS has old cert | Re-download IdP metadata and re-upload to WorkOS Dashboard                   |
 | SAML "Response expired"          | Clock skew between IdP server and WorkOS        | Sync IdP server time via NTP; most assertions allow 5-minute skew            |
-| SCIM 401 Unauthorized            | Bearer token is expired or was regenerated      | Copy current token from Dashboard > Directory > SCIM Config                  |
+| SCIM 401 Unauthorized            | Bearer token is expired or was regenerated      | Copy the current bearer token from the directory's SCIM settings in the Dashboard |
 | SCIM 404 Not Found               | Endpoint URL has wrong directory ID or path     | Re-copy full SCIM endpoint URL from Dashboard                                |
 | SCIM sync no attributes          | Attribute mapping missing in IdP                | Map userName, name.givenName, name.familyName in IdP SCIM config             |
 | SCIM users not deactivated       | Deprovisioning not enabled                      | Enable "Deactivate Users" in IdP provisioning settings                       |
 | OAuth "redirect_uri_mismatch"    | Redirect URI in provider console is different   | Paste exact redirect URI from WorkOS Dashboard into provider OAuth app       |
 | OAuth "invalid_client"           | Client ID or Secret is wrong                    | Re-copy Client ID and Secret from provider developer console                 |
 | "Organization not found"         | Connection not linked to an organization        | Create org in Dashboard, then link the connection to it                      |
-| "Domain not verified"            | SSO requires a verified domain                  | Go to Organizations > Domains, add and verify the domain                     |
+| "Domain not verified"            | SSO requires a verified domain                  | Add and verify the organization's domain in the Dashboard                    |
 
 ## Related Skills
 

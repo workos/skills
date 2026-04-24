@@ -15,6 +15,15 @@ description: Use when the user asks for a WorkOS docs URL, term, or dashboard fi
 
 **Exception**: Widget requests use the `workos-widgets` skill via the Skill tool — it has its own multi-framework orchestration.
 
+## Guardrails (apply to every response)
+
+These apply regardless of which routing rule fires. They exist because the most common failure mode of past WorkOS agent interactions has been plausibly-shaped fabrication of CLI commands and Dashboard paths.
+
+- **Never invent `workos` CLI commands.** If the user asks about CLI support or you're about to suggest a command, verify the command tree first. The authoritative source is `workos --help --json` — it emits the complete registered command tree. Do not assume a `create` subcommand exists because `list`/`get`/`delete` do. See `references/workos-management.md`.
+- **Never invent Dashboard click-paths.** Phrases like "Dashboard > Organizations > X > Roles > Map Groups" or `dashboard.workos.com/some/specific/path` should not appear unless you have verified them against a docs page you just fetched. The Dashboard UI reorganizes; docs pages are stable. Cite the docs URL and describe the destination conceptually ("the Authorization page", "the directory's settings") instead of committing to a click-path.
+- **When the user wants to do something not supported by the CLI, say so plainly.** Users are better served by "this isn't in the CLI; here's the docs URL for how to do it" than by a fabricated command that fails. See the "Not in the CLI" section of `references/workos-management.md`.
+- **Prefer docs URLs over prose when writing recipes.** If a reference file tells you to cite a specific docs URL, cite it literally; don't paraphrase the URL's slug.
+
 ## Topic → Reference Map
 
 > Terminology lookups — "what is X", "docs URL for X" — are handled by **Rule 0** below, not this topic map. They route to `references/workos-terms.md`.
@@ -143,6 +152,13 @@ Apply these rules in order. First match wins.
 **Exception**: Widget requests load the `workos-widgets` skill via the Skill tool — it has its own orchestration.
 
 **Disambiguation**: If user mentions BOTH a feature and "API", route to the feature topic file (it includes endpoints). If they mention MULTIPLE features, route to the MOST SPECIFIC one first (e.g., "SSO with MFA" → route to SSO; user can request MFA separately).
+
+**Special case — IdP group → role mapping**: If the user asks about mapping Entra / Azure AD / Okta / Google Workspace / SCIM / directory / SSO groups to WorkOS roles (regardless of exact phrasing), read BOTH `workos-rbac.md` AND the source-specific reference:
+
+- Directory Sync / SCIM / Google Workspace groups → also read `workos-directory-sync.md`
+- SSO-only groups → also read `workos-sso.md`
+
+Both files now have a canonical recipe. Do not answer from memory or paraphrase dashboard menu paths — the docs don't commit to exact click-paths, so neither should you. This mapping is **not** a WorkOS CLI operation; if asked for a CLI command, state that it's not in the CLI and link the docs.
 
 ---
 
