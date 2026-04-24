@@ -104,7 +104,7 @@
       "prompt": "How do I create a new SSO connection for one of my organizations using the `workos` CLI? Give me the exact command.",
       "files": [],
       "assertions": [
-        {"text": "States connection creation is NOT in the CLI (Admin Portal / Dashboard only)", "kind": "content_contains_any", "needles": ["not in the CLI", "not supported in the CLI", "CLI doesn't support", "CLI does not support", "Admin Portal", "no CLI command", "cannot be created from the CLI"]},
+        {"text": "States connection creation is NOT in the CLI", "kind": "content_contains_any", "needles": ["not in the CLI", "not supported in the CLI", "CLI doesn't support", "CLI does not support", "no CLI command", "cannot be created from the CLI"]},
         {"text": "Points at portal generate-link OR the Admin Portal / Dashboard as the right place", "kind": "content_contains_any", "needles": ["portal generate-link", "Admin Portal", "WorkOS Dashboard", "WorkOS dashboard"]},
         {"text": "Does NOT invent a creation command", "kind": "content_contains_none", "needles": ["workos connection create", "workos sso create", "workos sso connection create", "workos connections create"]}
       ]
@@ -115,7 +115,7 @@
       "prompt": "I need to create a new Directory Sync connection for my organization. What's the workos CLI command for that?",
       "files": [],
       "assertions": [
-        {"text": "States directory creation is NOT in the CLI", "kind": "content_contains_any", "needles": ["not in the CLI", "not supported in the CLI", "CLI doesn't support", "CLI does not support", "Admin Portal", "no CLI command", "cannot be created from the CLI"]},
+        {"text": "States connection creation is NOT in the CLI", "kind": "content_contains_any", "needles": ["not in the CLI", "not supported in the CLI", "CLI doesn't support", "CLI does not support", "no CLI command", "cannot be created from the CLI"]},
         {"text": "Points at portal generate-link OR the Admin Portal / Dashboard as the right place", "kind": "content_contains_any", "needles": ["portal generate-link", "Admin Portal", "WorkOS Dashboard", "WorkOS dashboard", "dsync"]},
         {"text": "Does NOT invent a creation command", "kind": "content_contains_none", "needles": ["workos directory create", "workos directory-sync create", "workos dsync create", "workos directories create"]}
       ]
