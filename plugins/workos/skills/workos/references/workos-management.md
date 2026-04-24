@@ -4,6 +4,20 @@ Use these commands to manage WorkOS resources directly from the terminal. The CL
 
 All commands support `--json` for structured output. Use `--json` when you need to parse output (e.g., extract an ID).
 
+## Checking what the CLI can do (READ THIS FIRST)
+
+**If a user asks whether the CLI supports operation X, or if you're about to suggest a `workos ...` command, verify it first.** The authoritative, machine-readable command tree is:
+
+```bash
+workos --help --json
+```
+
+This emits a complete JSON tree of every registered command, subcommand, and flag. If a command or subcommand is not in that output, **it does not exist** — do not invent it, do not suggest it, do not assume "it must be there." Common agent failure mode: seeing that `workos <resource>` supports `list/get/delete` and assuming `create` / `update` also exist when they don't.
+
+**Rule**: Before suggesting any `workos` command not listed in the Quick Reference table below, either (a) run `workos --help --json` and confirm the command exists, or (b) tell the user "this doesn't appear to be in the CLI — verify with `workos --help --json`." Never guess.
+
+**The tables below are a snapshot and may lag the published CLI.** The live `--help --json` output is the source of truth.
+
 ## Quick Reference
 
 | Task                   | Command                                                                      |
@@ -232,14 +246,37 @@ JSON output format:
 | `--force`                                   | Skip confirmation prompt | connection delete, directory delete                 |
 | `--limit`, `--before`, `--after`, `--order` | Pagination               | All list commands                                   |
 
-## Dashboard-Only Operations
+## Not in the CLI (use Dashboard, Admin Portal, API, or a different workflow)
 
-These CANNOT be done from the CLI — tell the user to visit the WorkOS Dashboard:
+These operations are commonly asked for but are **not** supported in the WorkOS CLI today. Do not invent commands for them. For each, the right answer is listed.
 
-- **Enable/disable auth methods** — Dashboard > Authentication
-- **Configure session lifetime** — Dashboard > Authentication > Sessions
-- **Set up social login providers** (Google, GitHub, etc.) — Dashboard > Authentication > Social
-- **Create feature flags** — Dashboard > Feature Flags (toggle/target operations work via CLI)
-- **Configure branding** (logos, colors) — Dashboard > Branding
-- **Set up email templates** — Dashboard > Email
-- **Manage billing/plan** — Dashboard > Settings > Billing
+### Dashboard / Admin Portal only
+
+| Operation                                           | Where it lives                                                                  | Docs                                                                                     |
+| --------------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Create an SSO connection                            | Admin Portal (generate via `workos portal generate-link --intent=sso`)          | https://workos.com/docs/sso/guide                                                        |
+| Create a Directory Sync connection                  | Admin Portal (generate via `workos portal generate-link --intent=dsync`)        | https://workos.com/docs/directory-sync/quick-start                                       |
+| Map IdP (Entra/AD/Okta/Google Workspace) groups to WorkOS roles | Admin Portal during directory setup, or directory page in Dashboard     | https://workos.com/docs/directory-sync/identity-provider-role-assignment                  |
+| Map SSO groups to WorkOS roles                      | Admin Portal during SSO setup, or connection page in Dashboard                  | https://workos.com/docs/rbac/idp-role-assignment                                         |
+| Enable/disable Admin Portal role-assignment step    | Authorization page in the WorkOS Dashboard                                      | https://workos.com/docs/directory-sync/identity-provider-role-assignment                  |
+| Enable/disable authentication methods               | Authentication settings in the WorkOS Dashboard                                 | https://workos.com/docs/authkit                                                          |
+| Configure session lifetime                          | Authentication settings in the WorkOS Dashboard                                 | https://workos.com/docs/user-management/sessions                                         |
+| Set up social login providers (Google, GitHub, etc.)| Authentication settings in the WorkOS Dashboard                                 | https://workos.com/docs/user-management/social-login                                     |
+| Create feature flags                                | Feature Flags page in the WorkOS Dashboard (toggle/target ops work via CLI)     | https://workos.com/docs/feature-flags                                                    |
+| Configure branding (logos, colors)                  | Branding settings in the WorkOS Dashboard                                       | https://workos.com/docs/admin-portal/branding                                            |
+| Set up email templates                              | Email settings in the WorkOS Dashboard                                          | https://workos.com/docs/emails                                                           |
+| Manage billing / plan                               | Settings in the WorkOS Dashboard                                                | —                                                                                        |
+
+### API-only (not in CLI, but can be scripted via SDK / REST)
+
+| Operation                                           | Where it lives                    | Notes                                                                          |
+| --------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------ |
+| Assign a role to an individual user                 | `updateOrganizationMembership` via SDK/REST | Warning: IdP mapping silently overrides this on next sync/login when mapping exists. See `workos-rbac.md`. |
+| Webhook signature verification                      | SDK (`workos.webhooks.verifyEvent`) | CLI can create/list/delete webhooks but does not verify events                 |
+| Session introspection / JWT validation              | SDK                               | CLI has `workos session list/revoke` only                                      |
+
+**Rule of thumb**: if a user asks "is there a CLI command for X" and X is not in the Quick Reference table above and is not produced by `workos --help --json`, the answer is **no**. Do not speculate. Point the user at the right surface per this table.
+
+### Do not invent click-paths in the Dashboard
+
+The paths in the "Where it lives" column above are intentionally described in conceptual terms ("Authentication settings", "directory page") rather than as literal click-paths like "Dashboard > Organizations > X > Y". The docs don't commit to exact menu paths, and the Dashboard UI is re-organized periodically. Link the user to the docs URL and let them navigate. If you see yourself writing `Dashboard > A > B > C` or `dashboard.workos.com/some/path`, stop and link to docs instead.
