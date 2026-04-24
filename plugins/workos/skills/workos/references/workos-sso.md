@@ -8,7 +8,17 @@
 - https://workos.com/docs/sso/redirect-uris
 - https://workos.com/docs/sso/test-sso
 - https://workos.com/docs/sso/launch-checklist
+- https://workos.com/docs/rbac/idp-role-assignment
   If this file conflicts with fetched docs, follow the docs.
+
+## Mapping SSO groups to WorkOS roles
+
+Full recipe lives in `workos-rbac.md` under "IdP group → role mapping". SSO-specific caveats:
+
+- **Re-auth required**: SSO group role assignment does **not** propagate in real time. Per docs: "Roles are granted to SSO profiles when the user authenticates." A role change in the IdP only takes effect the next time the user re-authenticates.
+- When Directory Sync is also available, prefer Directory Sync. Per docs: "SCIM is generally the preferred option due to its real-time synchronization capabilities."
+- Same precedence rule applies: IdP mapping overrides API/Dashboard role assignment ("IdP role assignment will always take precedence over roles assigned via API or the WorkOS Dashboard").
+- Not configurable via the WorkOS CLI. If asked, say so explicitly and link to https://workos.com/docs/rbac/idp-role-assignment.
 
 ## Gotchas
 

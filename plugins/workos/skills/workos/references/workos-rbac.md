@@ -6,7 +6,35 @@
 - https://workos.com/docs/rbac/organization-roles
 - https://workos.com/docs/rbac/integration
 - https://workos.com/docs/rbac/idp-role-assignment
+- https://workos.com/docs/directory-sync/identity-provider-role-assignment
   If this file conflicts with fetched docs, follow the docs.
+
+## IdP group → role mapping (the common customer ask)
+
+When a user asks how to map Entra / Azure AD / Okta / Google Workspace groups to WorkOS roles, this is the canonical flow. It is **not** a CLI operation. Do not fabricate `workos role-mappings ...` or similar commands.
+
+**Which source to use**:
+
+- If the org has a Directory Sync connection (SCIM or Google Workspace), use **Directory Sync group role assignment**. Roles propagate in real time. Docs: https://workos.com/docs/directory-sync/identity-provider-role-assignment
+- If the org only has SSO (no Directory Sync), use **SSO group role assignment**. Roles only update when the user re-authenticates. Docs: https://workos.com/docs/rbac/idp-role-assignment
+- When both exist, prefer Directory Sync. Per docs: "SCIM is generally the preferred option due to its real-time synchronization capabilities."
+
+**Order of operations**:
+
+1. Configure roles first in the WorkOS Dashboard. Per docs: "Once roles are configured for your application, enable directory group role assignment in Admin Portal to allow IT contacts to assign roles to groups during directory setup."
+2. Enable directory group role assignment on the Authorization page of the WorkOS Dashboard (toggle controlling whether the Admin Portal surfaces the role-assignment step).
+3. The IT contact / org admin maps groups → roles during directory setup via Admin Portal, **or** via the directory page on the WorkOS Dashboard (per docs: "Navigate to the directory page on the WorkOS dashboard").
+4. For Directory Sync: new users added to a mapped group get the mapped role in real time ("Roles are granted to directory users in real-time, when we receive updates to their group memberships").
+5. For SSO: the mapped role is applied when the user authenticates ("Roles are granted to SSO profiles when the user authenticates").
+
+**Precedence (read this before telling a user to call `updateOrganizationMembership`)**:
+
+Per docs: "IdP role assignment will always take precedence over roles assigned via API or the WorkOS Dashboard." If an IdP mapping exists for the user's group, any API-assigned role is silently overwritten on the next sync (Directory Sync) or next login (SSO).
+
+**What NOT to do**:
+
+- Do **not** invent specific dashboard menu paths (e.g. "Dashboard → Organizations → [name] → Roles → Map Groups"). The docs do not commit to a specific click-path. Link the user to the docs URLs above and let them navigate.
+- Do **not** claim this is configurable via the WorkOS CLI. It is not. If the user asks for a CLI command, explicitly say it is not supported in the CLI and link to the docs above.
 
 ## Gotchas
 

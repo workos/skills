@@ -6,7 +6,19 @@
 - https://workos.com/docs/directory-sync/understanding-events
 - https://workos.com/docs/directory-sync/handle-inactive-users
 - https://workos.com/docs/directory-sync/attributes
+- https://workos.com/docs/directory-sync/identity-provider-role-assignment
+- https://workos.com/docs/rbac/integration
   If this file conflicts with fetched docs, follow the docs.
+
+## Mapping directory groups to WorkOS roles
+
+This is one of the most common customer asks. Full recipe lives in `workos-rbac.md` under "IdP group → role mapping"; Directory Sync specifics:
+
+- SCIM/Google Workspace directory groups are the source of truth. Per docs: "SCIM is generally the preferred option due to its real-time synchronization capabilities."
+- Roles propagate in real time: "Roles are granted to directory users in real-time, when we receive updates to their group memberships."
+- IdP role assignment overrides API and Dashboard role assignments. Per docs: "IdP role assignment will always take precedence over roles assigned via API or the WorkOS Dashboard." Do not recommend `updateOrganizationMembership` as a workaround when a Directory Sync mapping exists — it will silently revert on the next sync.
+- Mappings are configured in the Admin Portal during directory setup, or on the directory page of the WorkOS Dashboard. Do **not** invent specific menu paths beyond that — the docs do not commit to exact click-paths.
+- Not configurable via the WorkOS CLI. If asked, say so explicitly and link to https://workos.com/docs/directory-sync/identity-provider-role-assignment.
 
 ## Gotchas
 
