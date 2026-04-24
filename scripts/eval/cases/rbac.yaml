@@ -159,9 +159,8 @@
       - organization_id
       - user_id
     flowSteps:
-      - list organization memberships to find membership ID
-      - update membership with role slug
-      - verify role exists in Dashboard
+      - find organization membership ID
+      - call update_organization_membership
     antiPatterns:
       - create role via API
     hallucinations:

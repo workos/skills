@@ -23,9 +23,9 @@
     flowSteps:
       - configure WorkOS with API key and client ID
       - generate authorization URL for login
-      - handle callback with code exchange
+      - exchange code in callback
       - store user in session
-      - implement logout by clearing session
+      - clear session on logout
     antiPatterns:
       - hardcoded API key
       - store access token in plaintext cookie

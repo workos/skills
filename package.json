@@ -31,6 +31,7 @@
     "build": "tsc -p tsconfig.build.json",
     "prepublishOnly": "pnpm build",
     "eval": "npx tsx scripts/eval.ts",
+    "eval:risk": "npx tsx scripts/eval-rerun-risk.ts",
     "eval:label": "npx tsx scripts/eval-label.ts",
     "eval:diff": "npx tsx scripts/eval-diff.ts",
     "eval:calibrate": "npx tsx scripts/eval-calibrate.ts",

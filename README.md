@@ -172,7 +172,9 @@ Measures whether skills improve agent-generated code. Each case runs the same pr
 pnpm eval -- --dry-run                        # verify cases load
 pnpm eval -- --no-cache                       # full run (42 cases, ~$1.70)
 pnpm eval -- --no-cache --case=sso-node-basic # single case
+pnpm eval -- --no-cache --cases=sso-node-basic,sso-ruby-domain-routing # selected cases
 pnpm eval -- --no-cache --fail-on-regression  # with gates
+pnpm eval:risk -- --samples=8                 # rerun latest triage cases with saved samples
 ```
 
 ### How it works

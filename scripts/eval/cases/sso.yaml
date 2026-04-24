@@ -6,7 +6,7 @@
   prompt: |
     Implement SSO login flow for a Node.js Express app using the WorkOS SDK.
     Include the authorization URL generation and callback handler that exchanges
-    the code for a user profile. Handle both SP-initiated and IdP-initiated flows.
+    the code for a user profile. Include state handling for SP-initiated login.
   expected:
     methods:
       - workos.sso.getAuthorizationUrl

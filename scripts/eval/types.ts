@@ -110,6 +110,7 @@ export interface EvalReport {
 export interface EvalOptions {
   product?: string;
   caseId?: string;
+  caseIds?: string[];
   model: string;
   noCache: boolean;
   dryRun: boolean;

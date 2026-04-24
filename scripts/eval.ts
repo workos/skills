@@ -18,12 +18,19 @@ function parseArgs(): EvalOptions {
   const rawSamples = args.find((a) => a.startsWith('--samples='))?.split('=')[1];
   const parsedSamples = rawSamples ? parseInt(rawSamples) : 1;
   const samples = Math.max(1, parsedSamples || 1);
+  const rawCaseFilter = args.find((a) => a.startsWith('--cases=')) ?? args.find((a) => a.startsWith('--case='));
+  const caseIds = rawCaseFilter
+    ?.split('=')[1]
+    ?.split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
   if (rawSamples && samples !== parsedSamples) {
     console.warn(`⚠ Invalid --samples=${rawSamples}, using --samples=${samples}`);
   }
   return {
     product: args.find((a) => a.startsWith('--product='))?.split('=')[1],
-    caseId: args.find((a) => a.startsWith('--case='))?.split('=')[1],
+    caseId: caseIds?.length === 1 ? caseIds[0] : undefined,
+    caseIds,
     model: args.find((a) => a.startsWith('--model='))?.split('=')[1] ?? 'claude-sonnet-4-5-20250929',
     noCache: args.includes('--no-cache'),
     dryRun: args.includes('--dry-run'),

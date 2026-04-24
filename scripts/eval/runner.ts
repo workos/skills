@@ -29,7 +29,7 @@ const REFS_DIR = join(PLUGIN_DIR, 'workos', 'references');
 /** Load and parse all YAML test cases, optionally filtered */
 export function loadCases(
   casesDir = CASES_DIR,
-  filter?: { product?: string; caseId?: string; lang?: string },
+  filter?: { product?: string; caseId?: string; caseIds?: string[]; lang?: string },
 ): EvalCase[] {
   const files = readdirSync(casesDir).filter((f) => f.endsWith('.yaml') || f.endsWith('.yml'));
 
@@ -49,7 +49,8 @@ export function loadCases(
 
   return cases.filter((c) => {
     if (filter?.product && c.product !== filter.product) return false;
-    if (filter?.caseId && c.id !== filter.caseId) return false;
+    if (filter?.caseIds?.length && !filter.caseIds.includes(c.id)) return false;
+    if (!filter?.caseIds?.length && filter?.caseId && c.id !== filter.caseId) return false;
     if (filter?.lang && c.language !== filter.lang) return false;
     return true;
   });
@@ -316,6 +317,7 @@ export async function runEval(options: EvalOptions): Promise<EvalReport> {
   const cases = loadCases(CASES_DIR, {
     product: options.product,
     caseId: options.caseId,
+    caseIds: options.caseIds,
     lang: options.lang,
   });
 

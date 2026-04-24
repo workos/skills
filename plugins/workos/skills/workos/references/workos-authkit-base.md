@@ -21,6 +21,17 @@ README is the source of truth for: install commands, imports, API usage, code pa
 | 5     | ui        | callback, provider | Add sign-in/out UI                |
 | 6     | verify    | ui                 | Build confirmation                |
 
+## Server-Side Auth Flow
+
+For Rails, Flask, Sinatra, Express, or any other server-rendered app, keep this order explicit:
+
+1. Configure the WorkOS SDK with `WORKOS_API_KEY` and `WORKOS_CLIENT_ID`.
+2. Generate the authorization URL for login with the AuthKit provider and `redirect_uri`.
+3. Redirect the user to that authorization URL.
+4. Handle the callback route by exchanging `code` with the SDK.
+5. Store the returned user profile in the app session.
+6. Implement logout by clearing the app session and redirecting the user.
+
 ## Decision Trees
 
 ### Package Manager Detection

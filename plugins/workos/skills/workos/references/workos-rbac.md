@@ -36,6 +36,30 @@ Per docs: "IdP role assignment will always take precedence over roles assigned v
 - Do **not** invent specific dashboard menu paths (e.g. "Dashboard → Organizations → [name] → Roles → Map Groups"). The docs do not commit to a specific click-path. Link the user to the docs URLs above and let them navigate.
 - Do **not** claim this is configurable via the WorkOS CLI. It is not. If the user asks for a CLI command, explicitly say it is not supported in the CLI and link to the docs above.
 
+## API role assignment recipe
+
+Use this when the user asks how to assign an already-configured role to a user in an organization.
+
+1. Confirm from the prompt or user context that the role slug already exists. If they are unsure, tell them to verify the role in the WorkOS Dashboard first; do not create the role as part of assignment.
+2. List organization memberships filtered by `user_id` and `organization_id` to find the organization membership ID.
+3. Update the organization membership with the role slug.
+4. If the role reverts later, check for IdP group role mapping; IdP mapping overrides API/Dashboard role assignments.
+
+Python shape:
+
+```python
+memberships = workos_client.user_management.list_organization_memberships(
+    user_id=user_id,
+    organization_id=organization_id,
+)
+membership_id = memberships.data[0].id
+
+workos_client.user_management.update_organization_membership(
+    organization_membership_id=membership_id,
+    role_slug="billing-admin",
+)
+```
+
 ## Gotchas
 
 - Always check permissions (role.permissions.includes('action')), NOT role slugs (role.slug === 'admin') — slug checks break in multi-org with custom roles. Claude defaults to slug checks.

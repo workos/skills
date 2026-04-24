@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { mean, stddev } from '../eval/runner.ts';
+import { mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import { loadCases, mean, stddev } from '../eval/runner.ts';
 
 describe('mean', () => {
   it('returns 0 for empty array', () => {
@@ -47,5 +50,59 @@ describe('stddev', () => {
 
   it('handles two identical values', () => {
     expect(stddev([80, 80])).toBe(0);
+  });
+});
+
+describe('loadCases', () => {
+  it('filters by multiple case IDs', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'workos-eval-cases-'));
+    try {
+      writeFileSync(
+        join(dir, 'cases.yaml'),
+        `- id: first
+  product: sso
+  skill: workos-sso
+  skillType: generated
+  prompt: one
+  expected:
+    methods: []
+    envVars: []
+    imports: []
+    params: []
+    flowSteps: []
+    antiPatterns: []
+- id: second
+  product: sso
+  skill: workos-sso
+  skillType: generated
+  prompt: two
+  expected:
+    methods: []
+    envVars: []
+    imports: []
+    params: []
+    flowSteps: []
+    antiPatterns: []
+- id: third
+  product: rbac
+  skill: workos-rbac
+  skillType: generated
+  prompt: three
+  expected:
+    methods: []
+    envVars: []
+    imports: []
+    params: []
+    flowSteps: []
+    antiPatterns: []
+`,
+      );
+
+      const cases = loadCases(dir, { caseIds: ['first', 'third'] });
+
+      expect(cases.map((c) => c.id)).toEqual(['first', 'third']);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

@@ -20,6 +20,42 @@ Full recipe lives in `workos-rbac.md` under "IdP group → role mapping". SSO-sp
 - Same precedence rule applies: IdP mapping overrides API/Dashboard role assignment ("IdP role assignment will always take precedence over roles assigned via API or the WorkOS Dashboard").
 - Not configurable via the WorkOS CLI. If asked, say so explicitly and link to https://workos.com/docs/rbac/idp-role-assignment.
 
+## Canonical SSO flows
+
+Use only the relevant flow when the user asks for implementation help. Do not include email-domain routing or IdP-initiated callback handling unless the user asks for those topics. Keep the exact operation order clear; most bugs come from doing state validation or connection selection in the wrong place.
+
+Standalone SSO SDK methods:
+
+- Node: use `workos.sso.getAuthorizationUrl(...)` and `workos.sso.getProfileAndToken(...)`.
+- Ruby: use `WorkOS::SSO.authorization_url(...)` and `WorkOS::SSO.profile_and_token(...)`.
+- Do not use AuthKit/User Management methods such as `workos.userManagement.getAuthorizationUrl(...)` or `authenticateWithCode(...)` for standalone SSO prompts.
+
+### SP-initiated SSO
+
+1. Generate a cryptographically random `state` value and store it server-side in the user's session.
+2. Generate the authorization URL with exactly one connection selector: `organization`, `connection`, or `provider`.
+3. Redirect the user to the IdP using that authorization URL.
+4. In the callback, check the `error` query parameter before exchanging the code.
+5. Verify the returned `state` against the session value.
+6. Exchange `code` for the profile and token with `getProfileAndToken` (Node) or `profile_and_token` (Ruby).
+7. Create the app session from the returned profile, then clear the one-time state value.
+
+### IdP-initiated SSO callback
+
+1. Check if the `state` parameter is present on the callback.
+2. If `state` has a non-empty value, verify it against the session value.
+3. If `state` is `""` (empty string), treat it as IdP-initiated and skip CSRF state verification for that request.
+4. Do not skip state verification for every callback; only the empty-string IdP-initiated case gets this exception.
+5. Exchange `code` for the profile and token, then create the app session.
+
+### Email-domain routing
+
+1. Collect the user's email address before starting SSO.
+2. Extract the domain from the email address.
+3. Look up the matching WorkOS organization ID from your app database, tenant config, or the Organizations API.
+4. Pass `organization` / `organization_id` to the authorization URL call.
+5. Use exactly one connection selector per request. Do not combine `organization` with `connection` or `provider`.
+
 ## Gotchas
 
 - Use exactly ONE connection selector (connection, organization, or provider) in getAuthorizationUrl — never combine them, causes error
