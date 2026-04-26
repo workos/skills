@@ -407,6 +407,53 @@
           "needles": ["workos role-rule", "workos role-rules", "workos role assignment-rule", "workos role rule"]
         }
       ]
+    },
+    {
+      "id": 11,
+      "name": "cli-upgrade-recommendation",
+      "prompt": "I just ran `workos --version` and it printed 0.10.0. The docs reference a command that errors with `unknown command` when I run it. What do I do — I want the upgrade command and a way to confirm what the latest version actually is.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Tells the user to check the latest version via npm view rather than guessing",
+          "kind": "content_contains_any",
+          "needles": ["npm view workos version", "npm view workos", "npm view workos dist-tags"]
+        },
+        {
+          "text": "Provides at least one concrete upgrade command using @latest (npm/pnpm/yarn or npx)",
+          "kind": "content_contains_any",
+          "needles": [
+            "npm install -g workos@latest",
+            "pnpm add -g workos@latest",
+            "yarn global add workos@latest",
+            "npx workos@latest",
+            "pnpm dlx workos",
+            "yarn dlx workos"
+          ]
+        },
+        {
+          "text": "Does NOT pin to a fabricated version number (signals the agent invented 'the latest')",
+          "kind": "content_contains_none",
+          "needles": [
+            "workos@0.11",
+            "workos@0.12",
+            "workos@0.13",
+            "workos@0.14",
+            "workos@1.0",
+            "latest is 0.11",
+            "latest is 0.12",
+            "latest is 0.13",
+            "latest is 0.14",
+            "latest version is 0.1",
+            "latest version is 1.0",
+            "current latest: 0.",
+            "currently 0.11",
+            "currently 0.12",
+            "currently 0.13",
+            "currently 0.14"
+          ]
+        }
+      ]
     }
   ]
 }

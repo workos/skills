@@ -18,6 +18,14 @@ This emits a complete JSON tree of every registered command, subcommand, and fla
 
 **The tables below are a snapshot and may lag the published CLI.** The live `--help --json` output is the source of truth.
 
+## Detecting and recommending CLI upgrades
+
+If `workos --help --json` is missing a command you expected, or the user reports `unknown command: <something>` for a command that exists in the latest release, **the user is likely on an outdated CLI** rather than encountering a bug. Before suggesting a workaround:
+
+1. Ask the user to run `workos --version`.
+2. Compare against the latest published version with `npm view workos version` (do NOT guess the latest version from memory — it moves frequently).
+3. If the user is behind, send them to `references/workos-cli-upgrade.md` for the upgrade command for their package manager (npm/pnpm/yarn) and the no-install `npx workos@latest` fallback.
+
 ## Quick Reference
 
 | Task                   | Command                                                                      |

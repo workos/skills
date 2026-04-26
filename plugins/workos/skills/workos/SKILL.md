@@ -95,11 +95,12 @@ Feature topic files above include endpoint tables for their respective APIs. Use
 | Migrate from the standalone SSO API | `references/workos-migrate-the-standalone-sso-api.md` |
 | Migrate from other services         | `references/workos-migrate-other-services.md`         |
 
-### Management (Read `references/{name}.md`)
+### Management & CLI Lifecycle (Read `references/{name}.md`)
 
-| User wants to...                         | Read file                         |
-| ---------------------------------------- | --------------------------------- |
-| Manage WorkOS resources via CLI commands | `references/workos-management.md` |
+| User wants to...                         | Read file                          |
+| ---------------------------------------- | ---------------------------------- |
+| Manage WorkOS resources via CLI commands | `references/workos-management.md`  |
+| Upgrade the `workos` CLI to a newer version | `references/workos-cli-upgrade.md` |
 
 ## Routing Decision Tree
 
@@ -254,6 +255,8 @@ If the project is NOT a JavaScript/TypeScript frontend framework, check:
 **Triggers**: User mentions managing WorkOS resources (organizations, users, roles, permissions), seeding data, or CLI management commands.
 
 **Action**: Read `references/workos-management.md`.
+
+**Sub-case — CLI upgrade**: If the user reports an outdated `workos` CLI (`workos --version` shows an old release, `unknown command` errors after following recent docs, or asks "how do I update the workos CLI?"), read `references/workos-cli-upgrade.md` instead. Do NOT guess the latest version — that file tells you to instruct the user to run `npm view workos version`.
 
 ---
 

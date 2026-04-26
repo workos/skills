@@ -28,5 +28,8 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Smoke test tarball
+        run: bash scripts/smoke-test-tarball.sh
+
       - name: Publish
         run: npm publish --tag latest --access public --provenance
