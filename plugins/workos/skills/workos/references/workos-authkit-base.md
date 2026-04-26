@@ -25,6 +25,8 @@ README is the source of truth for: install commands, imports, API usage, code pa
 
 For Rails, Flask, Sinatra, Express, or any other server-rendered app, keep this order explicit:
 
+This is the runtime login sequence inside the `callback` and `provider` implementation phases above; it does not replace the task order table.
+
 1. Configure the WorkOS SDK with `WORKOS_API_KEY` and `WORKOS_CLIENT_ID`.
 2. Generate the authorization URL for login with the AuthKit provider and `redirect_uri`.
 3. Redirect the user to that authorization URL.

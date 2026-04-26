@@ -1,6 +1,7 @@
 import { spawnSync } from 'child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'fs';
 import { join, resolve } from 'path';
+import { fileURLToPath } from 'url';
 
 interface TriageCase {
   caseId: string;
@@ -92,12 +93,38 @@ function unique(values: string[]): string[] {
   return [...new Set(values)];
 }
 
-function resolveCaseIds(options: Options): { caseIds: string[]; source: string } {
+function formatTop(top: number): string {
+  return Number.isFinite(top) ? String(top) : 'all';
+}
+
+export function resolveCaseIds(options: Options): { caseIds: string[]; source: string } {
   if (options.cases?.length) {
     return { caseIds: unique(options.cases), source: '--cases' };
   }
 
-  const triagePath = options.triagePath ? resolve(options.triagePath) : latestTriagePath();
+  if (options.triagePath) {
+    const triagePath = resolve(options.triagePath);
+    if (!existsSync(triagePath)) {
+      throw new Error(`--triage report not found: ${triagePath}`);
+    }
+
+    let caseIds: string[];
+    try {
+      caseIds = unique(readTriageCases(triagePath, options));
+    } catch (err) {
+      throw new Error(`Failed to read --triage report ${triagePath}: ${(err as Error).message}`);
+    }
+
+    if (caseIds.length === 0) {
+      throw new Error(
+        `--triage selected 0 cases from ${triagePath} after --min-risk=${options.minRisk} and --top=${formatTop(options.top)}`,
+      );
+    }
+
+    return { caseIds, source: triagePath };
+  }
+
+  const triagePath = latestTriagePath();
   if (triagePath && existsSync(triagePath)) {
     const caseIds = unique(readTriageCases(triagePath, options));
     if (caseIds.length > 0) {
@@ -152,4 +179,11 @@ function main() {
   process.exit(result.status ?? 1);
 }
 
-main();
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  try {
+    main();
+  } catch (err) {
+    console.error(`Error: ${(err as Error).message}`);
+    process.exit(1);
+  }
+}
