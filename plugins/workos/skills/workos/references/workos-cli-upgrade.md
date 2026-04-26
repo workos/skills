@@ -1,13 +1,13 @@
 # WorkOS CLI Upgrades
 
-Use this when the user is running an outdated `workos` CLI and you need to recommend an upgrade. Symptoms include `unknown command`, missing flags shown in newer docs, or the user explicitly asking how to update the CLI.
-
 ## Docs
 
 - npm package: https://www.npmjs.com/package/workos
 - Releases / changelog: https://github.com/workos/cli/releases
 
-If this file conflicts with the published release notes, follow the release notes.
+If this file conflicts with fetched docs, follow the docs.
+
+Use this when the user is running an outdated `workos` CLI and you need to recommend an upgrade. Symptoms include `unknown command`, missing flags shown in newer docs, or the user explicitly asking how to update the CLI.
 
 ## Detecting an outdated CLI
 
@@ -18,12 +18,12 @@ If this file conflicts with the published release notes, follow the release note
 
 ## Upgrade commands by package manager
 
-| Package manager | One-shot upgrade                | No-install alternative |
-| --------------- | ------------------------------- | ---------------------- |
-| npm             | `npm install -g workos@latest`  | `npx workos@latest`    |
-| pnpm            | `pnpm add -g workos@latest`     | `pnpm dlx workos`      |
-| yarn (v1)       | `yarn global add workos@latest` | —                      |
-| yarn (v2+)      | `yarn dlx workos`               | `yarn dlx workos`      |
+| Package manager | One-shot upgrade               | No-install alternative |
+| --------------- | ------------------------------ | ---------------------- |
+| npm             | `npm install -g workos@latest` | `npx workos@latest`    |
+| pnpm            | `pnpm add -g workos@latest`    | `pnpm dlx workos`      |
+
+The CLI is published to npm. If the user is on a different package manager, suggest the `npx workos@latest` no-install form so they can unblock immediately.
 
 After upgrading, have the user re-run `workos --version` to confirm the new version is on PATH (a stale shim from a different package manager can shadow the upgrade — `workos doctor` flags this in newer CLI versions).
 

@@ -420,15 +420,13 @@
           "needles": ["npm view workos version", "npm view workos", "npm view workos dist-tags"]
         },
         {
-          "text": "Provides at least one concrete upgrade command using @latest (npm/pnpm/yarn or npx)",
+          "text": "Provides at least one concrete upgrade command using @latest (npm/pnpm or npx)",
           "kind": "content_contains_any",
           "needles": [
             "npm install -g workos@latest",
             "pnpm add -g workos@latest",
-            "yarn global add workos@latest",
             "npx workos@latest",
-            "pnpm dlx workos",
-            "yarn dlx workos"
+            "pnpm dlx workos"
           ]
         },
         {

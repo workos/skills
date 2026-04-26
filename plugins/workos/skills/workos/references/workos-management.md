@@ -24,7 +24,7 @@ If `workos --help --json` is missing a command you expected, or the user reports
 
 1. Ask the user to run `workos --version`.
 2. Compare against the latest published version with `npm view workos version` (do NOT guess the latest version from memory — it moves frequently).
-3. If the user is behind, send them to `references/workos-cli-upgrade.md` for the upgrade command for their package manager (npm/pnpm/yarn) and the no-install `npx workos@latest` fallback.
+3. If the user is behind, send them to `references/workos-cli-upgrade.md` for the upgrade command for their package manager (npm/pnpm) and the no-install `npx workos@latest` fallback.
 
 ## Quick Reference
 
