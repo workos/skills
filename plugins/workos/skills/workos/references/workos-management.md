@@ -252,28 +252,28 @@ These operations are commonly asked for but are **not** supported in the WorkOS 
 
 ### Dashboard / Admin Portal only
 
-| Operation                                           | Where it lives                                                                  | Docs                                                                                     |
-| --------------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Create an SSO connection                            | Admin Portal (generate via `workos portal generate-link --intent=sso --org=<org_id>`)          | https://workos.com/docs/sso/guide                                                        |
-| Create a Directory Sync connection                  | Admin Portal (generate via `workos portal generate-link --intent=dsync --org=<org_id>`)        | https://workos.com/docs/directory-sync/quick-start                                       |
-| Map IdP (Entra/AD/Okta/Google Workspace) groups to WorkOS roles | Admin Portal during directory setup, or directory page in Dashboard     | https://workos.com/docs/directory-sync/identity-provider-role-assignment                  |
-| Map SSO groups to WorkOS roles                      | Admin Portal during SSO setup, or connection page in Dashboard                  | https://workos.com/docs/rbac/idp-role-assignment                                         |
-| Enable/disable Admin Portal role-assignment step    | Authorization page in the WorkOS Dashboard                                      | https://workos.com/docs/directory-sync/identity-provider-role-assignment                  |
-| Enable/disable authentication methods               | Authentication settings in the WorkOS Dashboard                                 | https://workos.com/docs/authkit                                                          |
-| Configure session lifetime                          | Authentication settings in the WorkOS Dashboard                                 | https://workos.com/docs/user-management/sessions                                         |
-| Set up social login providers (Google, GitHub, etc.)| Authentication settings in the WorkOS Dashboard                                 | https://workos.com/docs/user-management/social-login                                     |
-| Create feature flags                                | Feature Flags page in the WorkOS Dashboard (toggle/target ops work via CLI)     | https://workos.com/docs/feature-flags                                                    |
-| Configure branding (logos, colors)                  | Branding settings in the WorkOS Dashboard                                       | https://workos.com/docs/admin-portal/branding                                            |
-| Set up email templates                              | Email settings in the WorkOS Dashboard                                          | https://workos.com/docs/emails                                                           |
-| Manage billing / plan                               | Settings in the WorkOS Dashboard                                                | —                                                                                        |
+| Operation                                                       | Where it lives                                                                          | Docs                                                                     |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Create an SSO connection                                        | Admin Portal (generate via `workos portal generate-link --intent=sso --org=<org_id>`)   | https://workos.com/docs/sso/guide                                        |
+| Create a Directory Sync connection                              | Admin Portal (generate via `workos portal generate-link --intent=dsync --org=<org_id>`) | https://workos.com/docs/directory-sync/quick-start                       |
+| Map IdP (Entra/AD/Okta/Google Workspace) groups to WorkOS roles | Admin Portal during directory setup, or directory page in Dashboard                     | https://workos.com/docs/directory-sync/identity-provider-role-assignment |
+| Map SSO groups to WorkOS roles                                  | Admin Portal during SSO setup, or connection page in Dashboard                          | https://workos.com/docs/rbac/idp-role-assignment                         |
+| Enable/disable Admin Portal role-assignment step                | Authorization page in the WorkOS Dashboard                                              | https://workos.com/docs/directory-sync/identity-provider-role-assignment |
+| Enable/disable authentication methods                           | Authentication settings in the WorkOS Dashboard                                         | https://workos.com/docs/authkit                                          |
+| Configure session lifetime                                      | Authentication settings in the WorkOS Dashboard                                         | https://workos.com/docs/user-management/sessions                         |
+| Set up social login providers (Google, GitHub, etc.)            | Authentication settings in the WorkOS Dashboard                                         | https://workos.com/docs/user-management/social-login                     |
+| Create feature flags                                            | Feature Flags page in the WorkOS Dashboard (toggle/target ops work via CLI)             | https://workos.com/docs/feature-flags                                    |
+| Configure branding (logos, colors)                              | Branding settings in the WorkOS Dashboard                                               | https://workos.com/docs/admin-portal/branding                            |
+| Set up email templates                                          | Email settings in the WorkOS Dashboard                                                  | https://workos.com/docs/emails                                           |
+| Manage billing / plan                                           | Settings in the WorkOS Dashboard                                                        | —                                                                        |
 
 ### API-only (not in CLI, but can be scripted via SDK / REST)
 
-| Operation                                           | Where it lives                    | Notes                                                                          |
-| --------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------ |
-| Assign a role to an individual user                 | `updateOrganizationMembership` via SDK/REST | Warning: IdP mapping silently overrides this on next sync/login when mapping exists. See `workos-rbac.md`. |
-| Webhook signature verification                      | SDK (`workos.webhooks.verifyEvent`) | CLI can create/list/delete webhooks but does not verify events                 |
-| Session introspection / JWT validation              | SDK                               | CLI has `workos session list/revoke` only                                      |
+| Operation                              | Where it lives                              | Notes                                                                                                      |
+| -------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Assign a role to an individual user    | `updateOrganizationMembership` via SDK/REST | Warning: IdP mapping silently overrides this on next sync/login when mapping exists. See `workos-rbac.md`. |
+| Webhook signature verification         | SDK (`workos.webhooks.verifyEvent`)         | CLI can create/list/delete webhooks but does not verify events                                             |
+| Session introspection / JWT validation | SDK                                         | CLI has `workos session list/revoke` only                                                                  |
 
 **Rule of thumb**: if a user asks "is there a CLI command for X" and X is not in the Quick Reference table above and is not produced by `workos --help --json`, the answer is **no**. Do not speculate. Point the user at the right surface per this table.
 
