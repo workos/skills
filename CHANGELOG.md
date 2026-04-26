@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0](https://github.com/workos/skills/compare/v0.3.0...v0.4.0) (2026-04-26)
+
+
+### Features
+
+* **workos:** add CLI upgrade-path topic and tarball smoke test ([#26](https://github.com/workos/skills/issues/26)) ([5ce9743](https://github.com/workos/skills/commit/5ce9743e49291d5dbb62091eeca1b0f78ea21b07))
+* **workos:** close off CLI- and Dashboard-path fabrication ([#23](https://github.com/workos/skills/issues/23)) ([1205e82](https://github.com/workos/skills/commit/1205e82ff90848c875af5a482a7919467acdb3da))
+
+
+### Bug Fixes
+
+* **workos:** tighten auth guidance and risky eval reruns ([#25](https://github.com/workos/skills/issues/25)) ([dc9dfb0](https://github.com/workos/skills/commit/dc9dfb093cccabafd8d863755ad45f722c2d725d))
+
 ## [0.3.0](https://github.com/workos/skills/compare/v0.2.5...v0.3.0) (2026-04-20)
 
 
