@@ -19,10 +19,10 @@
       - userId
     flowSteps:
       - call getAccessToken with provider and userId
-      - check for error field in response
-      - handle needs_reauthorization error
-      - handle not_installed error
-      - use access_token for GitHub API calls
+      - branch on active boolean (response is a discriminated union)
+      - on active=false handle needs_reauthorization error
+      - on active=false handle not_installed error
+      - on active=true use accessToken for GitHub API calls
     antiPatterns:
       - implement own token refresh logic
       - cache access tokens client-side

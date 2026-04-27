@@ -68,23 +68,28 @@
     organizations in my SaaS app. How do I set up targeting with WorkOS
     Feature Flags?
   expected:
-    methods: []
-    envVars: []
-    imports: []
-    params: []
+    methods:
+      - workos.featureFlags.addFlagTarget
+    envVars:
+      - WORKOS_API_KEY
+    imports:
+      - '@workos-inc/node'
+    params:
+      - slug
+      - resourceId
     flowSteps:
-      - create flag in WorkOS Dashboard
-      - set targeting to Some
-      - add specific organization IDs to targeting rules
-      - flag value delivered via access token claims
-      - no API call needed at runtime
+      - create flag in WorkOS Dashboard (definition is Dashboard-only)
+      - call addFlagTarget for each organization ID (or configure Some targeting in Dashboard)
+      - flag value delivered to clients via access token claims at runtime
+      - no per-request API call needed at runtime
     antiPatterns:
-      - configure targeting via API
       - implement client-side targeting logic
+      - call API per request to evaluate flag at runtime
     hallucinations:
       - workos.featureFlags.setTargeting
       - workos.featureFlags.addOrganization
       - workos.featureFlags.createRule
+      - workos.featureFlags.addTarget
 
 - id: feature-flags-nextjs-check
   product: feature-flags

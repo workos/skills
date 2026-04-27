@@ -18,7 +18,7 @@
 - Flag evaluation requires a valid session with `feature_flags` claim. If using `loadSealedSession()`, the claim is included automatically.
 - To refresh flag values mid-session, call `session.refresh()` — stale tokens carry stale flag state.
 - Flags are scoped per environment (sandbox vs production). A flag enabled in sandbox is NOT automatically enabled in production.
-- Organization-level and user-level targeting are configured in the Dashboard, not via API. The API is read-only for flag definitions.
+- Separate **runtime evaluation** from **management**. At runtime, flag values arrive in the `feature_flags` access-token claim — do not call the API per request. For management, the API does expose write methods: `enableFeatureFlag(slug)`, `disableFeatureFlag(slug)`, `addFlagTarget({ slug, resourceId })`, `removeFlagTarget({ slug, resourceId })` (Node SDK). Flag definitions themselves (creation, slug, default state) are still Dashboard-only.
 - Slack notifications for flag changes are opt-in and configured per flag in the Dashboard.
 - In Next.js with `@workos-inc/authkit-nextjs`, use `getUser()` to access the session — feature flags are on the user/session object. Do NOT import `@workos-inc/node` and call `loadSealedSession()` directly in Next.js.
 
