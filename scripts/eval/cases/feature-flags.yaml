@@ -52,7 +52,9 @@
       - re-read feature_flags claim after refresh
     antiPatterns:
       - poll a feature flags API
-      - invalidate cache
+      - implement a custom flag cache with TTL
+      - fetch flags via API per request instead of reading token claim
+      - manage flag staleness without refreshing the session token
     hallucinations:
       - workos.featureFlags.refresh
       - workos.featureFlags.sync
