@@ -104,7 +104,7 @@
     server component to conditionally render a section of the page?
   expected:
     methods:
-      - getUser
+      - withAuth
     envVars:
       - WORKOS_API_KEY
       - WORKOS_CLIENT_ID
@@ -113,8 +113,8 @@
     params:
       - featureFlags
     flowSteps:
-      - call getUser to get authenticated session
-      - read featureFlags from user or session object
+      - call withAuth to get authenticated session
+      - destructure featureFlags from the withAuth return value
       - conditionally render based on flag value
     antiPatterns:
       - fetch flags from a client-side API

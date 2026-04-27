@@ -13,6 +13,7 @@
 ## Gotchas
 
 - Radar is built into AuthKit natively — if using AuthKit, fraud detection works automatically. The standalone API is only needed for custom auth flows.
+- **There is no `workos.radar.*` namespace in the Node SDK.** The Radar standalone API has no SDK wrapper methods at all — for attempts, lists, or anything else. Use `workos.post('/radar/attempts', ...)`, `workos.put('/radar/attempts/:id', ...)`, `workos.post('/radar/lists/{type}/{action}', ...)` directly. Claude hallucinates `workos.radar.assessAttempt`, `workos.radar.updateAttempt`, `workos.userManagement.updateAuthenticationAttempt`, etc. — none exist.
 - The standalone API is in preview — access requires contacting WorkOS support.
 - `POST /radar/attempts` returns a `verdict`: `"allow"`, `"block"`, or `"challenge"`. Your app MUST act on the verdict — Radar does not block requests itself.
 - All attempt fields are required: `ip_address`, `user_agent`, `email`, `auth_method`, `action`. Missing fields cause a 422.

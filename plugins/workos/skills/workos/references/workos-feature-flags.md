@@ -20,7 +20,7 @@
 - Flags are scoped per environment (sandbox vs production). A flag enabled in sandbox is NOT automatically enabled in production.
 - Separate **runtime evaluation** from **management**. At runtime, flag values arrive in the `feature_flags` access-token claim — do not call the API per request. For management, the API does expose write methods: `enableFeatureFlag(slug)`, `disableFeatureFlag(slug)`, `addFlagTarget({ slug, resourceId })`, `removeFlagTarget({ slug, resourceId })` (Node SDK). Flag definitions themselves (creation, slug, default state) are still Dashboard-only.
 - Slack notifications for flag changes are opt-in and configured per flag in the Dashboard.
-- In Next.js with `@workos-inc/authkit-nextjs`, use `getUser()` to access the session — feature flags are on the user/session object. Do NOT import `@workos-inc/node` and call `loadSealedSession()` directly in Next.js.
+- In Next.js with `@workos-inc/authkit-nextjs`, server components access flags via `const { featureFlags } = await withAuth();` — the `featureFlags` field is the deserialized form of the `feature_flags` JWT claim. Prefer this over reaching for `loadSealedSession()` from `@workos-inc/node`; the AuthKit helper is the documented path and handles session loading for you.
 
 ## Endpoints
 
