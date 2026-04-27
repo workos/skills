@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/workos/skills/compare/v0.4.0...v0.5.0) (2026-04-27)
+
+
+### Features
+
+* add FGA, Pipes, Feature Flags, and Radar references + evals ([#19](https://github.com/workos/skills/issues/19)) ([2f57863](https://github.com/workos/skills/commit/2f57863afea497dc56ce3c42b83b4d6124a4646c))
+
 ## [0.4.0](https://github.com/workos/skills/compare/v0.3.0...v0.4.0) (2026-04-26)
 
 

@@ -1,7 +1,7 @@
 {
   "name": "@workos/skills",
   "packageManager": "pnpm@10.27.0",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "WorkOS Skills for AI coding agents — AuthKit, SSO, Directory Sync, RBAC, and more",
   "keywords": [
     "ai-agents",
