@@ -16,7 +16,7 @@ description: Use when the user is implementing, embedding, or debugging a WorkOS
 3. Detect stack, data-layer style, styling, component system, and package manager using [references/detection.md](references/detection.md).
 4. Check for AuthKit/WorkOS presence:
    - if detected, continue;
-   - if not detected, ask the user to run `npx workos@latest install`, wait for confirmation, then continue.
+   - if not detected, ask the user to run `WORKOS_MODE=agent npx workos@latest install` (agent mode keeps the installer non-interactive and surfaces structured errors with recovery hints). Wait for confirmation, then continue.
 5. If detection is ambiguous or conflicting, ask one focused question, then continue.
 6. Load only the relevant reference files for the detected stack and widget.
 7. Implement integration based on stack shape:
@@ -99,7 +99,7 @@ Then load exactly one widget reference:
 - Implement a consistent authorization layer for widget requests, including elevated-token handling for sensitive endpoints when required.
 - If the app already uses React Query or SWR, use them as orchestration/cache layers around those direct calls.
 - For React/TypeScript widget code quality expectations, follow [references/react-ts-standards.md](references/react-ts-standards.md).
-- If AuthKit/WorkOS is missing, prompt the user to run `npx workos@latest install` before continuing.
+- If AuthKit/WorkOS is missing, prompt the user to run `WORKOS_MODE=agent npx workos@latest install` before continuing. `WORKOS_MODE=agent` keeps the installer deterministic and machine-readable in agent sessions; `--json` may be added when you need to parse output.
 - Install additional dependencies only when strictly necessary, using the detected package manager/tooling.
 - Keep server-state handling aligned with the selected data-layer approach.
 - Use local state/reducers for UI interaction state as needed.
