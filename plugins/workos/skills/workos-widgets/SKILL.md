@@ -99,7 +99,7 @@ Then load exactly one widget reference:
 - Implement a consistent authorization layer for widget requests, including elevated-token handling for sensitive endpoints when required.
 - If the app already uses React Query or SWR, use them as orchestration/cache layers around those direct calls.
 - For React/TypeScript widget code quality expectations, follow [references/react-ts-standards.md](references/react-ts-standards.md).
-- If AuthKit/WorkOS is missing, prompt the user to run `WORKOS_MODE=agent npx workos@latest install` before continuing. `WORKOS_MODE=agent` keeps the installer deterministic and machine-readable in agent sessions; `--json` may be added when you need to parse output.
+- If AuthKit/WorkOS is missing, prompt the user to run `WORKOS_MODE=agent npx workos@latest install` before continuing. `WORKOS_MODE=agent` keeps the installer deterministic (no prompts, no browser, no host-trust); pass `--json` when you need to parse the output.
 - Install additional dependencies only when strictly necessary, using the detected package manager/tooling.
 - Keep server-state handling aligned with the selected data-layer approach.
 - Use local state/reducers for UI interaction state as needed.

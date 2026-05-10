@@ -1,6 +1,6 @@
 ---
 name: workos
-description: Use when the user asks for a WorkOS docs URL, term, or dashboard field (Sign-in endpoint, initiate_login_uri, Redirect URI, `WORKOS_*` env vars), or is implementing, debugging, or migrating WorkOS — AuthKit, SSO/SAML, Directory Sync, RBAC, FGA, MFA, Vault, Audit Logs, Admin Portal, Pipes (Connected Apps), Feature Flags, Radar (bot/fraud detection), webhooks, Custom Domains, or migrating from Auth0, Clerk, Cognito, Firebase, Supabase, Stytch, Descope, or Better Auth. Also triggers on @workos-inc/* imports.
+description: Use when the user asks for a WorkOS docs URL, term, or dashboard field (Sign-in endpoint, initiate_login_uri, Redirect URI, `WORKOS_*` env vars), or is implementing, debugging, or migrating WorkOS — AuthKit, SSO/SAML, Directory Sync, RBAC, FGA, MFA, Vault, Audit Logs, Admin Portal, Pipes (Connected Apps), Feature Flags, Radar (bot/fraud detection), webhooks, Custom Domains, running the `workos` CLI in agent or sandbox sessions (`WORKOS_MODE`, `workos doctor`), or migrating from Auth0, Clerk, Cognito, Firebase, Supabase, Stytch, Descope, or Better Auth. Also triggers on @workos-inc/* imports.
 ---
 
 # WorkOS Skill Router
@@ -35,9 +35,9 @@ When using the `workos` CLI from a coding agent, treat output mode and interacti
 WORKOS_MODE=agent workos doctor --json --skip-ai
 ```
 
-`--skip-ai` disables the doctor's AI-powered diagnosis pass, which requires an API key and network round-trip — neither is guaranteed in a sandbox. The structured JSON output is sufficient for programmatic triage.
+`--skip-ai` disables the doctor's AI-powered diagnosis pass, which requires an API key and network round-trip — neither is guaranteed in a sandbox. If `--skip-ai` errors as an unknown flag, the CLI is outdated — see `references/workos-cli-upgrade.md`. The structured JSON output is sufficient for programmatic triage.
 
-This returns a structured JSON report including an `interactionMode` field (`{ mode, source }`) and a `hostExecution` block. Read the JSON before suggesting fixes.
+This returns a structured JSON report. Look for fields indicating interaction mode (e.g. `interactionMode`) and host execution status (e.g. `hostExecution`). If the JSON shape differs from what's described here, trust the output schema — it's the source of truth.
 
 **Rules:**
 
@@ -50,7 +50,7 @@ This returns a structured JSON report including an `interactionMode` field (`{ m
 
 **Legacy compatibility you may encounter:**
 
-- `WORKOS_NO_PROMPT=1` is a legacy alias that sets both agent interaction behavior AND JSON output. To migrate, replace it with `WORKOS_MODE=agent --json` to preserve both behaviors. Using `WORKOS_MODE=agent` alone drops the implicit JSON formatting.
+- `WORKOS_NO_PROMPT=1` is a legacy alias that sets both agent interaction behavior AND JSON output. To migrate, set `WORKOS_MODE=agent` and pass `--json` to the command to preserve both behaviors. Using `WORKOS_MODE=agent` alone drops the implicit JSON formatting.
 - `WORKOS_FORCE_TTY=1` only affects output formatting; it does not change interaction mode.
 
 ## Topic → Reference Map
