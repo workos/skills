@@ -20,7 +20,7 @@ description: Use when the user asks for a WorkOS docs URL, term, or dashboard fi
 These apply regardless of which routing rule fires. They exist because the most common failure mode of past WorkOS agent interactions has been plausibly-shaped fabrication of CLI commands and Dashboard paths.
 
 - **Never invent `workos` CLI commands.** If the user asks about CLI support or you're about to suggest a command, verify the command tree first. The authoritative source is `WORKOS_MODE=agent workos --help --json` — it emits the complete registered command tree. Do not assume a `create` subcommand exists because `list`/`get`/`delete` do. See `references/workos-management.md`.
-- **Run the `workos` CLI in agent mode.** When invoking the CLI from a coding-agent session, prefix commands with `WORKOS_MODE=agent` (e.g. `WORKOS_MODE=agent workos doctor --json --skip-ai`). Agent mode controls prompts, browser fallback, and host trust; `--json` controls output formatting only. See the **WorkOS CLI in Coding-Agent Sessions** section below.
+- **Never run the `workos` CLI without `WORKOS_MODE=agent` in a coding-agent session.** Without it, commands may launch a browser, prompt for input, or trust the host environment — all of which fail silently in sandboxes. See the **WorkOS CLI in Coding-Agent Sessions** section below.
 - **Never invent Dashboard click-paths.** Phrases like "Dashboard > Organizations > X > Roles > Map Groups" or `dashboard.workos.com/some/specific/path` should not appear unless you have verified them against a docs page you just fetched. The Dashboard UI reorganizes; docs pages are stable. Cite the docs URL and describe the destination conceptually ("the Authorization page", "the directory's settings") instead of committing to a click-path.
 - **When the user wants to do something not supported by the CLI, say so plainly.** Users are better served by "this isn't in the CLI; here's the docs URL for how to do it" than by a fabricated command that fails. See the "Not in the CLI" section of `references/workos-management.md`.
 - **Prefer docs URLs over prose when writing recipes.** If a reference file tells you to cite a specific docs URL, cite it literally; don't paraphrase the URL's slug.
@@ -35,6 +35,8 @@ When using the `workos` CLI from a coding agent, treat output mode and interacti
 WORKOS_MODE=agent workos doctor --json --skip-ai
 ```
 
+`--skip-ai` disables the doctor's AI-powered diagnosis pass, which requires an API key and network round-trip — neither is guaranteed in a sandbox. The structured JSON output is sufficient for programmatic triage.
+
 This returns a structured JSON report including an `interactionMode` field (`{ mode, source }`) and a `hostExecution` block. Read the JSON before suggesting fixes.
 
 **Rules:**
@@ -43,12 +45,12 @@ This returns a structured JSON report including an `interactionMode` field (`{ m
 - Use `WORKOS_MODE=agent` even when relaying human-readable messages. It controls **prompts, browser launch, and host trust**.
 - Treat the doctor `HOST_EXECUTION_UNTRUSTED` issue as a hard trust boundary. If the doctor report contains this issue (or `hostExecution.ok` is `false`), **the current shell may be sandboxed**. Auth, config, keychain, and API failures from this shell are not authoritative. Ask the user to re-run host-sensitive commands (`workos auth login`, `workos doctor`, `workos env add`) on their host shell before drawing conclusions.
 - Do not assume browser-based auth (`workos auth login`) works in a sandbox. If auth is required, surface the manual URL/code fallback that the CLI prints, or ask the user to run `workos auth login` on their host shell.
-- For destructive CLI commands in agent mode, pass the explicit confirmation flag (`--yes` for `workos api`, `--force` for `workos connection delete`, `workos directory delete`, etc.). Agent mode never prompts.
+- For destructive CLI commands in agent mode, pass the explicit confirmation flag (e.g. `--yes` for `workos api`, `--force` for `workos connection delete`). Agent mode never prompts, so omitting the flag causes the command to fail. If unsure which flag a command expects, run `workos <cmd> --help --json` to check.
 - Structured CLI errors include an optional `error.recovery.hints[]` array with the next deterministic command to run. Prefer those hints over guessing.
 
 **Legacy compatibility you may encounter:**
 
-- `WORKOS_NO_PROMPT=1` is a legacy alias for agent interaction behavior plus JSON output. Prefer `WORKOS_MODE=agent` in new instructions.
+- `WORKOS_NO_PROMPT=1` is a legacy alias that sets both agent interaction behavior AND JSON output. To migrate, replace it with `WORKOS_MODE=agent --json` to preserve both behaviors. Using `WORKOS_MODE=agent` alone drops the implicit JSON formatting.
 - `WORKOS_FORCE_TTY=1` only affects output formatting; it does not change interaction mode.
 
 ## Topic → Reference Map
