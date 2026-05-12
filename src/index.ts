@@ -10,7 +10,7 @@ export function getReferencePath(name: string): string {
   return join(pluginDir, 'skills', 'workos', 'references', `${name}.md`);
 }
 
-/** Resolve path to the skills directory (contains workos/ and workos-widgets/) */
+/** Resolve path to the skills directory */
 export function getSkillsDir(): string {
   return join(pluginDir, 'skills');
 }

@@ -2,7 +2,7 @@
 
 ![](./workos-logo.svg)
 
-WorkOS skills for AI coding agents. Two skills and 40 reference files covering AuthKit, SSO, Directory Sync, RBAC, Vault, Migrations, backend SDKs, and more.
+WorkOS skills for AI coding agents. Three skills and 40 reference files covering internal app building, AuthKit, SSO, Directory Sync, RBAC, Vault, Migrations, backend SDKs, and more.
 
 ## Install as Claude Code Plugin
 
@@ -10,7 +10,7 @@ WorkOS skills for AI coding agents. Two skills and 40 reference files covering A
 npx skills add workos/skills
 ```
 
-This installs two skills: `workos` and `workos-widgets`. The `workos` skill acts as a router that automatically loads the right reference for your task (AuthKit setup, SSO, migrations, etc.) so you don't need to install references individually.
+This installs three skills: `workos`, `workos-widgets`, and `workos-internal-apps`. The `workos` skill acts as a router that automatically loads the right reference for your task (AuthKit setup, SSO, migrations, etc.) so you don't need to install references individually.
 
 Works with Claude Code, Codex, Goose, and any agent that supports the skills.sh format.
 
@@ -42,7 +42,7 @@ Path helpers are also available for consumers that need file paths (e.g., skill 
 import { getReferencePath, getSkillsDir, getSkillPath } from '@workos/skills';
 
 const refPath = getReferencePath('workos-authkit-nextjs'); // absolute path to .md file
-const skillsDir = getSkillsDir(); // directory containing workos/ and workos-widgets/
+const skillsDir = getSkillsDir(); // directory containing all WorkOS skills
 const skillPath = getSkillPath('workos'); // absolute path to SKILL.md
 ```
 
@@ -58,12 +58,13 @@ const skillPath = getSkillPath('workos'); // absolute path to SKILL.md
 
 ## Skills
 
-Two registered skills:
+Three registered skills:
 
-| Skill            | Description                                                             |
-| ---------------- | ----------------------------------------------------------------------- |
-| `workos`         | Router — identifies which reference to load based on the user's task    |
-| `workos-widgets` | Multi-framework widget integration with on-demand OpenAPI spec querying |
+| Skill                  | Description                                                                                 |
+| ---------------------- | ------------------------------------------------------------------------------------------- |
+| `workos`               | Router — identifies which reference to load based on the user's task                        |
+| `workos-widgets`       | Multi-framework widget integration with on-demand OpenAPI spec querying                     |
+| `workos-internal-apps` | Framework for planning, scaffolding, testing, and handing off AI-built WorkOS internal apps |
 
 Everything else is a **reference file** under `references/`. The router dispatches to the right reference via progressive disclosure.
 
