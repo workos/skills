@@ -28,7 +28,7 @@ pnpm eval:calibrate                            # compare scorer vs human labels
 ## Project Structure
 
 - `.claude-plugin/marketplace.json` — Claude Code marketplace catalog (source: `./plugins/workos`)
-- `.codex-plugin/marketplace.json` — Codex marketplace catalog (source: `./plugins/workos`)
+- `.agents/plugins/marketplace.json` — Codex marketplace catalog (source: `./plugins/workos`)
 - `.cursor-plugin/marketplace.json` — Cursor marketplace catalog (mirrors Claude catalog)
 - `plugins/workos/` — installable plugin (only this gets cached)
   - `.claude-plugin/plugin.json` — Claude Code plugin manifest

@@ -32,11 +32,6 @@
           "type": "json",
           "path": "plugins/workos/.codex-plugin/plugin.json",
           "jsonpath": "$.version"
-        },
-        {
-          "type": "json",
-          "path": ".codex-plugin/marketplace.json",
-          "jsonpath": "$.metadata.version"
         }
       ]
     }
