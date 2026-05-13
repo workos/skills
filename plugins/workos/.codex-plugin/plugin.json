@@ -1,6 +1,6 @@
 {
   "name": "workos",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "WorkOS integration skills for AuthKit, SSO, Directory Sync, RBAC, Vault, Audit Logs, migrations, and API references.",
   "author": {
     "name": "WorkOS",
