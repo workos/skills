@@ -26,12 +26,12 @@
 
 ## Endpoints
 
-| Endpoint                    | Description                    |
-| --------------------------- | ------------------------------ |
-| `/radar`                    | Radar overview                 |
-| `/attempts`                 | Attempt management             |
-| `/attempts/create`          | Create an attempt (get verdict)|
-| `/attempts/update`          | Update attempt status          |
-| `/lists`                    | List management                |
-| `/lists/{type}/{action}/add`    | Add entry to block/allow list    |
+| Endpoint                        | Description                        |
+| ------------------------------- | ---------------------------------- |
+| `/radar`                        | Radar overview                     |
+| `/attempts`                     | Attempt management                 |
+| `/attempts/create`              | Create an attempt (get verdict)    |
+| `/attempts/update`              | Update attempt status              |
+| `/lists`                        | List management                    |
+| `/lists/{type}/{action}/add`    | Add entry to block/allow list      |
 | `/lists/{type}/{action}/remove` | Remove entry from block/allow list |

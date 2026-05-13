@@ -28,9 +28,11 @@ pnpm eval:calibrate                            # compare scorer vs human labels
 ## Project Structure
 
 - `.claude-plugin/marketplace.json` — Claude Code marketplace catalog (source: `./plugins/workos`)
+- `.codex-plugin/marketplace.json` — Codex marketplace catalog (source: `./plugins/workos`)
 - `.cursor-plugin/marketplace.json` — Cursor marketplace catalog (mirrors Claude catalog)
 - `plugins/workos/` — installable plugin (only this gets cached)
   - `.claude-plugin/plugin.json` — Claude Code plugin manifest
+  - `.codex-plugin/plugin.json` — Codex plugin manifest
   - `.cursor-plugin/plugin.json` — Cursor plugin manifest (mirrors Claude manifest; versions synced by release-please)
   - `skills/` — skill directories, each with `SKILL.md`
     - **Hand-crafted AuthKit skills**: `workos-authkit-base`, `workos-authkit-nextjs`, `workos-authkit-react`, `workos-authkit-react-router`, `workos-authkit-tanstack-start`, `workos-authkit-vanilla-js`, `workos-widgets`

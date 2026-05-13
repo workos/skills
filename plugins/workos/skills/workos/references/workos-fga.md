@@ -32,21 +32,21 @@
 
 ## Endpoints
 
-| Endpoint                        | Description                              |
-| ------------------------------- | ---------------------------------------- |
-| `/fga`                          | FGA overview                             |
-| `/resource`                     | Resource management                      |
-| `/resource/create`              | Create a resource                        |
-| `/resource/get`                 | Get resource by ID                       |
-| `/resource/get-by-external-id`  | Get resource by external ID              |
-| `/resource/list`                | List resources                           |
-| `/resource/update`              | Update a resource                        |
-| `/resource/delete`              | Delete a resource                        |
-| `/role-assignment`              | Role assignment management               |
-| `/role-assignment/assign`       | Assign role on a resource                |
-| `/role-assignment/list`         | List role assignments for membership     |
-| `/role-assignment/remove`       | Remove role assignment                   |
-| `/access-check`                 | Access check                             |
-| `/access-check/check`           | Check if membership has permission       |
-| `/access-check/list-resources`  | List resources membership can access     |
-| `/access-check/list-members`    | List memberships with access to resource |
+| Endpoint                       | Description                              |
+| ------------------------------ | ---------------------------------------- |
+| `/fga`                         | FGA overview                             |
+| `/resource`                    | Resource management                      |
+| `/resource/create`             | Create a resource                        |
+| `/resource/get`                | Get resource by ID                       |
+| `/resource/get-by-external-id` | Get resource by external ID              |
+| `/resource/list`               | List resources                           |
+| `/resource/update`             | Update a resource                        |
+| `/resource/delete`             | Delete a resource                        |
+| `/role-assignment`             | Role assignment management               |
+| `/role-assignment/assign`      | Assign role on a resource                |
+| `/role-assignment/list`        | List role assignments for membership     |
+| `/role-assignment/remove`      | Remove role assignment                   |
+| `/access-check`                | Access check                             |
+| `/access-check/check`          | Check if membership has permission       |
+| `/access-check/list-resources` | List resources membership can access     |
+| `/access-check/list-members`   | List memberships with access to resource |
