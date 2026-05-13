@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/workos/skills/compare/v0.5.0...v0.6.0) (2026-05-13)
+
+
+### Features
+
+* **workos:** add CLI agent-mode guidance to skill ([#29](https://github.com/workos/skills/issues/29)) ([a7755e9](https://github.com/workos/skills/commit/a7755e9e1304c21c372ca869bfc075eb679ff42c))
+
 ## [0.5.0](https://github.com/workos/skills/compare/v0.4.0...v0.5.0) (2026-04-27)
 
 
