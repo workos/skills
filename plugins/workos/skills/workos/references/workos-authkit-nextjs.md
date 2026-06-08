@@ -200,6 +200,40 @@ export function NavAuth() {
 
 Call `getSignInUrl()` **only** inside a Server Action or Route Handler. It is the safe wrapper for AuthKit sign-in/sign-up flows.
 
+### Sign out with a POST server action, never a GET route
+
+Sign-out **mutates state** — it clears the session — so it must never be a `GET` route handler. A `GET /auth/signout` is unsafe: Next.js `<Link>` prefetch can trigger it on hover (logging users out unexpectedly), and it is CSRF-exposable via `<img src="/auth/signout">`. `workos doctor` flags this as `SIGNOUT_GET_HANDLER`.
+
+Use a **POST server action**. In a Server Component, an inline action is fine:
+
+```tsx
+<form action={async () => { 'use server'; await signOut(); }}>
+  <button type="submit">Sign out</button>
+</form>
+```
+
+A **client** component (for example a nav that needs `useAuth()`) cannot define an inline `'use server'` action — put it in a separate server-action module and import it:
+
+```tsx
+// app/auth/actions.ts
+'use server';
+import { signOut } from '@workos-inc/authkit-nextjs'; // verify export path in README
+export async function signOutAction() {
+  await signOut();
+}
+```
+
+```tsx
+'use client';
+import { signOutAction } from '@/app/auth/actions';
+// ...
+<form action={signOutAction}>
+  <button type="submit">Sign out</button>
+</form>
+```
+
+`signOut()` accepts an optional `{ returnTo }`; with none, it redirects to the Logout URI configured in your WorkOS dashboard. If a generated `GET` sign-out route exists, **delete it** rather than switching it to `POST` — that removes the extra logout surface entirely.
+
 ### Critical auth URL gotchas
 
 - **Never** call `getSignInUrl()` / `getSignUpUrl()` inside a Server Component render (`page.tsx`, `layout.tsx`, async `nav-auth.tsx`, etc.).
@@ -230,7 +264,10 @@ rg -n "getAuthorizationUrl|window\.location\.href\s*=\s*auth\.signInUrl" app src
 # 5. Audit getSignInUrl() usage — safe in Server Actions/Route Handlers, unsafe in page/layout/component render
 rg -n "getSignInUrl\(" app src/app 2>/dev/null || true
 
-# 6. Build succeeds
+# 6. CRITICAL: Audit for an unsafe GET sign-out route — sign-out mutates state, so it must be a POST server action, never a GET handler
+rg -n -g '**/{signout,sign-out,logout}/route.*' "export (async )?function GET|export const GET" app src/app 2>/dev/null && echo "FAIL: sign-out is a GET route — convert to a POST server action and delete the GET route (see 'Sign out with a POST server action, never a GET route')" || echo "OK: no GET sign-out route"
+
+# 7. Build succeeds
 npm run build
 ```
 
@@ -288,6 +325,17 @@ This error causes OAuth codes to expire ("invalid_grant"), so fix the handler fi
 1. Use `getSignInUrl()` in a Server Action or Route Handler so AuthKit sets the PKCE cookie
 2. For client-side sign-in buttons, use `refreshAuth({ ensureSignedIn: true })`
 3. Do not hand-roll the sign-in action with raw `getAuthorizationUrl()` unless you also persist `sealedState` exactly as the SDK expects
+
+### `SIGNOUT_GET_HANDLER` (flagged by `workos doctor`)
+
+**Cause:** The sign-out route is a `GET` handler (e.g. `export async function GET() { return signOut(); }`), often paired with a `<form method="GET">`. A `GET` with a side effect is unsafe — Next.js prefetch and CSRF (`<img src="/auth/signout">`) can trigger logout.
+
+**Fix:**
+
+1. Move sign-out to a POST server action (see "Sign out with a POST server action, never a GET route" above).
+2. Delete the `GET` sign-out route entirely.
+3. Ensure the sign-out `<form>` uses a server-action `action={...}` (or `method="POST"`), not `method="GET"`.
+4. Re-run `workos doctor` to confirm the finding clears.
 
 ### "middleware.ts not found"
 
