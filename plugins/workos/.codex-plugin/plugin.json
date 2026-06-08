@@ -1,6 +1,6 @@
 {
   "name": "workos",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "WorkOS integration skills for AuthKit, SSO, Directory Sync, RBAC, Vault, Audit Logs, migrations, and API references.",
   "author": {
     "name": "WorkOS",
@@ -10,7 +10,14 @@
   "homepage": "https://workos.com",
   "repository": "https://github.com/workos/skills",
   "license": "MIT",
-  "keywords": ["workos", "authkit", "sso", "directory-sync", "rbac", "widgets"],
+  "keywords": [
+    "workos",
+    "authkit",
+    "sso",
+    "directory-sync",
+    "rbac",
+    "widgets"
+  ],
   "skills": "./skills/",
   "interface": {
     "displayName": "WorkOS",
@@ -18,7 +25,10 @@
     "longDescription": "Use WorkOS skills to implement and debug AuthKit, SSO, Directory Sync, RBAC, MFA, Admin Portal, Widgets, and migration workflows.",
     "developerName": "WorkOS",
     "category": "Coding",
-    "capabilities": ["Interactive", "Write"],
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
     "websiteURL": "https://workos.com",
     "defaultPrompt": [
       "Add WorkOS AuthKit to this app",

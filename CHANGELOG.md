@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/workos/skills/compare/v0.6.0...v0.6.1) (2026-06-08)
+
+
+### Bug Fixes
+
+* **workos:** mandate POST server-action sign-out in Next.js skill ([#33](https://github.com/workos/skills/issues/33)) ([a479b91](https://github.com/workos/skills/commit/a479b91eb4f419dd089cfa44e16e210f8c4f59ae))
+
 ## [0.6.0](https://github.com/workos/skills/compare/v0.5.0...v0.6.0) (2026-05-13)
 
 
