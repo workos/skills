@@ -19,6 +19,7 @@ description: Use when the user asks for a WorkOS docs URL, term, or dashboard fi
 
 These apply regardless of which routing rule fires. They exist because the most common failure mode of past WorkOS agent interactions has been plausibly-shaped fabrication of CLI commands and Dashboard paths.
 
+- **Check for the WorkOS MCP server before reaching for the CLI on workspace-management tasks.** If the session has WorkOS MCP tools connected (a server exposing `whoami`, `list_operations`, `query`, and `mutate` — tool names may carry a client-specific prefix), prefer those tools for reading and changing workspace resources: they already run as the signed-in dashboard user, with no CLI install and no API key. The CLI remains the right surface for bootstrap, seeding, local project config, and diagnostics. The full decision guide is the "Choosing a surface" section of `references/workos-management.md`.
 - **Never invent `workos` CLI commands.** If the user asks about CLI support or you're about to suggest a command, verify the command tree first. The authoritative source is `WORKOS_MODE=agent workos --help --json` — it emits the complete registered command tree. Do not assume a `create` subcommand exists because `list`/`get`/`delete` do. See `references/workos-management.md`.
 - **Prefer `WORKOS_MODE=agent` when invoking the `workos` CLI from a coding-agent session.** The CLI auto-detects most agent environments (`CLAUDECODE`, `CLAUDE_CODE`, `CURSOR_AGENT`, `CODEX_SANDBOX`, non-TTY), but the explicit env var is more reliable across sandbox configurations. See the **WorkOS CLI in Coding-Agent Sessions** section below.
 - **Never invent Dashboard click-paths.** Phrases like "Dashboard > Organizations > X > Roles > Map Groups" or `dashboard.workos.com/some/specific/path` should not appear unless you have verified them against a docs page you just fetched. The Dashboard UI reorganizes; docs pages are stable. Cite the docs URL and describe the destination conceptually ("the Authorization page", "the directory's settings") instead of committing to a click-path.
@@ -130,10 +131,10 @@ Feature topic files above include endpoint tables for their respective APIs. Use
 
 ### Management & CLI Lifecycle (Read `references/{name}.md`)
 
-| User wants to...                            | Read file                          |
-| ------------------------------------------- | ---------------------------------- |
-| Manage WorkOS resources via CLI commands    | `references/workos-management.md`  |
-| Upgrade the `workos` CLI to a newer version | `references/workos-cli-upgrade.md` |
+| User wants to...                                 | Read file                          |
+| ------------------------------------------------ | ---------------------------------- |
+| Manage WorkOS resources (MCP server or CLI)      | `references/workos-management.md`  |
+| Upgrade the `workos` CLI to a newer version      | `references/workos-cli-upgrade.md` |
 
 ## Routing Decision Tree
 
@@ -283,11 +284,11 @@ If the project is NOT a JavaScript/TypeScript frontend framework, check:
 
 ---
 
-### 6. Management / CLI Operations
+### 6. Management Operations (MCP server or CLI)
 
 **Triggers**: User mentions managing WorkOS resources (organizations, users, roles, permissions), seeding data, or CLI management commands.
 
-**Action**: Read `references/workos-management.md`.
+**Action**: Read `references/workos-management.md`. It opens with a surface-choice guide: prefer connected WorkOS MCP tools for workspace reads/writes, and the CLI for bootstrap, seeding, local config, CI, and diagnostics. Read it even when MCP tools are present — it maps which operations live on which surface.
 
 **Sub-case — CLI upgrade**: If the user reports an outdated `workos` CLI (`workos --version` shows an old release, `unknown command` errors after following recent docs, or asks "how do I update the workos CLI?"), read `references/workos-cli-upgrade.md` instead. Do NOT guess the latest version — that file tells you to instruct the user to run `npm view workos version`.
 
