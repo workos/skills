@@ -25,7 +25,7 @@ The rest of this file covers the `workos` CLI. It must be authenticated via `wor
 
 All commands support `--json` for structured output. Use `--json` when you need to parse output (e.g., extract an ID).
 
-## Checking what the CLI can do (READ THIS FIRST)
+## Verifying a CLI command exists
 
 **If a user asks whether the CLI supports operation X, or if you're about to suggest a `workos ...` command, verify it first.** The authoritative, machine-readable command tree is:
 
@@ -264,6 +264,9 @@ JSON output format:
 | `workos onboard-user <email>` | Send invitation + optional wait             |
 | `workos debug-sso <connId>`   | SSO connection diagnostics                  |
 | `workos debug-sync <dirId>`   | Directory sync diagnostics                  |
+| `workos install`              | Install AuthKit into a project (bootstrap; can provision credentials with no existing account) |
+| `workos env claim`            | Link an unclaimed environment to your account |
+| `workos mcp`                  | Install/manage the WorkOS MCP server in Claude Code, Codex, and Cursor |
 
 ### Common Flags
 
