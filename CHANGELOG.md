@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0](https://github.com/workos/skills/compare/v0.6.1...v0.7.0) (2026-07-23)
+
+
+### Features
+
+* **workos:** add WorkOS MCP server to the Cursor plugin ([#36](https://github.com/workos/skills/issues/36)) ([2857c40](https://github.com/workos/skills/commit/2857c406209c192b746e3818815670a7cd23dff9))
+* **workos:** make the management skill MCP-aware (CLI and MCP coexistence) ([#37](https://github.com/workos/skills/issues/37)) ([23b1934](https://github.com/workos/skills/commit/23b1934b62ab9dc1c3b493dab1ec69289cc428e6))
+
 ## [0.6.1](https://github.com/workos/skills/compare/v0.6.0...v0.6.1) (2026-06-08)
 
 
