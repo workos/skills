@@ -7,6 +7,13 @@ Canonical documentation:
 
 Fetch the canonical MCP documentation before recommending configuration or recovery steps. If this file conflicts with fetched docs, follow the docs.
 
+## Anchors
+
+These two facts are load-bearing. Without them, agents that cannot reach the docs invent a local stdio server and a Claude Desktop config path. Keep them even when deferring everything else to the docs.
+
+- **The WorkOS MCP server is remote HTTP at `https://mcp.workos.com/mcp`.** It is not a stdio server, so no `command`/`args` entry and no local process is involved. Authentication is OAuth through a browser consent screen; the agent then acts as the signed-in dashboard account with that account's role and permissions. There is no API key or environment variable to set.
+- **The `workos` CLI configures it: `workos mcp install`, `workos mcp remove`, `workos mcp status`.** It detects Claude Code, Codex, and Cursor, and `--agent <claude-code|codex|cursor>` narrows the target. `workos mcp status` reports availability and installation per client. For Claude Code the CLI installs at user scope, because the management server is account-level and project scope would push checked-in config onto teammates.
+
 ## Use this reference when
 
 - The user wants to connect the WorkOS MCP server.
@@ -18,7 +25,7 @@ MCP server instructions and resources are available only after the client initia
 
 ## Agent guardrails
 
-1. Fetch the canonical MCP documentation and follow its current client-specific setup and recovery steps. Do not reproduce commands or configuration from memory.
+1. Fetch the canonical MCP documentation and follow its current client-specific setup and recovery steps. Beyond the anchors above, do not reproduce commands or configuration from memory, and say so rather than guessing when the docs are unreachable.
 2. Identify the user's MCP client and requested configuration scope before changing anything. Do not modify user-global configuration without explicit intent.
 3. Check whether an installed plugin already supplies the WorkOS MCP server. Do not add a duplicate manual definition unless the user explicitly wants one.
 4. Commit a project-level server definition only when the team intends to share it. Never inspect, print, copy, or commit OAuth tokens, cookies, authorization headers, or credential-store contents.
