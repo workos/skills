@@ -29,6 +29,38 @@
       - codex mcp reconnect
       - workos mcp doctor
 
+- id: mcp-setup-client-scope
+  product: mcp
+  skill: workos-mcp
+  skillType: generated
+  prompt: |
+    I want to connect the WorkOS MCP server so my agent can manage my workspace.
+    I use Claude Code on this machine, and the workos CLI is already installed
+    and authenticated. Set it up, and tell me whether this lands in my
+    user-global config or only in this repo.
+  expected:
+    methods: []
+    envVars: []
+    imports: []
+    params: []
+    flowSteps:
+      - workos.com/docs/mcp
+      - workos mcp install
+      - mcp.workos.com/mcp
+      - --scope user
+      - host shell browser
+      - workos mcp status
+    antiPatterns:
+      - claude_desktop_config.json
+      - stdio
+      - WORKOS_API_KEY
+      - print the OAuth token
+    hallucinations:
+      - workos mcp connect
+      - claude mcp auth
+      - ~/.config/Claude
+      - Application Support/Claude
+
 - id: mcp-management-cli-no-mcp
   product: mcp
   skill: workos-mcp
