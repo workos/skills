@@ -1,0 +1,56 @@
+- id: mcp-codex-startup-interrupted
+  product: mcp
+  skill: workos-mcp
+  skillType: generated
+  prompt: |
+    My Codex session printed "MCP startup interrupted. The following servers
+    were not initialized: workos". The server is defined in this repo's
+    .codex/config.toml. How do I get the WorkOS MCP tools working again?
+  expected:
+    methods: []
+    envVars: []
+    imports: []
+    params: []
+    flowSteps:
+      - codex mcp get workos
+      - project trust
+      - codex mcp login workos
+      - host shell browser
+      - codex mcp list
+      - restart Codex
+    antiPatterns:
+      - delete .codex/config.toml
+      - conclude the WorkOS server is down
+      - copy the OAuth token
+      - retry the login from the sandbox
+    hallucinations:
+      - codex mcp restart
+      - codex mcp enable
+      - codex mcp reconnect
+      - workos mcp doctor
+
+- id: mcp-management-cli-no-mcp
+  product: mcp
+  skill: workos-mcp
+  skillType: generated
+  prompt: |
+    I need to create a new organization in my WorkOS workspace from this
+    terminal session. I have the workos CLI installed and authenticated, and
+    I've intentionally not configured any MCP servers for this project.
+    What's the fastest way to do this?
+  expected:
+    methods: []
+    envVars: []
+    imports: []
+    params: []
+    flowSteps:
+      - workos organization create
+    antiPatterns:
+      - codex mcp add workos
+      - workos mcp install
+      - set up the MCP server first
+      - mcp.workos.com
+    hallucinations:
+      - workos organizations create
+      - workos org create
+      - workos create organization
