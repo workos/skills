@@ -47,7 +47,7 @@
       - workos.com/docs/mcp
       - workos mcp install
       - mcp.workos.com/mcp
-      - --scope user
+      - user scope account-level
       - host shell browser
       - workos mcp status
     antiPatterns:
