@@ -13,7 +13,7 @@ Two agent-friendly surfaces can manage WorkOS resources: the **WorkOS MCP server
 - **Local project config** during integration work: redirect URIs, CORS, homepage URL (`workos config ...`).
 - **CI and scripts** authenticating with an API key (`WORKOS_API_KEY`).
 - **Diagnostics**: `workos doctor`, `workos debug-sso`, `workos debug-sync`.
-- **No WorkOS MCP server is connected.** (The CLI can install one: `workos mcp` manages the WorkOS MCP server in Claude Code, Codex, and Cursor.)
+- **No WorkOS MCP server is connected.** Read `workos-mcp.md` before changing client configuration. It covers user-global versus project-only scope, OAuth recovery, and host-shell trust boundaries. The CLI can configure the server in Claude Code, Codex, and Cursor with `workos mcp`.
 
 Admin Portal setup links exist on both surfaces: `workos portal generate-link` on the CLI, `generatePortalSetupLink` on the MCP.
 

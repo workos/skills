@@ -20,6 +20,7 @@ description: Use when the user asks for a WorkOS docs URL, term, or dashboard fi
 These apply regardless of which routing rule fires. They exist because the most common failure mode of past WorkOS agent interactions has been plausibly-shaped fabrication of CLI commands and Dashboard paths.
 
 - **Check for the WorkOS MCP server before reaching for the CLI on workspace-management tasks.** If the session has WorkOS MCP tools connected (a server exposing `whoami`, `list_operations`, `query`, and `mutate` — tool names may carry a client-specific prefix), prefer those tools for reading and changing workspace resources: they already run as the signed-in dashboard user, with no CLI install and no API key. The CLI remains the right surface for bootstrap, seeding, local project config, and diagnostics. The full decision guide is the "Choosing a surface" section of `references/workos-management.md`.
+- **Recover missing or unauthenticated WorkOS MCP connections before attempting workspace-management work.** Read `references/workos-mcp.md`, determine whether the user wants user-global or project-only configuration, and do not modify user-global agent configuration without explicit intent. Authentication that depends on a browser, credential store, or host certificates must be completed in the user's normal host shell.
 - **Never invent `workos` CLI commands.** If the user asks about CLI support or you're about to suggest a command, verify the command tree first. The authoritative source is `WORKOS_MODE=agent workos --help --json` — it emits the complete registered command tree. Do not assume a `create` subcommand exists because `list`/`get`/`delete` do. See `references/workos-management.md`.
 - **Prefer `WORKOS_MODE=agent` when invoking the `workos` CLI from a coding-agent session.** The CLI auto-detects most agent environments (`CLAUDECODE`, `CLAUDE_CODE`, `CURSOR_AGENT`, `CODEX_SANDBOX`, non-TTY), but the explicit env var is more reliable across sandbox configurations. See the **WorkOS CLI in Coding-Agent Sessions** section below.
 - **Never invent Dashboard click-paths.** Phrases like "Dashboard > Organizations > X > Roles > Map Groups" or `dashboard.workos.com/some/specific/path` should not appear unless you have verified them against a docs page you just fetched. The Dashboard UI reorganizes; docs pages are stable. Cite the docs URL and describe the destination conceptually ("the Authorization page", "the directory's settings") instead of committing to a click-path.
@@ -131,10 +132,11 @@ Feature topic files above include endpoint tables for their respective APIs. Use
 
 ### Management & CLI Lifecycle (Read `references/{name}.md`)
 
-| User wants to...                                 | Read file                          |
-| ------------------------------------------------ | ---------------------------------- |
-| Manage WorkOS resources (MCP server or CLI)      | `references/workos-management.md`  |
-| Upgrade the `workos` CLI to a newer version      | `references/workos-cli-upgrade.md` |
+| User wants to...                            | Read file                          |
+| ------------------------------------------- | ---------------------------------- |
+| Set up or recover the WorkOS MCP server     | `references/workos-mcp.md`         |
+| Manage WorkOS resources (MCP server or CLI) | `references/workos-management.md`  |
+| Upgrade the `workos` CLI to a newer version | `references/workos-cli-upgrade.md` |
 
 ## Routing Decision Tree
 
@@ -152,9 +154,9 @@ Apply these rules in order. First match wins.
 2. If the term is in the table, use the summary to answer; WebFetch the listed URL only if the user wants more detail.
 3. If the term is NOT in the table, follow the "Still not here?" fallback at the bottom of that file. When you find the canonical URL, answer the user and suggest they open a PR to add a row.
 
-**For terminology lookups**, do NOT WebFetch `llms.txt` or guess `workos.com/docs/...` URLs before reading the terms file. (Rules 7 and 8 use `llms.txt` for different purposes — this prohibition is scoped to Rule 0 only.)
+**For terminology lookups**, do NOT WebFetch `llms.txt` or guess `workos.com/docs/...` URLs before reading the terms file. (Rules 8 and 9 use `llms.txt` for different purposes — this prohibition is scoped to Rule 0 only.)
 
-**Why this wins**: Terminology lookups happen independent of feature/framework/migration context. They need to short-circuit routing, not fall through to "Vague or General" (Rule 7).
+**Why this wins**: Terminology lookups happen independent of feature/framework/migration context. They need to short-circuit routing, not fall through to "Vague or General" (Rule 8).
 
 ---
 
@@ -284,7 +286,17 @@ If the project is NOT a JavaScript/TypeScript frontend framework, check:
 
 ---
 
-### 6. Management Operations (MCP server or CLI)
+### 6. MCP Setup or Recovery
+
+**Triggers**: User asks to install or configure the WorkOS MCP server, choose between user-global and project-only MCP configuration, or reports that WorkOS MCP tools are missing, unauthenticated, unavailable, or interrupted during startup.
+
+**Action**: Read `references/workos-mcp.md`. It routes setup and recovery through the canonical WorkOS MCP documentation, protects configuration scope and OAuth credentials, and identifies authentication steps that must run in the user's normal host shell.
+
+**Why this wins**: MCP setup happens before MCP tools are callable. It requires configuration-scope and host-trust checks that ordinary workspace-management guidance does not cover.
+
+---
+
+### 7. Management Operations (MCP server or CLI)
 
 **Triggers**: User mentions managing WorkOS resources (organizations, users, roles, permissions), seeding data, or CLI management commands.
 
@@ -294,7 +306,7 @@ If the project is NOT a JavaScript/TypeScript frontend framework, check:
 
 ---
 
-### 7. Vague or General Request
+### 8. Vague or General Request
 
 **Triggers**: User says "help with WorkOS", "WorkOS setup", "what can WorkOS do", or provides no feature-specific context.
 
@@ -309,7 +321,7 @@ If the project is NOT a JavaScript/TypeScript frontend framework, check:
 
 ---
 
-### 8. No Match / Ambiguous
+### 9. No Match / Ambiguous
 
 **Triggers**: None of the above rules match, OR the request is genuinely ambiguous.
 
@@ -354,4 +366,4 @@ If detection finds conflicting signals (e.g., both Next.js and TanStack Start co
 
 ### User provides no context at all
 
-Follow step #7 (Vague or General Request): fetch llms.txt, show options, and force disambiguation.
+Follow step #8 (Vague or General Request): fetch llms.txt, show options, and force disambiguation.
