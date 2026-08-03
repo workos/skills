@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/workos/skills/compare/v0.7.0...v0.7.1) (2026-08-03)
+
+
+### Miscellaneous Chores
+
+* force patch release ([63f9da8](https://github.com/workos/skills/commit/63f9da84049e8a83f9448f55c0f85db45a4780f6))
+
 ## [0.7.0](https://github.com/workos/skills/compare/v0.6.1...v0.7.0) (2026-07-23)
 
 
