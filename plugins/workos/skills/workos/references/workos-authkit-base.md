@@ -12,14 +12,14 @@ README is the source of truth for: install commands, imports, API usage, code pa
 
 ## Task Structure (Required)
 
-| Phase | Task      | Blocked By         | Purpose                           |
-| ----- | --------- | ------------------ | --------------------------------- |
-| 1     | preflight | -                  | Verify env vars, detect framework |
-| 2     | install   | preflight          | Install SDK package               |
-| 3     | callback  | install            | Create OAuth callback route       |
-| 4     | provider  | install            | Setup auth context/middleware     |
-| 5     | ui        | callback, provider | Add sign-in/out UI                |
-| 6     | verify    | ui                 | Build confirmation                |
+| Phase | Task      | Blocked By         | Purpose                                                                              |
+| ----- | --------- | ------------------ | ------------------------------------------------------------------------------------ |
+| 1     | preflight | -                  | Verify env vars, detect framework                                                    |
+| 2     | install   | preflight          | Install SDK package                                                                  |
+| 3     | callback  | install            | Server stacks: create OAuth callback route. Client SDKs: skip (SDK handles redirect) |
+| 4     | provider  | install            | Setup auth context/middleware                                                        |
+| 5     | ui        | callback, provider | Add sign-in/out UI                                                                   |
+| 6     | verify    | ui                 | Build confirmation                                                                   |
 
 ## Server-Side Auth Flow
 
@@ -53,9 +53,18 @@ Server-side framework? → Middleware handles sessions
 Hybrid (Next.js)? → Both may be needed
 ```
 
-### Callback Route Location
+### Redirect URI & Callback (Per Stack)
 
-Extract path from `WORKOS_REDIRECT_URI` → create route at that exact path.
+```
+Client-side SDK (React SPA, authkit-js)?
+  → SDK handles the OAuth redirect internally — no callback route
+  → Redirect URI = app origin, no path (e.g., http://localhost:5173)
+
+Server-side SDK (Next.js, Node/Express, React Router framework mode,
+SvelteKit, TanStack Start, backend SDKs)?
+  → Redirect URI = callback URL with path (e.g., http://localhost:3000/callback)
+  → Extract path from WORKOS_REDIRECT_URI → create route at that exact path
+```
 
 ## Environment Variables
 
@@ -63,7 +72,7 @@ Extract path from `WORKOS_REDIRECT_URI` → create route at that exact path.
 | ------------------------ | ------------------------------ | ------------- |
 | `WORKOS_API_KEY`         | Server authentication          | Server SDKs   |
 | `WORKOS_CLIENT_ID`       | Client identification          | All SDKs      |
-| `WORKOS_REDIRECT_URI`    | OAuth callback URL             | Server SDKs   |
+| `WORKOS_REDIRECT_URI`    | OAuth redirect URL (per-stack) | All SDKs      |
 | `WORKOS_COOKIE_PASSWORD` | Session encryption (32+ chars) | Server SDKs   |
 
 Note: Some frameworks use prefixed variants (e.g., `NEXT_PUBLIC_*`). Check README.
@@ -75,7 +84,7 @@ Note: Some frameworks use prefixed variants (e.g., `NEXT_PUBLIC_*`). Check READM
 - [ ] SDK package installed in node_modules
 - [ ] No install errors in output
 
-### After Callback Route
+### After Callback Route (server stacks only — client SDKs skip)
 
 - [ ] Route file exists at path matching `WORKOS_REDIRECT_URI`
 - [ ] Imports SDK callback handler (not custom OAuth)
@@ -110,8 +119,8 @@ Note: Some frameworks use prefixed variants (e.g., `NEXT_PUBLIC_*`). Check READM
 
 ### Invalid redirect URI
 
-- [ ] Compare route path to `WORKOS_REDIRECT_URI`
-- [ ] Paths must match exactly
+- [ ] Server stacks: compare route path to `WORKOS_REDIRECT_URI` — paths must match exactly
+- [ ] Client SDKs: redirect URI must be the app origin (no path) and match the Dashboard exactly
 
 ### Cookie password error
 
@@ -128,4 +137,4 @@ Note: Some frameworks use prefixed variants (e.g., `NEXT_PUBLIC_*`). Check READM
 1. **Install SDK before writing imports** - never create import statements for uninstalled packages
 2. **Use SDK functions** - never construct OAuth URLs manually
 3. **Follow README patterns** - SDK APIs change between versions
-4. **Extract callback path from env** - don't hardcode `/auth/callback`
+4. **Match redirect guidance to the stack** - server stacks: extract callback path from env, don't hardcode `/auth/callback`; client SDKs: no callback route or path at all
