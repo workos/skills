@@ -52,3 +52,4 @@
     hallucinations:
       - '@workos/widgets'
       - '@workos-inc/user-button'
+      - workos.widgets.createToken
