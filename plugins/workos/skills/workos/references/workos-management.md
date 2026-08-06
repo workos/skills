@@ -133,6 +133,8 @@ workos config cors add http://localhost:3000
 workos config homepage-url set http://localhost:3000
 ```
 
+The redirect URI value is stack-dependent: server frameworks use their callback route path (e.g., `http://localhost:3000/callback`); client-side SDKs (React SPA, authkit-js) use the app origin with no path (e.g., `http://localhost:5173`). Match the URI to the app's integration — see the framework's AuthKit reference file.
+
 ### Environment Seeding
 
 Create a `workos-seed.yml` file in your repo:
