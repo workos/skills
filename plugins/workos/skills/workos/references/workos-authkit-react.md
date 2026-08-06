@@ -66,8 +66,8 @@ grep -E "VITE_WORKOS_CLIENT_ID|REACT_APP_WORKOS_CLIENT_ID" .env .env.local 2>/de
 # 2. Check AuthKitProvider wraps app root
 grep "AuthKitProvider" src/main.tsx src/index.tsx 2>/dev/null || echo "FAIL: AuthKitProvider missing"
 
-# 3. Check redirect URI has no callback path (SDK handles redirect internally)
-grep -E "WORKOS_REDIRECT_URI=.*/(callback|auth)" .env .env.local 2>/dev/null && echo "FAIL: redirect URI must be the app origin, no path"
+# 3. Check redirect URI has no path (SDK handles redirect internally)
+grep -E "WORKOS_REDIRECT_URI=https?://[^/]+/." .env .env.local 2>/dev/null && echo "FAIL: redirect URI must be the app origin, no path"
 
 # 4. Check no server framework present (wrong skill if found)
 grep -E '"next"|"react-router"' package.json && echo "WARN: Server framework detected"
