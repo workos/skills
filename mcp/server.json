@@ -1,0 +1,20 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.workos/mcp",
+  "title": "WorkOS",
+  "description": "Manage your WorkOS workspace in plain language: orgs, users, SSO, Directory Sync, and AuthKit.",
+  "websiteUrl": "https://workos.com/docs/mcp",
+  "version": "1.0.0",
+  "repository": {
+    "url": "https://github.com/workos/skills",
+    "source": "github",
+    "subfolder": "mcp",
+    "id": "1151642686"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.workos.com/mcp"
+    }
+  ]
+}
