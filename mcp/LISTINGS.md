@@ -4,7 +4,7 @@ Only the first row is fed by `server.json`. Every other row is its own submissio
 
 | Directory | Listing | Fed by | How to update |
 | --- | --- | --- | --- |
-| MCP Registry (registry.modelcontextprotocol.io) | `com.workos/mcp` | `mcp/server.json` in this repo | Bump `version`, merge to `main`. The publish workflow republishes. |
+| MCP Registry (registry.modelcontextprotocol.io) | `com.workos/mcp` | `mcp/server.json` in this repo | Bump `version`, merge, then from `mcp/`: `mcp-publisher login dns --domain workos.com --private-key <hex>` and `mcp-publisher publish`. Versions are immutable. |
 | GitHub MCP Registry (Copilot, VS Code) | github.com/mcp/com.workos/mcp | Auto-ingested from the MCP Registry. Renders `mcp/README.md`. | Republish `server.json`, then email partnerships@github.com if curated placement changes. |
 | Claude connectors directory (Anthropic) | Claude Desktop and claude.ai connectors | Separate Anthropic submission | Anthropic partner console. |
 | ChatGPT apps directory (OpenAI) | chatgpt.com/plugins/plugin_asdk_app_6a5d5d38c5648191a54b117a8263505b | OpenAI Apps SDK console | OpenAI Apps SDK console. |
