@@ -137,7 +137,7 @@ branding, webhooks, feature flags, and more.
 ## Support
 
 - Docs: https://workos.com/docs/mcp
-- Support: https://workos.com/support
+- Support: support@workos.com
 - Status: https://status.workos.com
 
 ## Listings
