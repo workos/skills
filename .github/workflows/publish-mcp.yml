@@ -2,7 +2,7 @@ name: Publish MCP server listing
 on:
   push:
     branches: [main]
-    paths: ["mcp/server.json"]
+    paths: ["mcp/README.md", "mcp/server.json"]
   workflow_dispatch:
 jobs:
   publish:
@@ -10,24 +10,26 @@ jobs:
     environment: mcp-registry-publish
     permissions:
       contents: read
-    defaults:
-      run:
-        working-directory: mcp
     steps:
-      - uses: actions/checkout@v5
-      - name: Skip if this version is already published
-        id: check
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Publish mcp/server.json to the MCP Registry
+        working-directory: mcp
+        env:
+          PUBLISHER_URL: https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_linux_amd64.tar.gz
+          PUBLISHER_SHA256: a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc
+          PRIVATE_KEY: ${{ secrets.MCP_REGISTRY_PRIVATE_KEY }}
         run: |
           VERSION=$(jq -r .version server.json)
-          CODE=$(curl -s -o /dev/null -w '%{http_code}' "https://registry.modelcontextprotocol.io/v0.1/servers/com.workos%2Fmcp/versions/$VERSION")
-          echo "published=$([ "$CODE" = 200 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-      - name: Install mcp-publisher
-        if: steps.check.outputs.published == 'false'
-        run: |
-          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
-      - name: Authenticate (DNS, com.workos namespace)
-        if: steps.check.outputs.published == 'false'
-        run: ./mcp-publisher login dns --domain workos.com --private-key "${{ secrets.MCP_REGISTRY_PRIVATE_KEY }}"
-      - name: Publish
-        if: steps.check.outputs.published == 'false'
-        run: ./mcp-publisher publish
+          if curl -fsS -o /dev/null "https://registry.modelcontextprotocol.io/v0.1/servers/com.workos%2Fmcp/versions/$VERSION"; then
+            if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+              echo "::error::com.workos/mcp $VERSION is already published. Bump version in mcp/server.json; the registry renders mcp/README.md per version."
+              exit 1
+            fi
+            echo "::notice::com.workos/mcp $VERSION is already published. Nothing to do."
+            exit 0
+          fi
+          curl -fsSL "$PUBLISHER_URL" -o mcp-publisher.tar.gz
+          echo "$PUBLISHER_SHA256  mcp-publisher.tar.gz" | sha256sum -c -
+          tar xzf mcp-publisher.tar.gz mcp-publisher
+          ./mcp-publisher login dns --domain workos.com --private-key "$PRIVATE_KEY"
+          ./mcp-publisher publish

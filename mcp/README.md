@@ -22,6 +22,16 @@ do what your account can do.
 The first time you connect, your client opens a WorkOS consent screen. Sign in
 and approve access. After that the agent is connected as your account.
 
+### WorkOS CLI (Claude Code, Codex, Cursor)
+
+```bash
+workos mcp install
+```
+
+The CLI detects installed clients. Use `--agent claude-code`, `--agent codex`,
+or `--agent cursor` to target one. `workos mcp status` shows what is installed
+and signed in.
+
 ### GitHub Copilot / VS Code
 
 Add the server to `.vscode/mcp.json`:
@@ -38,7 +48,7 @@ Add the server to `.vscode/mcp.json`:
 ```
 
 Start the server from the `mcp.json` editor, or run **MCP: List Servers** from
-the Command Palette, then complete the OAuth consent.
+the Command Palette.
 
 ### Claude Code
 
@@ -60,7 +70,7 @@ Add to `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (per project):
 }
 ```
 
-Open **Settings → MCP**, click **Login** next to WorkOS, and complete the consent.
+Open **Settings → MCP** and click **Login** next to WorkOS.
 
 ### Codex CLI
 
@@ -72,7 +82,7 @@ codex mcp login workos
 ### Claude Desktop, ChatGPT
 
 Open **Settings → Connectors**, click **Add custom connector**, name it
-`WorkOS`, and enter `https://mcp.workos.com/mcp`. Complete the OAuth consent.
+`WorkOS`, and enter `https://mcp.workos.com/mcp`.
 
 ### Other clients
 
@@ -90,9 +100,8 @@ for Antigravity, Factory, Goose, OpenCode, Windsurf, and Zed are in the
 | `mutate` | Runs a write operation from the catalog, such as creating an organization or inviting a user. |
 | `setup_account` | Provisions a WorkOS workspace for a first-time user. |
 
-The agent discovers operations with `list_operations`, reads with `query`, and
-changes data with `mutate`. Operations cover organizations, users, SSO
-connections, Directory Sync, AuthKit branding, webhooks, feature flags, and more.
+Operations cover organizations, users, SSO connections, Directory Sync, AuthKit
+branding, webhooks, feature flags, and more.
 
 ## Example prompts
 
@@ -120,7 +129,7 @@ connections, Directory Sync, AuthKit branding, webhooks, feature flags, and more
 
 ## Limitations
 
-- No user impersonation. The agent always acts as you.
+- No user impersonation.
 - The most sensitive dashboard actions are not exposed: changing MCP access
   settings, minting or rotating credentials, and deleting your WorkOS team.
 - One team at a time. The agent is scoped to the team you authenticate with.
@@ -131,8 +140,8 @@ connections, Directory Sync, AuthKit branding, webhooks, feature flags, and more
 - Support: https://workos.com/support
 - Status: https://status.workos.com
 
-## Publishing this listing
+## Listings
 
-`mcp/server.json` in this repository is the source of truth for the
-`com.workos/mcp` entry in the [MCP Registry](https://registry.modelcontextprotocol.io).
-Bump `version` and merge to `main`. The publish workflow republishes it.
+`server.json` here is the source of truth for the `com.workos/mcp` entry in the
+[MCP Registry](https://registry.modelcontextprotocol.io). Other directories are
+tracked in [LISTINGS.md](./LISTINGS.md).
