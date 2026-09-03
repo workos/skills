@@ -15,8 +15,9 @@ jobs:
       - name: Publish mcp/server.json to the MCP Registry
         working-directory: mcp
         env:
-          PUBLISHER_URL: https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_linux_amd64.tar.gz
-          PUBLISHER_SHA256: a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc
+          # mcp-publisher is the MCP Registry CLI. It publishes to registry.modelcontextprotocol.io.
+          MCP_PUBLISHER_TARBALL: https://github.com/modelcontextprotocol/registry/releases/download/v1.8.1/mcp-publisher_linux_amd64.tar.gz
+          MCP_PUBLISHER_SHA256: a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc
           PRIVATE_KEY: ${{ secrets.MCP_REGISTRY_PRIVATE_KEY }}
         run: |
           VERSION=$(jq -r .version server.json)
@@ -28,8 +29,8 @@ jobs:
             echo "::notice::com.workos/mcp $VERSION is already published. Nothing to do."
             exit 0
           fi
-          curl -fsSL "$PUBLISHER_URL" -o mcp-publisher.tar.gz
-          echo "$PUBLISHER_SHA256  mcp-publisher.tar.gz" | sha256sum -c -
+          curl -fsSL "$MCP_PUBLISHER_TARBALL" -o mcp-publisher.tar.gz
+          echo "$MCP_PUBLISHER_SHA256  mcp-publisher.tar.gz" | sha256sum -c -
           tar xzf mcp-publisher.tar.gz mcp-publisher
           ./mcp-publisher login dns --domain workos.com --private-key "$PRIVATE_KEY"
           ./mcp-publisher publish
