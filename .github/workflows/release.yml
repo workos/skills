@@ -3,6 +3,12 @@ name: Release
 on:
   workflow_dispatch:
   workflow_call:
+    secrets:
+      PUBLIC_SOCKET_FIREWALL_TOKEN:
+        description: >-
+          Socket Firewall auth token used to route public dependency downloads
+          through the WorkOS Socket Firewall. Passed explicitly by the caller.
+        required: true
 
 jobs:
   publish:
@@ -22,6 +28,11 @@ jobs:
           node-version: 24
           cache: pnpm
 
+      - name: Configure Socket Firewall
+        uses: workos/setup-socket-firewall@ca93dd8aa351f54f4729fe3377a9be23c631c25d # v1
+        with:
+          token: ${{ secrets.PUBLIC_SOCKET_FIREWALL_TOKEN }}
+
       - name: Install
         run: pnpm install
 
@@ -30,6 +41,9 @@ jobs:
 
       - name: Smoke test tarball
         run: bash scripts/smoke-test-tarball.sh
+
+      - name: Restore public package registry
+        uses: workos/setup-socket-firewall/teardown@ca93dd8aa351f54f4729fe3377a9be23c631c25d # v1
 
       - name: Publish
         run: npm publish --tag latest --access public --provenance
