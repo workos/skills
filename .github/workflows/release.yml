@@ -36,14 +36,14 @@ jobs:
       - name: Install
         run: pnpm install
 
+      - name: Restore public package registry
+        uses: workos/setup-socket-firewall/teardown@ca93dd8aa351f54f4729fe3377a9be23c631c25d # v1
+
       - name: Build
         run: pnpm build
 
       - name: Smoke test tarball
         run: bash scripts/smoke-test-tarball.sh
-
-      - name: Restore public package registry
-        uses: workos/setup-socket-firewall/teardown@ca93dd8aa351f54f4729fe3377a9be23c631c25d # v1
 
       - name: Publish
         run: npm publish --tag latest --access public --provenance
