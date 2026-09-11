@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.2](https://github.com/workos/skills/compare/v0.7.1...v0.7.2) (2026-09-11)
+
+
+### Bug Fixes
+
+* correct SvelteKit AuthKit reference examples ([#45](https://github.com/workos/skills/issues/45)) ([b7b8f50](https://github.com/workos/skills/commit/b7b8f5066be2ecb80f1174fde240a383251cf41f))
+
 ## [0.7.1](https://github.com/workos/skills/compare/v0.7.0...v0.7.1) (2026-08-03)
 
 
