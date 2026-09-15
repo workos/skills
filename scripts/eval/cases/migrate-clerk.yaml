@@ -1,0 +1,55 @@
+- id: migrate-clerk-widgets-parity
+  product: migrate-clerk
+  skill: workos-migrate-clerk
+  skillType: generated
+  language: node
+  prompt: |
+    We're evaluating Clerk vs WorkOS for our B2B SaaS. One thing we like about
+    Clerk is the `<UserButton />` component that gives users profile and account
+    management UI out of the box. Does WorkOS have anything equivalent, or
+    would we need to build all of that UI ourselves?
+  expected:
+    methods: []
+    envVars: []
+    imports:
+      - '@workos-inc/widgets'
+    params: []
+    flowSteps:
+      - WorkOS Widgets
+      - UserProfile
+    antiPatterns:
+      - build that UI from scratch
+      - no pre-built UI
+      - no equivalent
+    hallucinations:
+      - '@workos/widgets'
+      - workos.widgets.UserButton
+
+- id: migrate-clerk-userbutton-replacement
+  product: migrate-clerk
+  skill: workos-migrate-clerk
+  skillType: generated
+  language: node
+  prompt: |
+    We're migrating our React app from Clerk to WorkOS AuthKit. Our header
+    currently renders Clerk's `<UserButton />` and our account page is built on
+    `<UserProfile />`. What should we replace these with on WorkOS, and how do
+    we set it up?
+  expected:
+    methods: []
+    envVars: []
+    imports:
+      - '@workos-inc/widgets'
+    params: []
+    flowSteps:
+      - install @workos-inc/widgets
+      - WorkOsWidgets provider
+      - UserProfile widget
+      - authorization token
+    antiPatterns:
+      - rebuild the profile UI from scratch
+      - no equivalent
+    hallucinations:
+      - '@workos/widgets'
+      - '@workos-inc/user-button'
+      - workos.widgets.createToken
