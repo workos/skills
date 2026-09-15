@@ -66,6 +66,13 @@ pnpm build 2>/dev/null || echo "CDN project — verify manually in browser"
 - Webpack: `REACT_APP_WORKOS_CLIENT_ID` or custom
 - No `WORKOS_API_KEY` needed (client-side SDK)
 
+## Redirect URI (No Callback Path)
+
+The SDK handles the OAuth redirect internally — **no callback route, no `/callback` path**.
+
+- Redirect URI = app origin (e.g., `http://localhost:5173`) — register it on the **Redirects** page in the WorkOS Dashboard
+- Add the app origin to the **allowed origins** list on the **Authentication** page
+
 ## Error Recovery
 
 | Error                            | Cause               | Fix                                                    |
@@ -81,7 +88,7 @@ pnpm build 2>/dev/null || echo "CDN project — verify manually in browser"
 
 1. **preflight**: Fetch README, detect project type, verify env vars
 2. **install**: Add SDK per project type
-3. **callback**: SDK handles internally (no server route needed)
+3. **callback**: SDK handles internally (no route, no callback path — redirect URI is the app origin)
 4. **provider**: Initialize client with `await createClient()`
 5. **ui**: Add auth buttons and state display
 6. **verify**: Build (if bundled), check console

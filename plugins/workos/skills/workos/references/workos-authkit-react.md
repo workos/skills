@@ -29,24 +29,31 @@ START
 
 **Wrong prefix = undefined values at runtime.** This is the #1 integration failure.
 
-## Key Clarification: No Callback Route
+## Critical: Redirect URI — No Callback Path
 
-The React SDK handles OAuth callbacks **internally** via AuthKitProvider.
+The React SDK handles the OAuth redirect **internally** via AuthKitProvider.
 
-- No server-side callback route needed
-- SDK intercepts redirect URI client-side
-- Token exchange happens automatically
+- **No callback route** — do not create a `/callback` route; the SPA has no server
+- **No callback path** — the redirect URI is the app **origin** (e.g., `http://localhost:5173`), NOT `http://localhost:5173/callback`
+- SDK intercepts the redirect client-side; token exchange happens automatically
 
-Just ensure redirect URI env var matches WorkOS Dashboard exactly.
+The `/callback` convention comes from Next.js — it does not apply to SPAs.
+
+In the WorkOS Dashboard:
+
+- Add the redirect URI (app origin, no path) on the **Redirects** page
+- Add the app origin to the **allowed origins** list on the **Authentication** page (required for client-side token exchange)
+
+Redirect URI env var must match the Dashboard value exactly.
 
 ## Required Environment Variables
 
 ```
 {PREFIX}WORKOS_CLIENT_ID=client_...
-{PREFIX}WORKOS_REDIRECT_URI=http://localhost:5173/callback
+{PREFIX}WORKOS_REDIRECT_URI=http://localhost:5173
 ```
 
-No `WORKOS_API_KEY` needed. Client-side only SDK.
+Redirect URI = app origin, **no path**. No `WORKOS_API_KEY` needed. Client-side only SDK.
 
 ## Verification Checklist (ALL MUST PASS)
 
@@ -59,10 +66,13 @@ grep -E "VITE_WORKOS_CLIENT_ID|REACT_APP_WORKOS_CLIENT_ID" .env .env.local 2>/de
 # 2. Check AuthKitProvider wraps app root
 grep "AuthKitProvider" src/main.tsx src/index.tsx 2>/dev/null || echo "FAIL: AuthKitProvider missing"
 
-# 3. Check no server framework present (wrong skill if found)
+# 3. Check redirect URI has no path (SDK handles redirect internally)
+grep -E "WORKOS_REDIRECT_URI=https?://[^/]+/." .env .env.local 2>/dev/null && echo "FAIL: redirect URI must be the app origin, no path"
+
+# 4. Check no server framework present (wrong skill if found)
 grep -E '"next"|"react-router"' package.json && echo "WARN: Server framework detected"
 
-# 4. Build succeeds
+# 5. Build succeeds
 pnpm build
 ```
 
@@ -88,8 +98,8 @@ Check: Browser dev tools → Application → Local Storage. SDK stores tokens he
 
 Check: Entry file (`main.tsx` or `index.tsx`) wraps `<App />` in `<AuthKitProvider>`.
 
-### Callback redirect fails
+### Redirect fails after sign-in
 
-**Cause:** URI mismatch
+**Cause:** Redirect URI has a path (e.g., `/callback`) or mismatches the Dashboard
 
-Check: Env var redirect URI exactly matches WorkOS Dashboard → Redirects configuration.
+Check: Env var redirect URI is the app origin with no path and exactly matches WorkOS Dashboard → Redirects configuration. If a `/callback` route was created, delete it — the SDK handles the redirect internally.
