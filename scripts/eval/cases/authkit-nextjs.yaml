@@ -28,6 +28,9 @@
       - create callback route
       - wrap app in AuthKitProvider
       - use getUser in server components
+      - configure Sign-out URI
+      - configure Initiate login URI
+      - verify sign-out
     antiPatterns:
       - middleware in app directory
       - use client for auth logic

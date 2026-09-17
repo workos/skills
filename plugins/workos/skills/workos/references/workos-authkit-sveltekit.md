@@ -1,5 +1,11 @@
 # WorkOS AuthKit for SvelteKit
 
+Docs: https://workos.com/docs/authkit/vanilla/nodejs#configure-initiate-login-uri and https://workos.com/docs/authkit/sessions#sign-out-uris
+
+If this file conflicts with fetched docs, follow the docs.
+
+**Required setup:** Read [workos-authkit-setup.md](workos-authkit-setup.md) alongside the SDK README below. Configure and verify the callback, Sign-out URI, and Initiate login URI for the target environment.
+
 ## Step 1: Fetch SDK Documentation (BLOCKING)
 
 **STOP. Do not proceed until complete.**
@@ -149,6 +155,8 @@ Add auth UI to `src/routes/+page.svelte` using the session data from the layout.
 Check README for sign-in URL generation and sign-out patterns.
 
 ## Verification Checklist (ALL MUST PASS)
+
+- [ ] Application settings and sign-in/sign-out flows pass the completion checklist in [workos-authkit-setup.md](workos-authkit-setup.md)
 
 Run these commands to confirm integration. **Do not mark complete until all pass:**
 

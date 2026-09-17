@@ -11,7 +11,7 @@
     imports: []
     params: []
     flowSteps:
-      - Sign-in endpoint
+      - Initiate login URI
       - Dashboard
       - Redirects
       - workos.com/docs

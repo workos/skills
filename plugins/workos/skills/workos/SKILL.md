@@ -21,7 +21,8 @@ These apply regardless of which routing rule fires. They exist because the most 
 
 - **Check for the WorkOS MCP server before reaching for the CLI on workspace-management tasks.** If the session has WorkOS MCP tools connected (a server exposing `whoami`, `list_operations`, `query`, and `mutate` — tool names may carry a client-specific prefix), prefer those tools for reading and changing workspace resources: they already run as the signed-in dashboard user, with no CLI install and no API key. The CLI remains the right surface for bootstrap, seeding, local project config, and diagnostics. The full decision guide is the "Choosing a surface" section of `references/workos-management.md`.
 - **Recover a broken WorkOS MCP connection before relying on it — but never treat MCP setup as a prerequisite for CLI work.** When the user asks to set up the WorkOS MCP server, or expects MCP tools that turn out to be missing, unauthenticated, or interrupted during startup, read `references/workos-mcp.md` first: identify the MCP client and requested configuration scope, and do not modify user-global agent configuration without explicit intent. Authentication that depends on a browser, credential store, or host certificates must be completed in the user's normal host shell. If no MCP server is configured and the user hasn't asked for one, do not divert the request into MCP setup — the CLI path in `references/workos-management.md` fully supports it.
-- **Never invent `workos` CLI commands.** If the user asks about CLI support or you're about to suggest a command, verify the command tree first. The authoritative source is `WORKOS_MODE=agent workos --help --json` — it emits the complete registered command tree. Do not assume a `create` subcommand exists because `list`/`get`/`delete` do. See `references/workos-management.md`.
+- **Never invent `workos` CLI commands.** Verify named commands with `WORKOS_MODE=agent workos --help --json`. Before declaring an operation unsupported, also check `WORKOS_MODE=agent workos api ls --json` for REST endpoints usable through `workos api`. Do not assume a `create` subcommand exists because `list`/`get`/`delete` do, or that a GraphQL operation is a REST endpoint. See `references/workos-management.md`.
+- **Every AuthKit integration must configure and verify application URLs.** For setup and migrations, read `references/workos-authkit-setup.md` alongside the framework or language reference. It covers the callback, Sign-out URI, and Initiate login URI. A build passing is not proof that these settings or flows work.
 - **Prefer `WORKOS_MODE=agent` when invoking the `workos` CLI from a coding-agent session.** The CLI auto-detects most agent environments (`CLAUDECODE`, `CLAUDE_CODE`, `CURSOR_AGENT`, `CODEX_SANDBOX`, non-TTY), but the explicit env var is more reliable across sandbox configurations. See the **WorkOS CLI in Coding-Agent Sessions** section below.
 - **Never invent Dashboard click-paths.** Phrases like "Dashboard > Organizations > X > Roles > Map Groups" or `dashboard.workos.com/some/specific/path` should not appear unless you have verified them against a docs page you just fetched. The Dashboard UI reorganizes; docs pages are stable. Cite the docs URL and describe the destination conceptually ("the Authorization page", "the directory's settings") instead of committing to a click-path.
 - **When the user wants to do something not supported by the CLI, say so plainly.** Users are better served by "this isn't in the CLI; here's the docs URL for how to do it" than by a fabricated command that fails. See the "Not in the CLI" section of `references/workos-management.md`.
@@ -47,7 +48,7 @@ This returns a structured JSON report with `interactionMode` (`{ mode, source }`
 - Use `WORKOS_MODE=agent` even when relaying human-readable messages. It controls **prompts, browser launch, and host trust**.
 - Treat the doctor `HOST_EXECUTION_UNTRUSTED` issue as a hard trust boundary. If the doctor report contains this issue (or `hostExecution.ok` is `false`), **the current shell may be sandboxed**. Auth, config, keychain, and API failures from this shell are not authoritative. Ask the user to re-run host-sensitive commands (`workos auth login`, `workos doctor`, `workos env add`) on their host shell before drawing conclusions.
 - Do not assume browser-based auth (`workos auth login`) works in a sandbox. If auth is required, surface the manual URL/code fallback that the CLI prints, or ask the user to run `workos auth login` on their host shell.
-- For destructive CLI commands in agent mode, pass the explicit confirmation flag. Agent mode never prompts, so omitting the flag causes a `confirmation_required` error. Known flags: `--yes` for `workos api` (mutating methods), `--force` for `workos connection delete`, `workos directory delete`, and `workos debug reset`. If unsure which flag a command expects, run `workos <cmd> --help --json` to check.
+- For destructive or privilege-changing CLI commands, obtain the user's approval before passing a confirmation flag. Agent mode never prompts, so omitting a required flag causes a `confirmation_required` error. Known flags: `--yes` for mutating `workos api` requests, role/permission writes, and membership role updates; `--force` for `workos connection delete`, `workos directory delete`, and `workos debug reset`. Check `workos --help --json` for the installed command's flags. A confirmation flag is not permission to make an unrequested change.
 - Structured CLI errors (JSON on stderr) include an optional `error.recovery.hints` array, where each hint has `description`, optional `command`, and optional `hostShellRequired`. Prefer those hints over guessing the next step.
 
 **Legacy compatibility you may encounter:**
@@ -70,6 +71,7 @@ This returns a structured JSON report with `interactionMode` (`{ mode, source }`
 | Install AuthKit with SvelteKit      | `references/workos-authkit-sveltekit.md`      |
 | Install AuthKit in vanilla JS       | `references/workos-authkit-vanilla-js.md`     |
 | AuthKit architecture reference      | `references/workos-authkit-base.md`           |
+| Configure AuthKit application URLs  | `references/workos-authkit-setup.md`          |
 | Add WorkOS Widgets                  | Load `workos-widgets` skill via Skill tool    |
 
 ### Backend SDK Installation (Read `references/{name}.md`)
@@ -203,7 +205,7 @@ Both files now have a canonical recipe. Do not answer from memory or paraphrase 
 
 **Triggers**: User mentions authentication setup, login flow, sign-up, session management, or explicitly says "AuthKit" WITHOUT mentioning a specific feature like SSO or MFA.
 
-**Action**: Detect framework and language using the priority-ordered checks below. Read the corresponding reference file.
+**Action**: Detect framework and language using the priority-ordered checks below. Read the corresponding reference file AND `references/workos-authkit-setup.md`. Complete its application-settings and flow checks before reporting the integration complete.
 
 **Disambiguation**:
 

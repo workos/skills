@@ -1,5 +1,11 @@
 # WorkOS AuthKit for Next.js
 
+Docs: https://workos.com/docs/authkit/vanilla/nodejs#configure-initiate-login-uri and https://workos.com/docs/authkit/sessions#sign-out-uris
+
+If this file conflicts with fetched docs, follow the docs.
+
+**Required setup:** Read [workos-authkit-setup.md](workos-authkit-setup.md) alongside the SDK README below. Configure and verify the callback, Sign-out URI, and Initiate login URI for the target environment.
+
 ## Step 1: Fetch SDK Documentation (BLOCKING)
 
 **STOP. Do not proceed until complete.**
@@ -207,7 +213,12 @@ Sign-out **mutates state** — it clears the session — so it must never be a `
 Use a **POST server action**. In a Server Component, an inline action is fine:
 
 ```tsx
-<form action={async () => { 'use server'; await signOut(); }}>
+<form
+  action={async () => {
+    'use server';
+    await signOut();
+  }}
+>
   <button type="submit">Sign out</button>
 </form>
 ```
@@ -229,10 +240,10 @@ import { signOutAction } from '@/app/auth/actions';
 // ...
 <form action={signOutAction}>
   <button type="submit">Sign out</button>
-</form>
+</form>;
 ```
 
-`signOut()` accepts an optional `{ returnTo }`; with none, it redirects to the Logout URI configured in your WorkOS dashboard. If a generated `GET` sign-out route exists, **delete it** rather than switching it to `POST` — that removes the extra logout surface entirely.
+`signOut()` accepts an optional `{ returnTo }`; with none, it redirects to the default Sign-out URI configured in your WorkOS dashboard. If a generated `GET` sign-out route exists, **delete it** rather than switching it to `POST` — that removes the extra logout surface entirely.
 
 ### Critical auth URL gotchas
 
@@ -245,6 +256,8 @@ import { signOutAction } from '@/app/auth/actions';
 **Note:** The SDK renamed `getUser` to `withAuth` in newer versions. Use whichever function the installed SDK version exports — do NOT rename existing working imports.
 
 ## Verification Checklist (ALL MUST PASS)
+
+- [ ] Application settings and sign-in/sign-out flows pass the completion checklist in [workos-authkit-setup.md](workos-authkit-setup.md)
 
 Run these commands to confirm integration. **Do not mark complete until all pass:**
 

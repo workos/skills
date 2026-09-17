@@ -1,5 +1,11 @@
 # WorkOS AuthKit Base Template
 
+Docs: https://workos.com/docs/authkit/vanilla/nodejs and https://workos.com/docs/authkit/sessions#sign-out-uris
+
+If this file conflicts with fetched docs, follow the docs.
+
+**Required setup:** Read [workos-authkit-setup.md](workos-authkit-setup.md). Configure and verify the callback, Sign-out URI, and Initiate login URI for the target environment. Complete its flow checks before declaring the integration complete.
+
 ## First Action: Fetch README
 
 Before any implementation, fetch the framework-specific README:
@@ -19,7 +25,7 @@ README is the source of truth for: install commands, imports, API usage, code pa
 | 3     | callback  | install            | Create OAuth callback route       |
 | 4     | provider  | install            | Setup auth context/middleware     |
 | 5     | ui        | callback, provider | Add sign-in/out UI                |
-| 6     | verify    | ui                 | Build confirmation                |
+| 6     | verify    | ui                 | Settings, auth flows, and build   |
 
 ## Server-Side Auth Flow
 
@@ -32,7 +38,7 @@ This is the runtime login sequence inside the `callback` and `provider` implemen
 3. Redirect the user to that authorization URL.
 4. Handle the callback route by exchanging `code` with the SDK.
 5. Store the returned user profile in the app session.
-6. Implement logout by clearing the app session and redirecting the user.
+6. Implement logout using the SDK to end the AuthKit session and clear the app session, then redirect to the configured Sign-out URI.
 
 ## Decision Trees
 
@@ -92,6 +98,7 @@ Note: Some frameworks use prefixed variants (e.g., `NEXT_PUBLIC_*`). Check READM
 
 ### Final Verification
 
+- [ ] Application settings and sign-in/sign-out flows pass the completion checklist in [workos-authkit-setup.md](workos-authkit-setup.md)
 - [ ] Build completes with exit code 0
 - [ ] No import resolution errors
 

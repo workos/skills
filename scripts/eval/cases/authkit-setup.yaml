@@ -1,0 +1,111 @@
+- id: authkit-application-url-setup
+  product: authkit
+  skill: workos-authkit-setup
+  skillType: hand-crafted
+  language: node
+  framework: nextjs
+  prompt: |
+    My new Next.js AuthKit integration at http://localhost:3000 builds and normal
+    sign-in works. What WorkOS application settings and flow checks are required
+    before I call it complete? The callback is /callback and the SDK-backed
+    sign-in route is /login. I have not configured any other URLs.
+  expected:
+    methods: []
+    envVars: []
+    imports: []
+    params:
+      - Sign-out URI
+      - Initiate login URI
+      - http://localhost:3000/login
+    flowSteps:
+      - confirm environment
+      - configure Sign-out URI
+      - configure Initiate login URI
+      - verify sign-out
+      - test password reset
+    antiPatterns: []
+    hallucinations: []
+
+- id: authkit-preserve-sign-out-configuration
+  product: authkit
+  skill: workos-authkit-setup
+  skillType: hand-crafted
+  language: node
+  prompt: |
+    Add http://localhost:3000/ as a sign-out destination to my development
+    environment. It already has two other sign-out URLs and a default that must
+    remain unchanged. The installed CLI has authkit logout-uris list and set,
+    including --uri, --default, --environment-id, and --dry-run. Describe the safe
+    command sequence without guessing my existing URLs or environment ID.
+  expected:
+    methods:
+      - authkit logout-uris list
+      - authkit logout-uris set
+    envVars: []
+    imports: []
+    params:
+      - --environment-id
+      - --dry-run
+      - --default
+    flowSteps:
+      - read existing URLs
+      - preserve existing default
+      - dry-run
+      - apply
+      - read back
+    antiPatterns:
+      - set is additive
+      - doesn't replace
+      - only adds
+      - omitting --default preserves the default
+    hallucinations: []
+
+- id: authkit-initiate-login-manual-fallback
+  product: authkit
+  skill: workos-authkit-setup
+  skillType: hand-crafted
+  language: node
+  prompt: |
+    I checked workos --help --json and workos api ls --json. Neither exposes an
+    initiate-login setting. No WorkOS MCP server is connected. The homepage is
+    already set to http://localhost:3000/, and my SDK-backed sign-in route is
+    /login. Is that enough? Tell me exactly what remains before setup is done.
+  expected:
+    methods: []
+    envVars: []
+    imports: []
+    params:
+      - Initiate login URI
+      - http://localhost:3000/login
+    flowSteps:
+      - configure dashboard
+      - verify setting
+      - test password reset
+    antiPatterns: []
+    hallucinations: []
+
+- id: management-dashboard-auth-and-json
+  product: management
+  skill: workos-management
+  skillType: hand-crafted
+  language: node
+  prompt: |
+    WORKOS_API_KEY is set but workos config redirect add returns auth_required.
+    I also need to script organization creation and extract the ID. My CLI
+    returns {"organization":{"id":"org_123"}}. Explain how to authenticate,
+    avoid targeting production, and extract the ID from that response.
+  expected:
+    methods:
+      - workos auth login
+      - workos whoami
+    envVars: []
+    imports: []
+    params:
+      - --environment-id
+      - .organization.id
+    flowSteps:
+      - dashboard login
+      - confirm environment
+      - organization create
+    antiPatterns: []
+    hallucinations: []

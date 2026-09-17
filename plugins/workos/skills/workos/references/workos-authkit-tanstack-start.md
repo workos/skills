@@ -1,5 +1,11 @@
 # WorkOS AuthKit for TanStack Start
 
+Docs: https://workos.com/docs/authkit/vanilla/nodejs#configure-initiate-login-uri and https://workos.com/docs/authkit/sessions#sign-out-uris
+
+If this file conflicts with fetched docs, follow the docs.
+
+**Required setup:** Read [workos-authkit-setup.md](workos-authkit-setup.md) alongside the SDK README below. Configure and verify the callback, Sign-out URI, and Initiate login URI for the target environment.
+
 ## Decision Tree
 
 ```
@@ -235,6 +241,8 @@ Do not skip this step. If the build fails, fix the errors before finishing. Comm
 - Wrong import paths → check package name is `@workos/authkit-tanstack-react-start`
 
 ## Verification Checklist (ALL MUST PASS)
+
+- [ ] Application settings and sign-in/sign-out flows pass the completion checklist in [workos-authkit-setup.md](workos-authkit-setup.md)
 
 Run these commands to confirm integration. **Do not mark complete until all pass:**
 

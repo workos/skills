@@ -8,9 +8,9 @@
       "files": [],
       "assertions": [
         {
-          "text": "Mentions Sign-in endpoint as the WorkOS-side term for this concept",
+          "text": "Uses the current Initiate login URI terminology",
           "kind": "content_contains_any",
-          "needles": ["Sign-in endpoint", "sign-in endpoint", "Sign-In endpoint"]
+          "needles": ["Initiate login URI", "initiate login URI", "initiate-login URI"]
         },
         {
           "text": "Points to Dashboard → Redirects as the config location",
@@ -322,36 +322,24 @@
     },
     {
       "id": 8,
-      "name": "sso-connection-create-not-in-cli",
-      "prompt": "How do I create a new SSO connection for one of my organizations using the `workos` CLI? Give me the exact command.",
+      "name": "sso-connection-create-supported",
+      "prompt": "I checked `workos --help --json`: connection create exists with --org, --name, --type, --data, and --file flags. How should I create an SSO connection for an organization? I haven't picked the connection type yet.",
       "files": [],
       "assertions": [
         {
-          "text": "States connection creation is NOT in the CLI",
-          "kind": "content_contains_any",
-          "needles": [
-            "not in the CLI",
-            "not supported in the CLI",
-            "CLI doesn't support",
-            "CLI does not support",
-            "no CLI command",
-            "cannot be created from the CLI"
-          ]
+          "text": "Recognizes the verified connection creation command",
+          "kind": "content_contains_all",
+          "needles": ["workos connection create"]
         },
         {
-          "text": "Points at portal generate-link OR the Admin Portal / Dashboard as the right place",
+          "text": "Requires choosing the connection type or checking its schema",
           "kind": "content_contains_any",
-          "needles": ["portal generate-link", "Admin Portal", "WorkOS Dashboard", "WorkOS dashboard"]
+          "needles": ["connection type", "--type", "schema"]
         },
         {
-          "text": "Does NOT invent a creation command",
+          "text": "Does NOT invent an alternate creation command",
           "kind": "content_contains_none",
-          "needles": [
-            "workos connection create",
-            "workos sso create",
-            "workos sso connection create",
-            "workos connections create"
-          ]
+          "needles": ["workos sso create", "workos sso connection create", "workos connections create"]
         }
       ]
     },
@@ -402,6 +390,11 @@
           "needles": ["workos --help --json", "--help --json", "help --json"]
         },
         {
+          "text": "Checks REST endpoints as well as named commands before ruling out CLI support",
+          "kind": "content_contains_all",
+          "needles": ["api ls", "--json"]
+        },
+        {
           "text": "Does NOT fabricate a role-rule command",
           "kind": "content_contains_none",
           "needles": ["workos role-rule", "workos role-rules", "workos role assignment-rule", "workos role rule"]
@@ -450,6 +443,108 @@
             "currently 0.13",
             "currently 0.14"
           ]
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "authkit-setup-includes-application-urls",
+      "prompt": "Set up AuthKit in a new Next.js app at http://localhost:3000. I need login, logout, and protected pages. Include the WorkOS settings needed before calling the integration complete, not just the app code.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Requires all three application URLs",
+          "kind": "content_contains_all",
+          "needles": ["Redirect URI", "Sign-out URI", "Initiate login URI"]
+        },
+        {
+          "text": "Includes an externally started login check",
+          "kind": "content_contains_any",
+          "needles": ["bookmark", "password-reset", "password reset", "invitation"]
+        },
+        {
+          "text": "Requires verifying saved configuration",
+          "kind": "content_contains_any",
+          "needles": ["read back", "read-back", "logout-uris list", "user confirmation"]
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "name": "authkit-preserve-existing-sign-out-urls",
+      "prompt": "My development environment already has two sign-out URLs, one of them the default. Add http://localhost:3000/ for a new app. Help confirms authkit logout-uris list and set with --uri, --default, --environment-id, and --dry-run. Can I just set the localhost URL?",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Warns that set replaces the full list",
+          "kind": "content_contains_any",
+          "needles": ["replaces", "replace the", "overwrite"]
+        },
+        {
+          "text": "Preserves existing entries and default",
+          "kind": "content_contains_all",
+          "needles": ["existing", "default", "--environment-id", "--dry-run"]
+        },
+        {
+          "text": "Does not claim the setter is additive",
+          "kind": "content_contains_none",
+          "needles": ["set is additive", "only adds", "doesn't replace"]
+        },
+        {
+          "text": "Requires a read-back rather than treating validation as a saved change",
+          "kind": "content_contains_any",
+          "needles": ["read back", "read-back", "logout-uris list"]
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "name": "authkit-initiate-login-cli-fallback",
+      "prompt": "The CLI help has no initiate-login command, and workos api ls --json has no REST endpoint for it. No WorkOS MCP server is connected. I set the homepage URL to http://localhost:3000/. Is initiate-login configured now? The app has an SDK-backed /login route. Tell me what's still needed before setup is complete.",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Distinguishes the missing setting from homepage configuration",
+          "kind": "content_contains_all",
+          "needles": ["homepage", "Initiate login URI", "http://localhost:3000/login"]
+        },
+        {
+          "text": "Names the dashboard fallback",
+          "kind": "content_contains_any",
+          "needles": ["dashboard", "Dashboard"]
+        },
+        {
+          "text": "Does not invent commands or send dashboard GraphQL through the REST CLI",
+          "kind": "content_contains_none",
+          "needles": ["workos authkit initiate-login", "workos config initiate-login", "workos api /graphql"]
+        },
+        {
+          "text": "Does not claim completion without verification",
+          "kind": "content_contains_any",
+          "needles": ["verify", "verified", "confirm", "test"]
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "name": "dashboard-command-auth-and-json",
+      "prompt": "WORKOS_API_KEY is set but workos config redirect add returns auth_required. I also need to script organization creation followed by reading its ID. Our CLI now returns {\"organization\":{\"id\":\"org_123\"}}. What should I change, and how do I make sure I don't target production?",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Requires a dashboard login and explicit environment targeting",
+          "kind": "content_contains_all",
+          "needles": ["auth login", "--environment-id"]
+        },
+        {
+          "text": "Uses the actual organization output wrapper",
+          "kind": "content_contains_all",
+          "needles": [".organization.id"]
+        },
+        {
+          "text": "Does not recommend the stale data wrapper",
+          "kind": "content_contains_none",
+          "needles": ["jq -r '.data.id'", "jq -er '.data.id'"]
         }
       ]
     }
