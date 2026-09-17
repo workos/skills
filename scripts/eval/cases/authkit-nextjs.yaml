@@ -11,6 +11,7 @@
     methods:
       - authkitMiddleware
       - handleAuth
+      - getSignInUrl
       - getUser
       - AuthKitProvider
     envVars:
@@ -26,6 +27,7 @@
       - set environment variables
       - create middleware
       - create callback route
+      - create sign-in route using getSignInUrl
       - wrap app in AuthKitProvider
       - use getUser in server components
       - configure Sign-out URI

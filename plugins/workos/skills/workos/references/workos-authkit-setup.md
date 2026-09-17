@@ -30,7 +30,9 @@ The dashboard calls the logout destination **Sign-out URI**. The CLI command is 
 
 Prefer an already-connected WorkOS MCP server for workspace settings. Discover operations and arguments with `list_operations` before using `query` or `mutate`. If none is connected, use the CLI; do not make MCP installation a prerequisite. Read [workos-management.md](workos-management.md) for command authentication and output shapes.
 
-Before using CLI commands, check what the installed version supports:
+**Inside the WorkOS installer:** Its agent may be restricted to app-file edits and build/install commands. If the installer says it owns dashboard configuration, implement the required routes and let its native setup step handle the settings. Do not bypass denied shell commands through curl, scripts, another CLI installation, or SDK calls. Treat settings as unverified until the installer reports successful read-back; otherwise retain the explicit manual setup steps. If this reference is already in the prompt, do not try to read a relative copy from the app directory.
+
+Before using CLI commands in a session that permits them, check what the installed version supports:
 
 ```bash
 WORKOS_MODE=agent workos --help --json

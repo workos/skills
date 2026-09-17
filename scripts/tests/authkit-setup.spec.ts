@@ -54,6 +54,15 @@ describe('AuthKit setup routing', () => {
     }
   });
 
+  it('requires a separate SDK-backed Next.js sign-in route and respects installer permissions', () => {
+    const nextjs = loadSkillContent('workos-authkit-nextjs');
+    const routeInstructions = nextjs.split('## Step 6b:')[1].split('## Step 7:')[0];
+    expect(routeInstructions).toContain('/app/sign-in/route.ts');
+    expect(routeInstructions).toContain('redirect(await getSignInUrl())');
+    expect(routeInstructions).toContain('Never set it to the callback URL');
+    expect(loadSkillContent('workos-authkit-setup')).toContain('Do not bypass denied shell commands');
+  });
+
   it('loads runnable regression cases for setup, safe writes, fallback, and CLI auth', () => {
     const ids = [
       'authkit-application-url-setup',
