@@ -59,36 +59,38 @@ If `workos --help --json` is missing a command you expected, or the user reports
 
 ## Quick Reference
 
-| Task                   | Command                                                                                         |
-| ---------------------- | ----------------------------------------------------------------------------------------------- |
-| List organizations     | `workos organization list`                                                                      |
-| Create organization    | `workos organization create "Acme Corp" acme.com:verified`                                      |
-| List users             | `workos user list --email=alice@acme.com`                                                       |
-| Create permission      | `workos permission create --slug=read-users --name="Read Users" --yes`                          |
-| Create role            | `workos role create --slug=admin --name=Admin --yes`                                            |
-| Assign perms to role   | `workos role set-permissions admin --permissions=read-users,write-users --yes`                  |
-| Create org-scoped role | `workos role create --slug=admin --name=Admin --org=org_xxx --yes`                              |
-| Add user to org        | `workos membership create --org=org_xxx --user=user_xxx`                                        |
-| Send invitation        | `workos invitation send --email=alice@acme.com --org=org_xxx`                                   |
-| Revoke session         | `workos session revoke <sessionId>`                                                             |
-| Add redirect URI       | `workos config redirect add http://localhost:3000/callback`                                     |
-| Add CORS origin        | `workos config cors add http://localhost:3000`                                                  |
-| Set homepage URL       | `workos config homepage-url set http://localhost:3000`                                          |
-| Inspect sign-out URLs  | `workos authkit logout-uris list --environment-id "$ENVIRONMENT_ID" --json`                     |
-| Inspect callback URLs  | `workos authkit redirect-uris list --environment-id "$ENVIRONMENT_ID" --json`                   |
-| Upload branding logo   | `workos branding set --logo ./logo.png --environment-id "$ENVIRONMENT_ID"`                      |
-| Change membership role | `workos membership update <membershipId> --role=admin --yes --environment-id "$ENVIRONMENT_ID"` |
-| Create webhook         | `workos webhook create --url=https://example.com/hook --events=user.created`                    |
-| List SSO connections   | `workos connection list --org=org_xxx`                                                          |
-| List directories       | `workos directory list`                                                                         |
-| Toggle feature flag    | `workos feature-flag enable my-flag`                                                            |
-| Store a secret         | `workos vault create --name=api-secret --value=sk_xxx --org=org_xxx`                            |
-| Generate portal link   | `workos portal generate-link --intent=sso --org=org_xxx`                                        |
-| Seed environment       | `workos seed --file=workos-seed.yml`                                                            |
-| Debug SSO              | `workos debug-sso conn_xxx`                                                                     |
-| Debug directory sync   | `workos debug-sync directory_xxx`                                                               |
-| Set up an org          | `workos setup-org "Acme Corp" --domain=acme.com --roles=admin,viewer`                           |
-| Onboard a user         | `workos onboard-user alice@acme.com --org=org_xxx --role=admin`                                 |
+`ENVIRONMENT_ID` must contain the environment ID confirmed with `whoami` above. Keep it explicit in copied commands; `--yes` confirms an approved write but does not select its environment.
+
+| Task                   | Command                                                                                                           |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| List organizations     | `workos organization list --environment-id "$ENVIRONMENT_ID"`                                                     |
+| Create organization    | `workos organization create "Acme Corp" acme.com:verified --environment-id "$ENVIRONMENT_ID"`                     |
+| List users             | `workos user list --email=alice@acme.com --environment-id "$ENVIRONMENT_ID"`                                      |
+| Create permission      | `workos permission create --slug=read-users --name="Read Users" --yes --environment-id "$ENVIRONMENT_ID"`         |
+| Create role            | `workos role create --slug=admin --name=Admin --yes --environment-id "$ENVIRONMENT_ID"`                           |
+| Assign perms to role   | `workos role set-permissions admin --permissions=read-users,write-users --yes --environment-id "$ENVIRONMENT_ID"` |
+| Create org-scoped role | `workos role create --slug=admin --name=Admin --org=org_xxx --yes --environment-id "$ENVIRONMENT_ID"`             |
+| Add user to org        | `workos membership create --org=org_xxx --user=user_xxx --environment-id "$ENVIRONMENT_ID"`                       |
+| Send invitation        | `workos invitation send --email=alice@acme.com --org=org_xxx --environment-id "$ENVIRONMENT_ID"`                  |
+| Revoke session         | `workos session revoke <sessionId> --environment-id "$ENVIRONMENT_ID"`                                            |
+| Add redirect URI       | `workos config redirect add http://localhost:3000/callback --environment-id "$ENVIRONMENT_ID"`                    |
+| Add CORS origin        | `workos config cors add http://localhost:3000 --environment-id "$ENVIRONMENT_ID"`                                 |
+| Set homepage URL       | `workos config homepage-url set http://localhost:3000 --environment-id "$ENVIRONMENT_ID"`                         |
+| Inspect sign-out URLs  | `workos authkit logout-uris list --environment-id "$ENVIRONMENT_ID" --json`                                       |
+| Inspect callback URLs  | `workos authkit redirect-uris list --environment-id "$ENVIRONMENT_ID" --json`                                     |
+| Upload branding logo   | `workos branding set --logo ./logo.png --environment-id "$ENVIRONMENT_ID"`                                        |
+| Change membership role | `workos membership update <membershipId> --role=admin --yes --environment-id "$ENVIRONMENT_ID"`                   |
+| Create webhook         | `workos webhook create --url=https://example.com/hook --events=user.created --environment-id "$ENVIRONMENT_ID"`   |
+| List SSO connections   | `workos connection list --org=org_xxx`                                                                            |
+| List directories       | `workos directory list`                                                                                           |
+| Toggle feature flag    | `workos feature-flag enable my-flag --environment-id "$ENVIRONMENT_ID"`                                           |
+| Store a secret         | `workos vault create --name=api-secret --value=sk_xxx --org=org_xxx`                                              |
+| Generate portal link   | `workos portal generate-link --intent=sso --org=org_xxx --environment-id "$ENVIRONMENT_ID"`                       |
+| Seed environment       | `workos seed --file=workos-seed.yml`                                                                              |
+| Debug SSO              | `workos debug-sso conn_xxx`                                                                                       |
+| Debug directory sync   | `workos debug-sync directory_xxx`                                                                                 |
+| Set up an org          | `workos setup-org "Acme Corp" --domain=acme.com --roles=admin,viewer`                                             |
+| Onboard a user         | `workos onboard-user alice@acme.com --org=org_xxx --role=admin`                                                   |
 
 ## Workflows
 
@@ -118,10 +120,10 @@ workos setup-org "Acme Corp" --domain=acme.com --roles=admin,viewer
 Or step by step:
 
 ```bash
-ORG_ID=$(workos organization create "Acme Corp" --json | jq -er '.organization.id')
-workos org-domain create acme.com --org=$ORG_ID
-workos role create --slug=admin --name=Admin --org=$ORG_ID --yes
-workos portal generate-link --intent=sso --org=$ORG_ID
+ORG_ID=$(workos organization create "Acme Corp" --environment-id "$ENVIRONMENT_ID" --json | jq -er '.organization.id')
+workos org-domain create acme.com --org=$ORG_ID --environment-id "$ENVIRONMENT_ID"
+workos role create --slug=admin --name=Admin --org=$ORG_ID --yes --environment-id "$ENVIRONMENT_ID"
+workos portal generate-link --intent=sso --org=$ORG_ID --environment-id "$ENVIRONMENT_ID"
 ```
 
 ### User Onboarding
@@ -133,8 +135,8 @@ workos onboard-user alice@acme.com --org=org_xxx --role=admin
 Or step by step:
 
 ```bash
-workos invitation send --email=alice@acme.com --org=org_xxx --role=admin
-workos membership create --org=org_xxx --user=user_xxx --role=admin
+workos invitation send --email=alice@acme.com --org=org_xxx --role=admin --environment-id "$ENVIRONMENT_ID"
+workos membership create --org=org_xxx --user=user_xxx --role=admin --environment-id "$ENVIRONMENT_ID"
 ```
 
 ### Local Development Setup
@@ -206,9 +208,9 @@ Shows: directory type/state, user/group counts, recent sync events, and stall de
 ### Webhook Management
 
 ```bash
-workos webhook list
-workos webhook create --url=https://example.com/hook --events=user.created,dsync.user.created
-workos webhook delete we_xxx
+workos webhook list --environment-id "$ENVIRONMENT_ID"
+workos webhook create --url=https://example.com/hook --events=user.created,dsync.user.created --environment-id "$ENVIRONMENT_ID"
+workos webhook delete we_xxx --environment-id "$ENVIRONMENT_ID"
 ```
 
 ### Audit Logs
@@ -227,17 +229,17 @@ All commands support `--json` for machine-readable output. Use this when you nee
 
 ```bash
 # Get an organization ID
-workos organization list --json | jq '.organizations[].id'
+workos organization list --environment-id "$ENVIRONMENT_ID" --json | jq '.organizations[].id'
 
 # Get a connection's state
 workos connection get conn_xxx --json | jq '.state'
 
 # List all role slugs
-workos role list --json | jq '.roles[].slug'
+workos role list --environment-id "$ENVIRONMENT_ID" --json | jq '.roles[].slug'
 
 # Chain commands: create org then add domain
-ORG_ID=$(workos organization create "Acme" --json | jq -er '.organization.id')
-workos org-domain create acme.com --org=$ORG_ID
+ORG_ID=$(workos organization create "Acme" --environment-id "$ENVIRONMENT_ID" --json | jq -er '.organization.id')
+workos org-domain create acme.com --org=$ORG_ID --environment-id "$ENVIRONMENT_ID"
 ```
 
 JSON shapes differ by command and version. Inspect the actual output before writing a `jq` expression; there is no universal `.data` wrapper.
@@ -307,20 +309,20 @@ These operations have no named CLI command in this snapshot. Check live command 
 
 ### Not in the CLI — where each operation lives
 
-| Operation                                                       | MCP operation (if connected)                                                                                                      | Otherwise                                                                               | Docs                                                                        |
-| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Create a Directory Sync connection                              | setup link via `generatePortalSetupLink` (intent `Dsync`); direct `createDirectory` exists but is feature-flag-gated              | Admin Portal (generate via `workos portal generate-link --intent=dsync --org=<org_id>`) | https://workos.com/docs/directory-sync/quick-start                          |
-| Map IdP (Entra/AD/Okta/Google Workspace) groups to WorkOS roles | `upsertAndDeleteGroupRoleMappings` (mutate; read via `directoryGroupsWithRoleMappings`)                                           | Admin Portal during directory setup, or directory page in Dashboard                     | https://workos.com/docs/directory-sync/identity-provider-role-assignment    |
-| Map SSO groups to WorkOS roles                                  | `createConnectionGroupWithRoleMapping` (mutate)                                                                                   | Admin Portal during SSO setup, or connection page in Dashboard                          | https://workos.com/docs/rbac/idp-role-assignment                            |
-| Enable/disable Admin Portal role-assignment step                | —                                                                                                                                 | Authorization page in the WorkOS Dashboard                                              | https://workos.com/docs/directory-sync/identity-provider-role-assignment    |
-| Enable/disable authentication methods                           | `updateAuthkitSettings` (mutate)                                                                                                  | Authentication settings in the WorkOS Dashboard                                         | https://workos.com/docs/authkit                                             |
-| Configure session lifetime                                      | `updateAuthkitSettings` (mutate)                                                                                                  | Authentication settings in the WorkOS Dashboard                                         | https://workos.com/docs/user-management/sessions                            |
-| Set up social login providers (Google, GitHub, etc.)            | `updateOauthCredentials` (mutate — updates a provider's client credentials and toggles it for AuthKit; not full first-time setup) | Authentication settings in the WorkOS Dashboard                                         | https://workos.com/docs/user-management/social-login                        |
-| Create feature flags                                            | `createFlag` (mutate; per-env state via `updateFlagEnvironment`)                                                                  | Feature Flags page in the WorkOS Dashboard (toggle/target ops work via CLI)             | https://workos.com/docs/feature-flags                                       |
-| Configure branding colors                                       | `updateAppBranding` (mutate)                                                                                                      | Branding settings in the WorkOS Dashboard; image uploads use `workos branding set`      | https://workos.com/docs/admin-portal/branding                               |
-| Configure Initiate login URI                                    | `UpdateInitiateLoginUrl` (mutate), `initiateLoginUrl` (query); discover exact names and arguments first                           | Application Redirects settings in the dashboard; see `workos-authkit-setup.md`          | https://workos.com/docs/authkit/vanilla/nodejs#configure-initiate-login-uri |
-| Set up email templates                                          | — (read-only: `authkitEmailSettings`)                                                                                             | Email settings in the WorkOS Dashboard                                                  | https://workos.com/docs/emails                                              |
-| Manage billing / plan                                           | reads (`workspaceBilling`, invoices) + confirmation-gated address/tax-ID writes; plan changes stay in the Dashboard               | Settings in the WorkOS Dashboard                                                        | —                                                                           |
+| Operation                                                       | MCP operation (if connected)                                                                                                      | Otherwise                                                                                                                  | Docs                                                                        |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Create a Directory Sync connection                              | setup link via `generatePortalSetupLink` (intent `Dsync`); direct `createDirectory` exists but is feature-flag-gated              | Admin Portal (generate via `workos portal generate-link --intent=dsync --org=<org_id> --environment-id "$ENVIRONMENT_ID"`) | https://workos.com/docs/directory-sync/quick-start                          |
+| Map IdP (Entra/AD/Okta/Google Workspace) groups to WorkOS roles | `upsertAndDeleteGroupRoleMappings` (mutate; read via `directoryGroupsWithRoleMappings`)                                           | Admin Portal during directory setup, or directory page in Dashboard                                                        | https://workos.com/docs/directory-sync/identity-provider-role-assignment    |
+| Map SSO groups to WorkOS roles                                  | `createConnectionGroupWithRoleMapping` (mutate)                                                                                   | Admin Portal during SSO setup, or connection page in Dashboard                                                             | https://workos.com/docs/rbac/idp-role-assignment                            |
+| Enable/disable Admin Portal role-assignment step                | —                                                                                                                                 | Authorization page in the WorkOS Dashboard                                                                                 | https://workos.com/docs/directory-sync/identity-provider-role-assignment    |
+| Enable/disable authentication methods                           | `updateAuthkitSettings` (mutate)                                                                                                  | Authentication settings in the WorkOS Dashboard                                                                            | https://workos.com/docs/authkit                                             |
+| Configure session lifetime                                      | `updateAuthkitSettings` (mutate)                                                                                                  | Authentication settings in the WorkOS Dashboard                                                                            | https://workos.com/docs/user-management/sessions                            |
+| Set up social login providers (Google, GitHub, etc.)            | `updateOauthCredentials` (mutate — updates a provider's client credentials and toggles it for AuthKit; not full first-time setup) | Authentication settings in the WorkOS Dashboard                                                                            | https://workos.com/docs/user-management/social-login                        |
+| Create feature flags                                            | `createFlag` (mutate; per-env state via `updateFlagEnvironment`)                                                                  | Feature Flags page in the WorkOS Dashboard (toggle/target ops work via CLI)                                                | https://workos.com/docs/feature-flags                                       |
+| Configure branding colors                                       | `updateAppBranding` (mutate)                                                                                                      | Branding settings in the WorkOS Dashboard; image uploads use `workos branding set`                                         | https://workos.com/docs/admin-portal/branding                               |
+| Configure Initiate login URI                                    | `UpdateInitiateLoginUrl` (mutate), `initiateLoginUrl` (query); discover exact names and arguments first                           | Application Redirects settings in the dashboard; see `workos-authkit-setup.md`                                             | https://workos.com/docs/authkit/vanilla/nodejs#configure-initiate-login-uri |
+| Set up email templates                                          | — (read-only: `authkitEmailSettings`)                                                                                             | Email settings in the WorkOS Dashboard                                                                                     | https://workos.com/docs/emails                                              |
+| Manage billing / plan                                           | reads (`workspaceBilling`, invoices) + confirmation-gated address/tax-ID writes; plan changes stay in the Dashboard               | Settings in the WorkOS Dashboard                                                                                           | —                                                                           |
 
 ### SDK operations
 
@@ -329,7 +331,7 @@ These operations have no named CLI command in this snapshot. Check live command 
 | Webhook signature verification         | —                            | SDK (`workos.webhooks.verifyEvent`) | CLI can create/list/delete webhooks but does not verify events |
 | Session introspection / JWT validation | —                            | SDK                                 | CLI has `workos session list/revoke` only                      |
 
-**Available CLI alternatives:** `workos connection create` and `workos connection update` support SSO connection management; inspect their flags and the connection-type schema before use. Admin Portal setup links remain useful when the customer should configure their own IdP. For an individual user's organization role, use `workos membership update <membershipId> --role=<slug> --yes` with the confirmed environment and approval. IdP group mappings can override that role at the next sync/login; see `workos-rbac.md`.
+**Available CLI alternatives:** `workos connection create` and `workos connection update` support SSO connection management; inspect their flags and the connection-type schema before use. Admin Portal setup links remain useful when the customer should configure their own IdP. For an individual user's organization role, use `workos membership update <membershipId> --role=<slug> --yes --environment-id "$ENVIRONMENT_ID"` with the confirmed environment and approval. IdP group mappings can override that role at the next sync/login; see `workos-rbac.md`.
 
 **Rule of thumb:** discover named commands with `workos --help --json`, REST endpoints with `workos api ls --json`, and connected MCP operations with `list_operations`. Check all available options before sending the user to the dashboard.
 

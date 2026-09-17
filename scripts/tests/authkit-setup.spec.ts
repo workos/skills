@@ -37,6 +37,23 @@ describe('AuthKit setup routing', () => {
     expect(example).toContain('--environment-id');
   });
 
+  it('explicitly targets the confirmed environment in copyable management examples', () => {
+    const content = loadSkillContent('workos-management');
+    const quickReference = content.split('## Quick Reference\n')[1].split('## Workflows\n')[0];
+    const bashExamples = [...content.matchAll(/```bash\n([\s\S]*?)```/g)].map((match) => match[1]);
+    const examples = [quickReference, ...bashExamples].join('\n');
+    // These command groups support --environment-id; REST and compound commands do not.
+    const scopedCommands = [
+      ...examples.matchAll(
+        /workos (?:organization|user|role|permission|membership|invitation|session|event|feature-flag|webhook|config|authkit|branding|portal|org-domain)\b[^`\n|]*/g,
+      ),
+    ].map((match) => match[0]);
+    expect(scopedCommands.length).toBeGreaterThan(0);
+    for (const command of scopedCommands) {
+      expect(command, command).toContain('--environment-id "$ENVIRONMENT_ID"');
+    }
+  });
+
   it('loads runnable regression cases for setup, safe writes, fallback, and CLI auth', () => {
     const ids = [
       'authkit-application-url-setup',
