@@ -41,7 +41,7 @@ WORKOS_MODE=agent workos api ls --json
 
 The first lists named commands; the second lists REST endpoints available through `workos api`. Do not invent a command or endpoint because a similarly named GraphQL operation exists.
 
-`authkit` and `config` commands require a dashboard session from `workos auth login`; `WORKOS_API_KEY` alone is not sufficient. If login is needed, follow the CLI's recovery instructions in the user's trusted host shell. An unclaimed install environment may need to be claimed before these commands can manage it. Do not switch to another environment just to make the command succeed.
+`authkit` and `config` commands require a dashboard session from `workos auth login`; `WORKOS_API_KEY` alone is not sufficient. Claiming the environment or signing into the app does not authenticate the CLI. If login is needed, follow the CLI's recovery instructions in the user's trusted host shell. An unclaimed install environment may need to be claimed before these commands can manage it. After authentication, resume configuration and read-back for that same environment; do not assume claiming it saved the URLs or switch environments just to make the command succeed.
 
 ```bash
 WORKOS_MODE=agent workos environment list --json
@@ -94,6 +94,10 @@ The CLI snapshot used for this guide has no named initiate-login command, and th
 If a WorkOS MCP server is connected, discover `initiateLoginUrl` and `UpdateInitiateLoginUrl` with `list_operations`. These are environment/default-application operations; confirm their current arguments and target before reading or changing anything. Read the existing value, set it to the app's SDK-backed sign-in route, then read it back. Do not assume an operation is callable just because it appears in a bundled catalog.
 
 If neither CLI nor connected MCP supports the setting, have the user configure the **Initiate login URI** in the application's Redirects settings in the WorkOS dashboard, following the fetched docs. Give the exact app URL and target environment. Report this as a remaining setup step until it is verified. Do not substitute the callback or `config homepage-url set`, invent a CLI command, or send raw dashboard GraphQL through `workos api`.
+
+## Sign-out configuration error
+
+If SDK sign-out redirects to `https://error.workos.com/user_management/app-homepage-url-not-found`, inspect the application's default **Sign-out URI** before rewriting the sign-out action. Normal sign-in can work while the sign-out list is empty. Configure the missing default, read it back, then sign in again and retry sign-out. The error URL's legacy wording does not mean the app needs a new homepage route.
 
 ## Completion checklist
 

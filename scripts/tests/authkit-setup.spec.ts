@@ -63,6 +63,13 @@ describe('AuthKit setup routing', () => {
     expect(loadSkillContent('workos-authkit-setup')).toContain('Do not bypass denied shell commands');
   });
 
+  it('distinguishes claimed environments and app sessions from verified URL configuration', () => {
+    const setup = loadSkillContent('workos-authkit-setup');
+    expect(setup).toContain('Claiming the environment or signing into the app does not authenticate the CLI');
+    expect(setup).toContain('app-homepage-url-not-found');
+    expect(setup).toContain("inspect the application's default **Sign-out URI**");
+  });
+
   it('loads runnable regression cases for setup, safe writes, fallback, and CLI auth', () => {
     const ids = [
       'authkit-application-url-setup',
