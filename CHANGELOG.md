@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.3](https://github.com/workos/skills/compare/v0.7.2...v0.7.3) (2026-09-18)
+
+
+### Bug Fixes
+
+* require AuthKit sign-out and initiate-login setup ([#47](https://github.com/workos/skills/issues/47)) ([49dcbb6](https://github.com/workos/skills/commit/49dcbb60b9563e7fb7fca68086bb15e805e655da))
+
 ## [0.7.2](https://github.com/workos/skills/compare/v0.7.1...v0.7.2) (2026-09-11)
 
 
