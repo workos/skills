@@ -19,7 +19,11 @@ export interface ExpectedSignals {
   flowSteps: string[];
   antiPatterns: string[];
   hallucinations?: string[];
+  /** Opt-in bounded Widgets recommendation contract; not a semantic judge. */
+  widgetsRecommendation?: true;
 }
+
+export type WidgetsRecommendation = 'supported' | 'denied' | 'overclaim' | 'mixed' | 'unknown';
 
 /** Scores for a single generation run (with or without skill) */
 export interface ScoreCard {
@@ -31,6 +35,7 @@ export interface ScoreCard {
   antiPatternAvoidance: number;
   hallucinationCount: number;
   composite: number;
+  widgetsRecommendation?: WidgetsRecommendation;
 }
 
 export type ErrorCategory =
@@ -42,7 +47,9 @@ export type ErrorCategory =
   | 'incorrect_config'
   | 'missing_error_handling'
   | 'wrong_import'
-  | 'security_issue';
+  | 'security_issue'
+  | 'incorrect_recommendation'
+  | 'unverified_recommendation';
 
 export interface TokenUsage {
   input: number;

@@ -1,4 +1,5 @@
 import type { ExpectedSignals, ScoreCard, ErrorCategory } from './types.ts';
+import { assessWidgetsRecommendation } from './widgets-recommendation.ts';
 
 /**
  * Normalize a string for flexible matching across naming conventions.
@@ -403,10 +404,15 @@ export function scoreOutput(output: string, expected: ExpectedSignals): ScoreCar
     hallucinationCount,
   };
 
-  return {
-    ...dimensions,
-    composite: weightedScore(dimensions),
-  };
+  const composite = weightedScore(dimensions);
+  if (expected.widgetsRecommendation) {
+    const widgetsRecommendation = assessWidgetsRecommendation(output);
+    // Policy caps, not probabilities: keyword coverage cannot establish a good
+    // recommendation when the explicit contract is unknown or contradicted.
+    const cap = widgetsRecommendation === 'supported' ? 100 : widgetsRecommendation === 'unknown' ? 60 : 40;
+    return { ...dimensions, widgetsRecommendation, composite: Math.min(composite, cap) };
+  }
+  return { ...dimensions, composite };
 }
 
 /**
@@ -414,6 +420,12 @@ export function scoreOutput(output: string, expected: ExpectedSignals): ScoreCar
  */
 export function categorizeErrors(output: string, expected: ExpectedSignals): ErrorCategory[] {
   const errors: ErrorCategory[] = [];
+
+  if (expected.widgetsRecommendation) {
+    const evidence = assessWidgetsRecommendation(output);
+    if (evidence === 'unknown') errors.push('unverified_recommendation');
+    else if (evidence !== 'supported') errors.push('incorrect_recommendation');
+  }
 
   if (countHallucinations(expected.hallucinations ?? [], output) > 0) {
     errors.push('hallucinated_method');
