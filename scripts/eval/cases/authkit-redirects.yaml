@@ -1,0 +1,168 @@
+# Future model evaluations only. Offline tests load these; they do not run a model.
+- id: authkit-redirect-vite-origin
+  product: authkit
+  skill: workos-authkit-react
+  skillType: hand-crafted
+  language: node
+  framework: react
+  prompt: |
+    Add AuthKit to my Vite React SPA at http://localhost:5173. package.json has
+    vite and react-router-dom; main.tsx renders BrowserRouter on a static host.
+    There is no server. Show the provider/env setup and application URL settings.
+    Should I create /callback? I also need sign-out and externally initiated login.
+  expected:
+    methods: [AuthKitProvider]
+    envVars: [VITE_WORKOS_CLIENT_ID]
+    imports: ['@workos-inc/authkit-react']
+    params: [http://localhost:5173, Sign-out URI, Initiate login URI]
+    flowSteps: [origin default, register redirect, allowed origins, separate login route]
+    antiPatterns:
+      [
+        'VITE_WORKOS_API_KEY=',
+        'VITE_WORKOS_COOKIE_PASSWORD=',
+        'VITE_WORKOS_REDIRECT_URI=http://localhost:5173/callback',
+      ]
+    hallucinations: []
+
+- id: authkit-redirect-cra-custom
+  product: authkit
+  skill: workos-authkit-react
+  skillType: hand-crafted
+  language: node
+  framework: react
+  prompt: |
+    This is a CRA app (react-scripts), not Vite. It is hosted at
+    https://auth.example.com with a deliberate /auth/complete SPA route. The
+    static host serves the app there and the AuthKitProvider wraps the entire
+    app, including that route. The only env values are REACT_APP_WORKOS_CLIENT_ID
+    and REACT_APP_WORKOS_REDIRECT_URI=https://auth.example.com/auth/complete.
+    Existing code only passes clientId to AuthKitProvider. Wire the intended
+    custom redirect and explain what to register and verify without deleting
+    the path or requiring a server migration.
+  expected:
+    methods: [AuthKitProvider]
+    envVars: [REACT_APP_WORKOS_CLIENT_ID, REACT_APP_WORKOS_REDIRECT_URI]
+    imports: ['@workos-inc/authkit-react']
+    params: [redirectUri, 'process.env.REACT_APP_WORKOS_REDIRECT_URI', 'https://auth.example.com/auth/complete']
+    flowSteps: [pass redirectUri, register full URL, CORS origin, verify destination]
+    antiPatterns: ['redirect URI must have no path', 'REACT_APP_WORKOS_API_KEY=']
+    hallucinations: []
+
+- id: authkit-redirect-vanilla-custom
+  product: authkit
+  skill: workos-authkit-vanilla-js
+  skillType: hand-crafted
+  language: node
+  framework: vanilla
+  prompt: |
+    Show AuthKit JS initialization for (a) a Vite vanilla SPA at
+    http://localhost:5173 using the documented default and (b) an intentional
+    https://app.example.com/auth/complete/ destination that serves our app and
+    initializes the SDK. That trailing-slash URL is registered exactly. Explain
+    how the optional redirect is consumed and what CORS value is needed. Our
+    other webpack app has no env injection configured: can it assume REACT_APP_?
+  expected:
+    methods: [createClient]
+    envVars: []
+    imports: ['@workos-inc/authkit-js']
+    params: [redirectUri, 'https://app.example.com/auth/complete/']
+    flowSteps:
+      [await createClient, origin default, explicit redirect option, CORS origin, inspect webpack configuration]
+    antiPatterns: ['redirect URI must have no path', 'trailing slashes are forbidden']
+    hallucinations: []
+
+- id: authkit-redirect-router-static
+  product: authkit
+  skill: workos-authkit-react-router
+  skillType: hand-crafted
+  language: node
+  framework: react-router
+  prompt: |
+    Two React Router apps need AuthKit: one uses createBrowserRouter with browser
+    loaders and a static host; the other has react-router.config.ts with
+    ssr: false and deploys only build/client. The latter has @react-router/node
+    and a build-time root loader. Neither has a request-time server. Do these
+    need authLoader server callbacks and WORKOS_API_KEY? Recommend SDKs,
+    redirects, and safe initialization without requiring a framework migration.
+  expected:
+    methods: [AuthKitProvider]
+    envVars: []
+    imports: ['@workos-inc/authkit-react']
+    params: [origin, hydration]
+    flowSteps: [inspect deployment, client SDK, origin default, no server callback]
+    antiPatterns: ['VITE_WORKOS_API_KEY=', 'REACT_APP_WORKOS_API_KEY=']
+    hallucinations: []
+
+- id: authkit-redirect-router-server
+  product: authkit
+  skill: workos-authkit-react-router
+  skillType: hand-crafted
+  language: node
+  framework: react-router
+  prompt: |
+    My React Router framework app has registered server routes and a deployed
+    Node request handler using @workos-inc/authkit-react-router. configure()
+    explicitly sets redirectUri to https://app.example.com/auth/complete while
+    WORKOS_REDIRECT_URI still says http://localhost:5173/callback. Show the
+    callback loader and explain which full URL must match route registration
+    and the WorkOS application settings. Keep secrets on the server.
+  expected:
+    methods: [authLoader]
+    envVars: [WORKOS_REDIRECT_URI]
+    imports: ['@workos-inc/authkit-react-router']
+    params: ['https://app.example.com/auth/complete', configure]
+    flowSteps: [programmatic configuration priority, register callback route, match registration, server-only secrets]
+    antiPatterns: ['VITE_WORKOS_API_KEY=']
+    hallucinations: []
+
+- id: authkit-redirect-router-ambiguous
+  product: authkit
+  skill: workos-authkit-react-router
+  skillType: hand-crafted
+  language: node
+  framework: react-router
+  prompt: |
+    This repository has next.config.ts, react-router-dom, react-router.config.ts,
+    imports of the AuthKit React Router server SDK, and a deployment script that
+    uploads only static files. I have not identified which workspace owns auth.
+    Tell me what to inspect or ask before choosing an SDK or writing callbacks.
+    Does the react-router dependency mean it wins over Next.js?
+  expected:
+    methods: []
+    envVars: []
+    imports: []
+    params: [deployment, workspace]
+    flowSteps: [inspect configuration, inspect runtime, ask for clarification]
+    antiPatterns: ['React Router wins because', 'must migrate to framework mode']
+    hallucinations: []
+
+- id: authkit-redirect-registration-vs-reachability
+  product: authkit
+  skill: workos-authkit-setup
+  skillType: hand-crafted
+  language: node
+  framework: react
+  prompt: |
+    Review these SPA settings without modifying anything. The SDK explicitly
+    receives https://auth.example.com/auth/complete/ but the registered URL has
+    no trailing slash. A second registered URL /missing returns 404; no provider
+    runs there. CORS contains the full /auth/complete/ URL instead of an origin.
+    Locally the app runs on port 5173 but registration is for port 3000. Explain
+    why parseable URLs and grep hits are insufficient, what to compare, and how
+    to preserve existing entries, Sign-out URI, and separate Initiate login URI.
+    Do not ban all custom paths or normalize settings silently.
+  expected:
+    methods: []
+    envVars: []
+    imports: []
+    params: [Sign-out URI, Initiate login URI, 'https://auth.example.com']
+    flowSteps:
+      [
+        compare effective redirect,
+        verify destination,
+        separate CORS origin,
+        preserve existing entries,
+        confirm environment,
+      ]
+    antiPatterns: ['redirect URI must have no path', 'trailing slashes are forbidden']
+    hallucinations: []

@@ -85,7 +85,7 @@ grep -r "createClient\|WorkOS" src/ *.html 2>/dev/null || echo "FAIL: SDK not fo
 # 2. Check createClient uses await
 grep -rn "await createClient" src/ *.js *.html 2>/dev/null || echo "FAIL: createClient must be awaited"
 
-# 3. Check sign-in is on user gesture (click handler)
+# 3. Inspect normal sign-in and the separate SDK-backed Initiate login route
 grep -rn "signIn\|sign_in" src/ *.js *.html 2>/dev/null
 
 # 4. Build succeeds (bundled projects only)
@@ -106,14 +106,14 @@ pnpm build
 
 ## Error Recovery
 
-| Error                            | Cause                 | Fix                                                                   |
-| -------------------------------- | --------------------- | --------------------------------------------------------------------- |
-| `WorkOS is not defined`          | CDN not loaded        | Add script to `<head>` before your code                               |
-| `createClient is not a function` | Wrong import          | npm: check import path; CDN: use `WorkOS.createClient`                |
-| `clientId is required`           | Undefined env var     | Check env prefix matches build tool                                   |
-| CORS errors                      | `file://` protocol    | Use local dev server (`npx serve`)                                    |
-| Popup blocked                    | Not user gesture      | Call `signIn()` only from click handler                               |
-| Auth state lost                  | Session configuration | Follow SDK dev/production guidance; localStorage is dev-mode behavior |
+| Error                            | Cause                           | Fix                                                                   |
+| -------------------------------- | ------------------------------- | --------------------------------------------------------------------- |
+| `WorkOS is not defined`          | CDN not loaded                  | Add script to `<head>` before your code                               |
+| `createClient is not a function` | Wrong import                    | npm: check import path; CDN: use `WorkOS.createClient`                |
+| `clientId is required`           | Undefined env var               | Check env prefix matches build tool                                   |
+| CORS errors                      | `file://` protocol              | Use local dev server (`npx serve`)                                    |
+| External login fails             | Missing Initiate login handling | Implement the separate SDK-backed sign-in route from shared setup     |
+| Auth state lost                  | Session configuration           | Follow SDK dev/production guidance; localStorage is dev-mode behavior |
 
 ## Task Flow
 
