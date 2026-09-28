@@ -1,103 +1,95 @@
 # WorkOS AuthKit for React (SPA)
 
-Docs: https://workos.com/docs/authkit/vanilla/nodejs#configure-initiate-login-uri and https://workos.com/docs/authkit/sessions#sign-out-uris
+## Fetch docs first
+
+- SDK README: https://github.com/workos/authkit-react/blob/main/README.md
+- Build-tool environment variables: https://vite.dev/guide/env-and-mode and https://create-react-app.dev/docs/adding-custom-environment-variables/
+- Sign-out URIs: https://workos.com/docs/authkit/sessions#sign-out-uris
 
 If this file conflicts with fetched docs, follow the docs.
 
-**Required setup:** Read [workos-authkit-setup.md](workos-authkit-setup.md) alongside the SDK README below. Configure and verify the callback, Sign-out URI, and Initiate login URI for the target environment.
+**Required setup:** Read [workos-authkit-setup.md](workos-authkit-setup.md) alongside the SDK README. Configure and verify the redirect destination, Sign-out URI, and Initiate login URI for the target environment.
 
-## Decision Tree
+## Choose the client SDK from runtime evidence
 
+Fetch the README before writing code; stop if it is unavailable. This reference uses `@workos-inc/authkit-react`, including client-only React Router library/data/declarative apps and statically deployed framework SPA mode. A `react-router` dependency or browser loader does not establish a server. Inspect router configuration, SDK imports, entry points, and deployment; if server/client evidence conflicts, ask before choosing an SDK. See [workos-authkit-react-router.md](workos-authkit-react-router.md) for the mode checks. Do not mandate a framework migration.
+
+## Redirect destination, not a server callback handler
+
+`AuthKitProvider` initializes the browser SDK and handles the OAuth response. **No server-side callback route is needed.** Recommend the documented origin default, such as `http://localhost:5173`: omit `redirectUri` and register the actual app origin. Do not add an unnecessary `/callback` route or redirect env variable.
+
+Explicit custom redirect URLs are supported. The provider forwards `redirectUri` to AuthKit JS. If a project deliberately uses `https://app.example.com/auth/complete`, require all three:
+
+1. The effective `AuthKitProvider` prop is that URL (not merely an unused `.env` entry).
+2. The same URL is registered for the confirmed WorkOS environment/application.
+3. Direct navigation to that destination serves the app and mounts the provider so the SDK handles the callback before a route guard or navigation removes its parameters. Inspect routes and static-host rewrites; a grep hit does not prove this.
+
+A path is not invalid merely because it exists, and parsing a URL does not validate the integration. Do not delete a working custom destination. Check trailing slashes through effective-value/registration agreement, not a universal ban or silent normalization. See the shared setup comparison and reachability checks.
+
+Register CORS allowed origins separately: `https://app.example.com`, not `https://app.example.com/auth/complete`. Use the application's redirect settings and authentication allowed-origin settings described in the README, not an invented Dashboard click-path. A hostname such as `https://auth.example.com` is not itself a callback path (nor necessarily the app's origin); verify where the app actually runs.
+
+## Build-tool environment variables and consumption
+
+Inspect `package.json` scripts, dependencies, build config, and existing access patterns. A missing `vite.config.ts` does not imply CRA. Vite supports other config extensions and can run without a config file.
+
+| Confirmed build tool                                        | Public env default  | Consumption                                                     |
+| ----------------------------------------------------------- | ------------------- | --------------------------------------------------------------- |
+| Vite (`vite` scripts/config)                                | `VITE_`             | `import.meta.env.VITE_*`; inspect custom `envPrefix` if present |
+| Create React App (`react-scripts`, or verified CRACO setup) | `REACT_APP_`        | `process.env.REACT_APP_*`                                       |
+| Other/custom bundler                                        | No universal prefix | Inspect its explicit env injection; ask if unknown              |
+
+Only the public client ID is required by the client SDK. Never put `WORKOS_API_KEY` or `WORKOS_COOKIE_PASSWORD` in a client bundle or public-prefixed env variable. The SDK does not automatically read an env variable named `WORKOS_REDIRECT_URI`.
+
+### Vite origin default
+
+Set `VITE_WORKOS_CLIENT_ID=client_...` and register the actual origin, e.g. `http://localhost:5173`. No redirect variable is required:
+
+```jsx
+import { AuthKitProvider } from '@workos-inc/authkit-react';
+import { createRoot } from 'react-dom/client';
+
+createRoot(document.getElementById('root')).render(
+  <AuthKitProvider clientId={import.meta.env.VITE_WORKOS_CLIENT_ID}>
+    <App />
+  </AuthKitProvider>,
+);
 ```
-START
-  │
-  ├─► Fetch README (BLOCKING)
-  │   raw.githubusercontent.com/workos/authkit-react/main/README.md
-  │   README is source of truth. Stop if fetch fails.
-  │
-  ├─► Detect Build Tool
-  │   ├─ vite.config.ts exists? → Vite
-  │   └─ otherwise → Create React App
-  │
-  ├─► Set Env Var Prefix
-  │   ├─ Vite → VITE_WORKOS_CLIENT_ID
-  │   └─ CRA  → REACT_APP_WORKOS_CLIENT_ID
-  │
-  └─► Implement per README
+
+### CRA explicit custom redirect
+
+Only when `/auth/complete` is an intentional, reachable SPA destination mounting the provider, set `REACT_APP_WORKOS_REDIRECT_URI=https://app.example.com/auth/complete` and register that full URL. Wire the option explicitly:
+
+```jsx
+import { AuthKitProvider } from '@workos-inc/authkit-react';
+import { createRoot } from 'react-dom/client';
+
+createRoot(document.getElementById('root')).render(
+  <AuthKitProvider
+    clientId={process.env.REACT_APP_WORKOS_CLIENT_ID}
+    redirectUri={process.env.REACT_APP_WORKOS_REDIRECT_URI}
+  >
+    <App />
+  </AuthKitProvider>,
+);
 ```
 
-## Critical: Build Tool Detection
-
-| Marker File               | Build Tool | Env Prefix   | Access Pattern            |
-| ------------------------- | ---------- | ------------ | ------------------------- |
-| `vite.config.ts`          | Vite       | `VITE_`      | `import.meta.env.VITE_*`  |
-| `craco.config.js` or none | CRA        | `REACT_APP_` | `process.env.REACT_APP_*` |
-
-**Wrong prefix = undefined values at runtime.** This is the #1 integration failure.
-
-## Key Clarification: No Callback Route
-
-The React SDK handles OAuth callbacks **internally** via AuthKitProvider.
-
-- No server-side callback route needed
-- SDK intercepts redirect URI client-side
-- Token exchange happens automatically
-
-Just ensure redirect URI env var matches WorkOS Dashboard exactly.
-
-## Required Environment Variables
-
-```
-{PREFIX}WORKOS_CLIENT_ID=client_...
-{PREFIX}WORKOS_REDIRECT_URI=http://localhost:5173/callback
-```
-
-No `WORKOS_API_KEY` needed. Client-side only SDK.
+For a custom Vite redirect, explicitly pass `redirectUri={import.meta.env.VITE_WORKOS_REDIRECT_URI}`. For other bundlers, pass the value from their verified configuration mechanism. An env prefix alone does not wire any SDK option.
 
 ## Verification Checklist (ALL MUST PASS)
 
-- [ ] Application settings and sign-in/sign-out flows pass the completion checklist in [workos-authkit-setup.md](workos-authkit-setup.md)
-
-Run these commands to confirm integration. **Do not mark complete until all pass:**
-
-```bash
-# 1. Check env var prefix matches build tool
-grep -E "VITE_WORKOS_CLIENT_ID|REACT_APP_WORKOS_CLIENT_ID" .env .env.local 2>/dev/null
-
-# 2. Check AuthKitProvider wraps app root
-grep "AuthKitProvider" src/main.tsx src/index.tsx 2>/dev/null || echo "FAIL: AuthKitProvider missing"
-
-# 3. Check no server framework present (wrong skill if found)
-grep -E '"next"|"react-router"' package.json && echo "WARN: Server framework detected"
-
-# 4. Build succeeds
-pnpm build
-```
-
-**If check #2 fails:** AuthKitProvider must wrap the app root in main.tsx/index.tsx. This is required for useAuth() to work.
+- [ ] Application settings and sign-in/sign-out flows pass the completion checklist in [workos-authkit-setup.md](workos-authkit-setup.md).
+- [ ] Confirm the app's runtime mode and build-tool env consumption, including any explicit redirect prop; inspect the effective non-secret values.
+- [ ] Confirm `AuthKitProvider` wraps the app and initializes at the registered destination, including direct navigation after deployment. A string search or passing build is not proof of a mounted route or authentication.
+- [ ] Confirm the separate SDK-backed `/login` route from the README is registered as Initiate login URI; it starts sign-in, not callback handling. Preserve Sign-out URI setup too.
+- [ ] Run the project's build, then test flows when access permits. For framework SPA pre-rendering, initialize browser-only auth after hydration, following the framework docs; do not call browser APIs during build-time rendering.
 
 ## Error Recovery
 
-### "clientId is required"
+- **Missing client ID:** Check the actual build tool, variable access, and provider prop, not just `.env` presence.
+- **Redirect fails:** Compare the effective SDK URL with saved registration, then inspect destination mounting, host rewrites, route guards, and CORS origin. A custom path alone is not an error.
+- **Missing auth context:** Check that consumers are inside `AuthKitProvider`.
+- **Session lost on refresh:** Follow the README's development/production session configuration. Local storage is a dev-mode behavior, not a universal production token store.
 
-**Cause:** Env var inaccessible (wrong prefix)
+## Source baseline
 
-Check: Does prefix match build tool? Vite needs `VITE_`, CRA needs `REACT_APP_`.
-
-### Auth state lost on refresh
-
-**Cause:** Token persistence issue
-
-Check: Browser dev tools → Application → Local Storage. SDK stores tokens here automatically.
-
-### useAuth returns undefined
-
-**Cause:** Component outside provider tree
-
-Check: Entry file (`main.tsx` or `index.tsx`) wraps `<App />` in `<AuthKitProvider>`.
-
-### Callback redirect fails
-
-**Cause:** URI mismatch
-
-Check: Env var redirect URI exactly matches WorkOS Dashboard → Redirects configuration.
+Verified against React [README](https://github.com/workos/authkit-react/blob/4602e49b13d3677e7cc37602318a8e4833498bae/README.md) and [provider option forwarding](https://github.com/workos/authkit-react/blob/4602e49b13d3677e7cc37602318a8e4833498bae/src/provider.tsx), plus AuthKit JS [origin default and callback initialization](https://github.com/workos/authkit-js/blob/220f46557dd89401036cd0dbed01bded391d1788/src/create-client.ts). Recheck the installed SDK version before applying custom options.

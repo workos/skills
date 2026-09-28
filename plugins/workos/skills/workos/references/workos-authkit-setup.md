@@ -2,7 +2,8 @@
 
 ## Fetch docs first
 
-- Initiate login URI and callback setup: https://workos.com/docs/authkit/vanilla/nodejs#configure-initiate-login-uri
+- Client redirect defaults, allowed origins, and Initiate login: https://github.com/workos/authkit-react/blob/main/README.md
+- Initiate login URI and server callback setup: https://workos.com/docs/authkit/vanilla/nodejs#configure-initiate-login-uri
 - Sign-out URIs: https://workos.com/docs/authkit/sessions#sign-out-uris
 - CLI setup: https://workos.com/docs/authkit/cli-installer
 
@@ -18,13 +19,42 @@ Derive URLs from the app's actual origin, port, and routes. Do not copy example 
 
 | Setting            | What it points to                                                                                                                                                                           |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Redirect URI       | The OAuth callback handled by the SDK. Must match the app's configured callback URL exactly.                                                                                                |
+| Redirect URI       | The destination where the SDK handles the OAuth response: a browser SDK destination or a server callback handler. Must match the effective SDK redirect URL exactly.                        |
 | Sign-out URI       | A public page users land on after their session ends, not the route or action that performs logout. Configure a default; also register any destinations passed as `returnTo` / `return_to`. |
 | Initiate login URI | An app route that starts AuthKit sign-in using the SDK. This is not the callback URL, the hosted AuthKit URL, or a page that merely displays a sign-in button.                              |
 
 The Initiate login URI is also called `initiate_login_uri` or, in older docs, the Sign-in endpoint. AuthKit uses it when sign-in starts outside your app, such as a bookmarked hosted sign-in page, password-reset email, or invitation. Follow the SDK README for the route implementation, including client-side SDKs; do not invent a server callback for a SPA. Starting AuthKit sign-in lets the hosted flow preserve password-reset and invitation details.
 
 The dashboard calls the logout destination **Sign-out URI**. The CLI command is still named `logout-uris`. Setting a homepage URL does **not** configure the Initiate login URI.
+
+## Verify the effective redirect, registration, and destination
+
+For React/vanilla browser SDKs, prefer the documented origin default (`window.origin`, e.g. `http://localhost:5173`) without creating an unnecessary `/callback` route. Explicit custom `redirectUri` values are supported; inspect provider/client options and actual env consumption, not only `.env` names. Server SDKs instead require their documented callback handler at the configured path; inspect programmatic overrides as well as env configuration.
+
+Three independent checks are required:
+
+1. **Effective value:** Trace the URL actually supplied to the SDK or its documented default. A variable in `.env` has no effect unless the SDK or application code consumes it.
+2. **Registration:** Read back the redirect URLs for the confirmed environment/application and compare the full effective value. Do not silently normalize trailing slashes or ban them universally. `https://app.example.com/auth/complete/` is a supported custom destination shape when configuration and registration agree; a registration of `https://app.example.com/auth/complete` is a mismatch to investigate, not permission to rewrite either value without verification.
+3. **Reachability and handling:** Inspect routes, provider/client initialization, static-host rewrites, and deployment at the actual destination. A mounted client SDK may handle a custom path; a 404, missing provider, or guard that navigates away before handling cannot. Neither successful URL parsing, a source grep hit, nor a passing build proves reachability or authentication. When browser testing is unavailable, report this check as unverified.
+
+CORS is separate: register the origin of the app making browser API requests (scheme, hostname, and port), not a callback path. For `https://app.example.com/auth/complete`, that origin is `https://app.example.com`; `http://localhost:5173` and `http://localhost:3000` are different origins. An auth-prefixed hostname such as `https://auth.example.com` is not a forbidden path, but confirm whether it hosts the app or is only an API/custom auth domain.
+
+### Offline comparison aid (not integration validation)
+
+This read-only JavaScript snippet compares **already observed, non-secret** values. Run it locally with the effective redirect, saved lists, and the actual browser app URL. It performs no configuration writes or network requests. It deliberately compares the redirect string unchanged; URL parsing is used only to derive the CORS origin. It cannot verify route mounting, SDK initialization, ownership, or a hosted auth flow.
+
+```javascript
+function compareAuthKitUrls(effectiveRedirectUri, registeredRedirectUris, appUrl, allowedOrigins) {
+  const appOrigin = new URL(appUrl).origin;
+  return {
+    redirectRegistered: registeredRedirectUris.includes(effectiveRedirectUri),
+    appOrigin,
+    corsOriginRegistered: allowedOrigins.includes(appOrigin),
+  };
+}
+```
+
+A `true` result is only list agreement, not a valid integration. Resolve missing destinations or mismatched registrations before calling setup complete. Preserve Sign-out URI and the separate SDK-backed Initiate login URI even when no server callback is needed.
 
 ## Choose the tool and target
 
@@ -60,7 +90,7 @@ Choose `ENVIRONMENT_ID` from the intended project and environment, not from a gu
    WORKOS_MODE=agent workos authkit cors get --environment-id "$ENVIRONMENT_ID" --json
    ```
 
-2. For a single callback or CORS addition, use the positional URL argument shown below, not `--uri` or `--origin`. These commands preserve existing entries through read-merge-write, but a concurrent edit can still be overwritten. Configure CORS only when the SDK requires it; never allow wildcard origins.
+2. Here `CALLBACK_URL` means the effective SDK redirect destination, including the origin default for a client SDK; it does not imply a server handler. For a single redirect or CORS addition, use the positional URL argument shown below, not `--uri` or `--origin`. These commands preserve existing entries through read-merge-write, but a concurrent edit can still be overwritten. Configure CORS only when the SDK requires it; never allow wildcard origins.
 
    ```bash
    WORKOS_MODE=agent workos config redirect add "$CALLBACK_URL" --environment-id "$ENVIRONMENT_ID"

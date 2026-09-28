@@ -73,7 +73,7 @@ If `workos --help --json` is missing a command you expected, or the user reports
 | Add user to org        | `workos membership create --org=org_xxx --user=user_xxx --environment-id "$ENVIRONMENT_ID"`                       |
 | Send invitation        | `workos invitation send --email=alice@acme.com --org=org_xxx --environment-id "$ENVIRONMENT_ID"`                  |
 | Revoke session         | `workos session revoke <sessionId> --environment-id "$ENVIRONMENT_ID"`                                            |
-| Add redirect URI       | `workos config redirect add http://localhost:3000/callback --environment-id "$ENVIRONMENT_ID"`                    |
+| Add redirect URI       | `workos config redirect add "$CALLBACK_URL" --environment-id "$ENVIRONMENT_ID"`                                   |
 | Add CORS origin        | `workos config cors add http://localhost:3000 --environment-id "$ENVIRONMENT_ID"`                                 |
 | Set homepage URL       | `workos config homepage-url set http://localhost:3000 --environment-id "$ENVIRONMENT_ID"`                         |
 | Inspect sign-out URLs  | `workos authkit logout-uris list --environment-id "$ENVIRONMENT_ID" --json`                                       |
@@ -141,7 +141,9 @@ workos membership create --org=org_xxx --user=user_xxx --role=admin --environmen
 
 ### Local Development Setup
 
-Read [workos-authkit-setup.md](workos-authkit-setup.md) for the required callback, Sign-out URI, and Initiate login URI workflow. Use actual app URLs and the confirmed development environment. For a single addition:
+Read [workos-authkit-setup.md](workos-authkit-setup.md) for the required callback, Sign-out URI, and Initiate login URI workflow. Use actual app URLs and the confirmed development environment. `CALLBACK_URL` means the effective SDK redirect destination, not necessarily a server callback handler. React/vanilla browser SDKs default to the app origin (e.g., `http://localhost:5173`); supported explicit custom redirects must be passed into the SDK, registered exactly, and reach a destination where it initializes and handles the response. Server SDKs use their mounted callback handler URL. Do not reject custom paths or trailing slashes universally. `APP_ORIGIN` is the browser app's origin for CORS, never a full callback path. See the selected SDK reference and shared setup for effective-value and reachability checks.
+
+For a single addition:
 
 ```bash
 workos config redirect add "$CALLBACK_URL" --environment-id "$ENVIRONMENT_ID"
@@ -155,7 +157,7 @@ Configuring a homepage URL is optional and is not a substitute for an Initiate l
 
 ### Environment Seeding
 
-Create a `workos-seed.yml` file in your repo:
+Create a `workos-seed.yml` file in your repo. The example below assumes a server handler at `/callback`; for a browser SDK use its origin default or verified explicit redirect instead. CORS remains an origin. Seeding does not replace the Sign-out/Initiate login setup and verification above:
 
 ```yaml
 permissions:
