@@ -31,21 +31,59 @@
   skillType: hand-crafted
   language: node
   prompt: |
-    We use WorkOS AuthKit already. Add organization member administration and
-    organization selection to our account area with Widgets 1.18.0 and Node
-    10.13.0. Explain UsersManagement permissions and OrganizationSwitcher
-    callback/session-switch behavior, and distinguish the custom app shell and
+    We already use @workos-inc/authkit-react with its access-token getter and
+    organization-switch helper. Add organization member administration and
+    organization selection to our account area with Widgets 1.18.0, reusing
+    this AuthKit path rather than adding a backend widget-token endpoint.
+    Explain UsersManagement permissions, token refresh, and OrganizationSwitcher
+    callback/session-switch behavior. Distinguish the custom app shell and
     creation flow from the published widgets. Include a UserProfile recommendation
     for personal details but do not claim drop-in Clerk UserButton parity.
-    Never let the browser select an arbitrary acting user, organization or scopes
-    for token issuance. If discussing a custom Client API, distinguish its current
-    GraphQL endpoint from the bundled legacy REST snapshot.
+    Keep session/organization authorization with AuthKit; do not expose an API
+    secret in the browser. If discussing a custom Client API, distinguish its
+    current GraphQL endpoint from the bundled legacy REST snapshot.
+  expected:
+    widgetsRecommendation: true
+    methods: ['getAccessToken', 'switchToOrganization']
+    envVars: []
+    imports: ['@workos-inc/widgets', '@workos-inc/authkit-react']
+    params: ['authToken', 'widgets:users-table:manage']
+    flowSteps: ['UsersManagement', 'OrganizationSwitcher', 'UserProfile']
+    antiPatterns: ['<WorkOsWidgets authToken=', '<UsersManagement accessToken=']
+    hallucinations: ['@workos/widgets', 'workos.widgets.UserButton']
+
+- id: widgets-organization-server-token-setup
+  product: widgets
+  skill: workos-widgets
+  skillType: hand-crafted
+  language: node
+  prompt: |
+    Our React account area has an existing server-verified session, but does not
+    use authkit-react or a browser access-token getter. Add member administration
+    and organization selection using Widgets 1.18.0 and @workos-inc/node 10.13.0.
+    Show server-issued widget tokens bound to the signed-in user and authorized
+    organization, permission checks, least-privilege scopes, and renewal.
+    Explain UsersManagement and OrganizationSwitcher, including the app's
+    authorized session-switch callback and reauthentication when needed.
+    Include a UserProfile recommendation for personal details; distinguish
+    custom menu/creation flows without drop-in Clerk UserButton parity.
+    Do not accept caller-selected acting identities or scopes, or expose a
+    server API secret. Keep direct Client API work separate from embedding widgets.
   expected:
     widgetsRecommendation: true
     methods: ['workos.widgets.createToken']
     envVars: ['WORKOS_API_KEY']
     imports: ['@workos-inc/widgets', '@workos-inc/node']
-    params: ['{ token }', 'authToken', 'switchToOrganization', 'organizationId', 'widgets:users-table:manage']
+    params:
+      [
+        '{ token }',
+        'authToken',
+        'userId',
+        'organizationId',
+        'scopes',
+        'switchToOrganization',
+        'widgets:users-table:manage',
+      ]
     flowSteps: ['UsersManagement', 'OrganizationSwitcher', 'UserProfile']
     antiPatterns: ['<WorkOsWidgets authToken=', '<UsersManagement accessToken=']
     hallucinations: ['@workos/widgets', 'workos.widgets.UserButton']
