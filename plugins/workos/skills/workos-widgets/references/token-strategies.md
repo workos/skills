@@ -1,65 +1,65 @@
 # Token Strategies
 
-## Objective
+## Docs
 
-Provide `accessToken` to widget surfaces using the app's existing auth architecture.
+- https://workos.com/docs/widgets/tokens
+- https://workos.com/docs/widgets/quick-start
+- https://workos.com/docs/authkit/roles-and-permissions
+- https://workos.com/docs/widgets-api
 
-## Guidance
+If this file conflicts with fetched docs, follow the docs. Check examples against the **installed package declarations** as well: docs prose saying “get token” is not necessarily a JS method name or return type.
 
-- Prefer existing AuthKit/session flows when they are already established.
-- If backend token creation already exists, follow that pattern.
-- Keep token-related logic near current auth boundaries.
-- Pass token values explicitly into widget entry surfaces.
-- Send the widget token through the app's existing authenticated HTTP pattern when calling widget endpoints.
-- Use environment variables for credentials/config instead of hardcoded keys.
-- For endpoints that require elevated access, follow the elevation flow and handle elevated token usage separately from the regular widget token.
+## Verified target
 
-## Widget Scope Reference
+The examples target **`@workos-inc/node@10.13.0`** and **`@workos-inc/widgets@1.18.0`**, not an entire version range. See [version-evidence.md](version-evidence.md) for package/source evidence and documentation discrepancies. For an older SDK, inspect its installed declarations and matching release before choosing a method/return shape; do not rename working calls solely on this guide's authority. Other language SDKs have independent APIs.
 
-Use the scope that matches the widget being implemented:
+## Authorization and permissions
 
-| Widget                             | Required Scope                       |
-| ---------------------------------- | ------------------------------------ |
-| `user-management`                  | `widgets:users-table:manage`         |
-| `user-profile`                     | _(no permission scope required)_     |
-| `admin-portal-sso-connection`      | `widgets:sso:manage`                 |
-| `admin-portal-domain-verification` | `widgets:domain-verification:manage` |
+Prefer existing AuthKit session flows. With `authkit-js`/`authkit-react`, pass the SDK's current access-token getter as the component's `authToken`. Otherwise issue a short-lived widget token on the server. `WorkOsWidgets` is the configuration/theme/query provider; it has **no authentication token prop** in 1.18.0.
 
-## JS/TS Authorization Tokens
+| Component                        | Required permission / token scope                                        |
+| -------------------------------- | ------------------------------------------------------------------------ |
+| `UserProfile`                    | No special widget permission; still requires an authenticated user token |
+| `UserSecurity`                   | No special widget permission; still requires an authenticated user token |
+| `UserSessions`                   | `widgets:users-table:manage` per the current component docs              |
+| `UsersManagement`                | `widgets:users-table:manage`                                             |
+| `OrganizationSwitcher`           | No special widget permission; only organizations the user can access     |
+| Admin Portal SSO Connection      | `widgets:sso:manage`                                                     |
+| Admin Portal Domain Verification | `widgets:domain-verification:manage`                                     |
 
-Widgets need an authorization token and JS/TS apps typically use one of two paths:
+Request only the scopes needed for the selected UI. A scope request does not grant a role permission: the acting user must already be authorized. In particular, do not silently grant member-management privileges merely to show sessions; confirm the documented permission requirement for your deployment. Configure roles/permissions and allowed web origins using the linked docs, not a guessed Dashboard click-path.
 
-1. If the app uses `authkit-js` or `authkit-react`, use the existing access token flow.
-2. If the app uses a backend WorkOS SDK, request a widget token with `workos.widgets.getToken(...)` and the scope for the selected widget (see Widget Scope Reference above).
+## Server issuance: Node 10.13.0
 
-Widget tokens expire after one hour.
+This server-only example issues a profile/security token. The two application helpers below are **integration placeholders**, not WorkOS exports: implement them using your existing verified session and authorization layer. The request body must not supply the acting `userId`, `organizationId`, or scopes. Protect the endpoint with your app's same-origin/CSRF controls, return `Cache-Control: no-store`, and never log tokens or send the API key to the browser.
 
 ```ts
+import { WorkOS } from '@workos-inc/node';
+import { requireAuthenticatedSession, requireAuthorizedOrganization } from './app-auth';
+
 const workos = new WorkOS(process.env.WORKOS_API_KEY, {
   clientId: process.env.WORKOS_CLIENT_ID,
-  // Use WORKOS_BASE_API_URL if set (e.g. for staging/local); falls back to default
-  ...(process.env.WORKOS_BASE_API_URL && { host: process.env.WORKOS_BASE_API_URL }),
 });
 
-const authToken = await workos.widgets.getToken({
-  userId: user.id,
-  organizationId,
-  scopes: ['<scope-for-this-widget>'], // see Widget Scope Reference above
-});
+export async function issueProfileWidgetToken(request: Request) {
+  const session = await requireAuthenticatedSession(request);
+  // Must verify active membership/access; fail closed if there is no authorized org.
+  const organizationId = await requireAuthorizedOrganization(session);
+  const { token } = await workos.widgets.createToken({
+    userId: session.user.id,
+    organizationId,
+    scopes: [], // Profile/security need no special widget scope.
+  });
+  return Response.json({ token }, { headers: { 'Cache-Control': 'no-store' } });
+}
 ```
 
-To generate a token successfully, the user needs a role with the required widget permissions. When token generation fails due to authorization, check role permissions in the WorkOS Dashboard roles configuration.
+For member management (or sessions per current docs), use a separate authorized server path that checks the acting user's required permission and requests `scopes: ['widgets:users-table:manage']`. Do not expose arbitrary scope selection. Node 10.13.0 returns **`{ token: string }`**, not a token string; destructure before passing it to a component.
 
-New WorkOS accounts typically start with an Admin role that already has widget permissions. Existing accounts may need explicit role permission updates. Reference: [Roles and Permissions guide](https://workos.com/docs/authkit/roles-and-permissions).
+## Expiration and sensitive actions
 
-## Elevated Access Tokens
+Backend widget tokens expire after one hour. A string token does not renew itself: arrange authenticated reissuance before expiry and update/remount the relevant widget with the new token. For components accepting a getter, it must return a fresh valid token when invoked, not capture an expired string. Handle issuance failures/401/403 visibly and require sign-in again when the session ends. Clear user/org-specific widget query state on sign-out or identity/organization change; never share cached credentials between users.
 
-Some operations require elevated access in addition to the normal widget token. Check the endpoint table in `fetching-apis.md` for the ⚠️ elevated marker **before calling it** — not on failure. If marked elevated, acquire the elevated token first.
+`UserSessions` in 1.18.0 has a special union: a **string** `authToken` requires `currentSessionId` from the authenticated app session; the **getter** form forbids that prop. Use the getter form with an AuthKit access-token getter, not an assumed interchangeable backend widget-token callback.
 
-1. Use the `POST /_widgets/UserProfile/verify` endpoint to obtain an elevated access token.
-2. Use the returned token (`elevatedAccessToken`) in request header `x-elevated-access-token`.
-3. Treat elevated tokens as short-lived credentials (10 minutes) and scope usage to sensitive action paths only.
-
-## Example Direction
-
-When backend WorkOS SDK usage is present, use its existing token creation path and adapt it for the required widget scope.
+Published components handle their own data fetching and sensitive-action verification UI. For custom Client API work, fetch https://workos.com/docs/widgets-api and its operation/authentication docs first. The bundled legacy `/_widgets` elevation recipe is not universal guidance for `/client/graphql`.
