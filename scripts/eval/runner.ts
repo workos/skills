@@ -1,12 +1,20 @@
 import { join } from 'path';
 import { createHash } from 'crypto';
-import { readdirSync, readFileSync } from 'fs';
+import { readdirSync, readFileSync, realpathSync } from 'fs';
 import { parse } from 'yaml';
 import { generateCode } from './api.ts';
 import { getCacheKey, readCache, writeCache } from './cache.ts';
 import { scoreOutput, categorizeErrors } from './scorer.ts';
 import { median, percentile } from './reporter.ts';
-import type { EvalCase, EvalOptions, EvalReport, EvalResult, ProductSummary, ErrorCategory } from './types.ts';
+import type {
+  EvalCase,
+  EvalOptions,
+  EvalReport,
+  EvalResult,
+  ProductSummary,
+  ErrorCategory,
+  SkillSource,
+} from './types.ts';
 
 const CASES_DIR = join(process.cwd(), 'scripts', 'eval', 'cases');
 
@@ -25,6 +33,29 @@ export function stddev(values: number[]): number {
 }
 const PLUGIN_DIR = join(process.cwd(), 'plugins', 'workos', 'skills');
 const REFS_DIR = join(PLUGIN_DIR, 'workos', 'references');
+
+function validateSkillName(skillName: string): void {
+  if (typeof skillName !== 'string' || !/^workos(?:-[a-z0-9]+)*$/.test(skillName)) {
+    throw new Error(`Invalid skill name: ${skillName}`);
+  }
+}
+
+/** Fixed bundle, not recursive link following or caller-selected filesystem paths. */
+export function loadWidgetsSources(skillsDir = PLUGIN_DIR): SkillSource[] {
+  const root = realpathSync(skillsDir);
+  return [
+    'workos-widgets/SKILL.md',
+    'workos-widgets/references/component-setup.md',
+    'workos-widgets/references/token-strategies.md',
+    'workos-widgets/references/fetching-apis.md',
+  ].map((path) => {
+    const absolute = join(root, path);
+    // Reject symlink substitution as well as escapes from this fixed manifest.
+    if (realpathSync(absolute) !== absolute) throw new Error(`Non-canonical Widgets source: ${path}`);
+    const content = readFileSync(absolute, 'utf8');
+    return { path, content, sha256: createHash('sha256').update(content).digest('hex') };
+  });
+}
 
 /** Load and parse all YAML test cases, optionally filtered */
 export function loadCases(
@@ -53,6 +84,7 @@ export function loadCases(
     if (c.expected && 'widgetsRecommendation' in c.expected && c.expected.widgetsRecommendation !== true) {
       throw new Error(`${c.id}: expected.widgetsRecommendation must be true or omitted`);
     }
+    if (c.skill !== undefined) validateSkillName(c.skill);
   }
 
   return cases.filter((c) => {
@@ -64,9 +96,15 @@ export function loadCases(
   });
 }
 
-/** Load skill content from disk. All skills are now reference files. */
-export function loadSkillContent(skillName: string): string {
-  // All skills (including former hand-crafted) are now reference files
+/** Preserve single-reference cases; explicitly bundle only the shipped Widgets skill. */
+export function loadSkillContent(skillName: string, widgetsSources?: SkillSource[]): string {
+  validateSkillName(skillName);
+  if (skillName === 'workos-widgets') {
+    return (widgetsSources ?? loadWidgetsSources())
+      .map(({ path, content }) => `<!-- Skill source: ${path} -->\n${content}`)
+      .join('\n\n');
+  }
+  // Existing migration/terminology cases still load only their named reference.
   const refPath = join(REFS_DIR, `${skillName}.md`);
 
   try {
@@ -83,12 +121,12 @@ export function loadSkillContent(skillName: string): string {
 }
 
 /** Hash unique skill file contents for cache provenance. */
-function hashSkills(cases: EvalCase[]): string {
+function hashSkills(cases: EvalCase[], widgetsSources?: SkillSource[]): string {
   const uniqueSkills = [...new Set(cases.map((c) => c.skill))].sort();
   const hash = createHash('sha256');
   for (const skill of uniqueSkills) {
     try {
-      hash.update(loadSkillContent(skill));
+      hash.update(loadSkillContent(skill, widgetsSources));
     } catch {
       hash.update(skill);
     }
@@ -155,9 +193,9 @@ export function aggregateResults(results: EvalResult[]): ProductSummary[] {
 }
 
 /** Evaluate a single case (both arms), optionally running N samples. */
-async function evalCase(c: EvalCase, options: EvalOptions): Promise<EvalResult | null> {
+async function evalCase(c: EvalCase, options: EvalOptions, widgetsSources?: SkillSource[]): Promise<EvalResult | null> {
   try {
-    const skillContent = loadSkillContent(c.skill);
+    const skillContent = loadSkillContent(c.skill, widgetsSources);
 
     const systemWith =
       'You have access to the following WorkOS integration skill. ' +
@@ -340,7 +378,10 @@ export async function runEval(options: EvalOptions): Promise<EvalReport> {
     };
   }
 
-  const skillHash = hashSkills(cases);
+  // Snapshot once: hashing, prompts and report provenance use these exact bytes.
+  // Missing Widgets sources fail before dry-run success or any generation call.
+  const widgetsSources = cases.some((c) => c.skill === 'workos-widgets') ? loadWidgetsSources() : undefined;
+  const skillHash = hashSkills(cases, widgetsSources);
 
   if (options.dryRun) {
     console.log(`\nDry run: ${cases.length} cases would be evaluated\n`);
@@ -355,6 +396,7 @@ export async function runEval(options: EvalOptions): Promise<EvalReport> {
       runId: new Date().toISOString(),
       model: options.model,
       skillHash,
+      ...(widgetsSources && { widgetsSources }),
       totalCases: cases.length,
       results: [],
       summary: [],
@@ -373,7 +415,7 @@ export async function runEval(options: EvalOptions): Promise<EvalReport> {
   // Process in batches of `concurrency`
   for (let batch = 0; batch < cases.length; batch += concurrency) {
     const batchCases = cases.slice(batch, batch + concurrency);
-    const batchResults = await Promise.allSettled(batchCases.map((c) => evalCase(c, options)));
+    const batchResults = await Promise.allSettled(batchCases.map((c) => evalCase(c, options, widgetsSources)));
 
     // Print results in case order after batch completes
     for (let i = 0; i < batchResults.length; i++) {
@@ -424,6 +466,7 @@ export async function runEval(options: EvalOptions): Promise<EvalReport> {
     runId: new Date().toISOString(),
     model: options.model,
     skillHash,
+    ...(widgetsSources && { widgetsSources }),
     totalCases: cases.length,
     results,
     summary: aggregateResults(results),
