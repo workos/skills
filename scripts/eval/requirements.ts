@@ -53,19 +53,41 @@ const denial = new Set([
  * Alternatives are case-authored; words from separate clauses cannot combine.
  */
 export function summarizeRequirements(output: string, requirements: UnorderedRequirement[] = []) {
-  const clauses = output
+  const parts = output
     .replace(/^\s*>.*$/gm, '') // Quoted answers are not the agent's recommendation.
     .replace(/"[^"\n]*"|“[^”\n]*”|‘[^’\n]*’|(?<!\w)'[^'\n]*'(?!\w)/g, '')
     .replace(/[^.!?;\n]*\?/g, '') // A question alone is not affirmative advice.
     // Em dashes separate contrastive advice; ordinary hyphens remain within words.
-    .split(/[.!?;\n,—]|\b(?:and|or|but|however|instead)\b/i)
-    .map(tokens);
+    .split(/([.!?;\n,—]|\b(?:and|or|but|however|instead)\b)/i);
+  const clauses = parts.filter((_, index) => index % 2 === 0).map(tokens);
+  const rejected = new Set<number>();
+  for (const [index, clause] of clauses.entries()) {
+    if (
+      !/^(?:(?:(?:that|this|it) (?:is|was)|that's|that’s) )?(?:incorrect|wrong|false|not (?:correct|right))$/.test(
+        clause.join(' '),
+      )
+    )
+      continue;
+    // A standalone verdict rejects the adjacent claim, not the replacement:
+    // "X — incorrect; Y" rejects X; a leading "Incorrect — X" rejects X.
+    // Never carry verdicts across a newline or a conjunction into another task.
+    const before = parts[index * 2 - 1];
+    const after = parts[index * 2 + 1];
+    if (before === '.' && after === '—' && clause.length === 1 && clauses[index + 1]?.length) {
+      // "X. Incorrect — Y" starts a new labeled example; it does not retract X.
+      rejected.add(index + 1);
+    } else if (clauses[index - 1]?.length && /^[.;,—]$/.test(before)) {
+      rejected.add(index - 1);
+    } else if (clauses[index + 1]?.length && /^[.;,—]$/.test(after)) {
+      rejected.add(index + 1);
+    }
+  }
 
   function evidence(phrase: string) {
     const words = tokens(phrase);
     let affirmed = false;
     let denied = false;
-    for (const clause of clauses) {
+    for (const [clauseIndex, clause] of clauses.entries()) {
       for (let start = 0; start < clause.length; start++) {
         if (clause[start] !== words[0]) continue;
         const indices = [start];
@@ -78,7 +100,8 @@ export function summarizeRequirements(output: string, requirements: UnorderedReq
         if (indices.length !== words.length) continue;
         // A literal negative requirement (e.g. "no server callback") owns its
         // negation token. Extra negation before/within/after a match denies it.
-        if (clause.some((word, index) => denial.has(word) && !indices.includes(index))) denied = true;
+        if (rejected.has(clauseIndex) || clause.some((word, index) => denial.has(word) && !indices.includes(index)))
+          denied = true;
         else affirmed = true;
       }
     }

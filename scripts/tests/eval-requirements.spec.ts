@@ -98,6 +98,13 @@ describe('bounded, affirmative requirement evidence', () => {
     'Register the full URL — do not register only the origin.',
     'Do not register only the origin—register the full URL.',
     'Do not register only the origin — allowlist the entire redirect URL.',
+    'Use just the origin — incorrect; register the full URL.',
+    'Register just the origin — that is incorrect; register the full URL.',
+    'Incorrect — register just the origin; register the full URL.',
+    'Use only the origin — wrong — register the full URL.',
+    'Register the full URL. For CORS use just the origin.',
+    'Register the full URL. For CORS use only the origin.',
+    'Register the full URL. Incorrect — register just the origin.',
   ])('accepts equivalent affirmative wording: %s', (answer) => {
     expect(summarizeRequirements(answer, [registration]).found).toBe(1);
     const rest = paraphrases['authkit-redirect-cra-custom'].filter((_, index) => index !== 1);
@@ -145,6 +152,19 @@ describe('bounded, affirmative requirement evidence', () => {
     'Do not register only the origin — do not register the full URL.',
     'Register users — log the full URL.',
     'Do not register only the origin — "register the full URL".',
+    'Register the full URL — incorrect; use just the origin.',
+    'Register the full URL — that is incorrect; use only the origin.',
+    'Register the full URL — wrong; use the origin alone.',
+    'Register the full URL; that is not correct; use just the origin.',
+    'Incorrect — register the full URL; use just the origin.',
+    'Wrong — allowlist the entire redirect URL; use only the origin.',
+    'Register the full URL — incorrect.',
+    'Incorrect — register the full URL.',
+    'Register the full URL. Register just the origin.',
+    'Register the full URL. Allowlist only the origin.',
+    'Register the full URL. Use just the origin for the redirect.',
+    'Register the full URL. Use only the origin for the redirect.',
+    'Register the full URL. Use the origin alone for the redirect.',
   ])('rejects missing, quoted, negated, cross-clause or contradictory evidence: %s', (answer) => {
     expect(summarizeRequirements(answer, [registration]).found).toBe(0);
     const rest = paraphrases['authkit-redirect-cra-custom'].filter((_, index) => index !== 1);
@@ -161,18 +181,21 @@ describe('bounded, affirmative requirement evidence', () => {
     expect(summarizeSignals(completeButWrong, expected).params.missing).toContain('register full URL');
   });
 
-  it.each(['No server callback is needed.', 'A server callback is not required.', 'A server callback is unnecessary.'])(
-    'accepts a legitimate negative requirement: %s',
-    (answer) => {
-      const { expected } = loadCases(undefined, { caseId: 'authkit-redirect-router-static' })[0];
-      expect(summarizeRequirements(answer, [expected.unorderedRequirements![3]]).found).toBe(1);
-    },
-  );
+  it.each([
+    'No server callback is needed.',
+    'A server callback is not required.',
+    'A server callback is unnecessary.',
+    'A server callback is required — incorrect; no server callback is needed.',
+  ])('accepts a legitimate negative requirement: %s', (answer) => {
+    const { expected } = loadCases(undefined, { caseId: 'authkit-redirect-router-static' })[0];
+    expect(summarizeRequirements(answer, [expected.unorderedRequirements![3]]).found).toBe(1);
+  });
 
   it.each([
     'A server callback is required.',
     'There is "no server callback" in the old example.',
     'No server callback is needed. Create a server callback anyway.',
+    'No server callback is needed — incorrect; create a server callback.',
   ])('rejects incorrect or contradicted negative requirements: %s', (answer) => {
     const { expected } = loadCases(undefined, { caseId: 'authkit-redirect-router-static' })[0];
     expect(summarizeRequirements(answer, [expected.unorderedRequirements![3]]).found).toBe(0);

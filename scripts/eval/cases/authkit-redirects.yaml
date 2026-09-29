@@ -58,7 +58,16 @@
       - anyOf: [pass redirectUri, supply redirectUri, forward redirectUri]
         noneOf: [env automatically configures SDK]
       - anyOf: [register full URL, allowlist entire redirect URL, register complete redirect address]
-        noneOf: [register only origin]
+        # Keep "use origin" alternatives redirect-qualified: CORS correctly uses an origin.
+        noneOf:
+          [
+            register only origin,
+            register just origin,
+            allowlist only origin,
+            use just origin redirect,
+            use only origin redirect,
+            use origin alone redirect,
+          ]
       - anyOf: [CORS origin, allowed origins, allow app origin]
         noneOf: [CORS full URL, CORS callback path]
       - anyOf: [verify destination, check destination, confirm SDK initializes destination]
