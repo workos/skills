@@ -19,7 +19,11 @@ export interface ExpectedSignals {
   flowSteps: string[];
   antiPatterns: string[];
   hallucinations?: string[];
+  /** Opt-in bounded Widgets recommendation contract; not a semantic judge. */
+  widgetsRecommendation?: true;
 }
+
+export type WidgetsRecommendation = 'supported' | 'denied' | 'overclaim' | 'mixed' | 'unknown';
 
 /** Scores for a single generation run (with or without skill) */
 export interface ScoreCard {
@@ -31,6 +35,7 @@ export interface ScoreCard {
   antiPatternAvoidance: number;
   hallucinationCount: number;
   composite: number;
+  widgetsRecommendation?: WidgetsRecommendation;
 }
 
 export type ErrorCategory =
@@ -42,7 +47,9 @@ export type ErrorCategory =
   | 'incorrect_config'
   | 'missing_error_handling'
   | 'wrong_import'
-  | 'security_issue';
+  | 'security_issue'
+  | 'incorrect_recommendation'
+  | 'unverified_recommendation';
 
 export interface TokenUsage {
   input: number;
@@ -87,11 +94,20 @@ export interface ProductSummary {
   avgDeltaStddev: number;
 }
 
+/** Exact, fixed Widgets bundle input; paths are relative to plugins/workos/skills. */
+export interface SkillSource {
+  path: string;
+  content: string;
+  sha256: string;
+}
+
 /** Full eval run report */
 export interface EvalReport {
   runId: string;
   model: string;
   skillHash?: string;
+  /** Present only for cases that explicitly load the shipped Widgets bundle. */
+  widgetsSources?: SkillSource[];
   totalCases: number;
   results: EvalResult[];
   summary: ProductSummary[];

@@ -92,13 +92,13 @@ for Antigravity, Factory, Goose, OpenCode, Windsurf, and Zed are in the
 
 ## Tools
 
-| Tool | What it does |
-| --- | --- |
-| `whoami` | Returns your identity, role, and the environments you can reach. |
-| `list_operations` | Lists the WorkOS operations available to the agent, with parameters. |
-| `query` | Runs a read-only operation from the catalog, such as listing organizations or users. |
-| `mutate` | Runs a write operation from the catalog, such as creating an organization or inviting a user. |
-| `setup_account` | Provisions a WorkOS workspace for a first-time user. |
+| Tool              | What it does                                                                                  |
+| ----------------- | --------------------------------------------------------------------------------------------- |
+| `whoami`          | Returns your identity, role, and the environments you can reach.                              |
+| `list_operations` | Lists the WorkOS operations available to the agent, with parameters.                          |
+| `query`           | Runs a read-only operation from the catalog, such as listing organizations or users.          |
+| `mutate`          | Runs a write operation from the catalog, such as creating an organization or inviting a user. |
+| `setup_account`   | Provisions a WorkOS workspace for a first-time user.                                          |
 
 Operations cover organizations, users, SSO connections, Directory Sync, AuthKit
 branding, webhooks, feature flags, and more.
