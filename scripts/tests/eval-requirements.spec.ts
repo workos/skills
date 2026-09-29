@@ -181,6 +181,59 @@ describe('bounded, affirmative requirement evidence', () => {
     expect(summarizeSignals(completeButWrong, expected).params.missing).toContain('register full URL');
   });
 
+  it.each(['.', '!', '?', ';', ',', '—'])('attaches corrections consistently across %s', (punctuation) => {
+    const rest = paraphrases['authkit-redirect-cra-custom'].filter((_, index) => index !== 1);
+    const complete = (advice: string) =>
+      [...rest, advice, ...expected.params, ...expected.methods, ...expected.imports, ...expected.envVars].join('\n');
+    // Cover both sides of the verdict. "That is" explicitly points backward,
+    // unlike a new-sentence "Incorrect — X" label; a question is not a verdict.
+    for (const verdict of [
+      'Incorrect;',
+      'That is incorrect.',
+      'That is incorrect!',
+      'That is incorrect;',
+      'That is incorrect,',
+      'That is incorrect—',
+    ]) {
+      const corrected = complete(`Use only the origin${punctuation} ${verdict} register the full URL.`);
+      const reversed = complete(`Register the full URL${punctuation} ${verdict} use only the origin.`);
+      expect(scoreOutput(corrected, expected).composite, verdict).toBe(100);
+      expect(categorizeErrors(corrected, expected)).toEqual([]);
+      expect(summarizeSignals(corrected, expected).params.matched).toContain('register full URL');
+      expect(scoreOutput(reversed, expected).composite, verdict).toBeLessThan(100);
+      expect(categorizeErrors(reversed, expected)).toContain('wrong_params');
+      expect(summarizeSignals(reversed, expected).params.missing).toContain('register full URL');
+    }
+  });
+
+  it.each(['.', '!'])('recognizes a new-sentence example label after %s', (punctuation) => {
+    expect(
+      summarizeRequirements(`Register the full URL${punctuation} Incorrect — register just the origin.`, [registration])
+        .found,
+    ).toBe(1);
+    expect(
+      summarizeRequirements(`Use only the origin${punctuation} Incorrect — register the full URL.`, [registration])
+        .found,
+    ).toBe(0);
+  });
+
+  it.each(['.', '!', ';', ',', '—'])('recognizes a leading verdict before %s', (punctuation) => {
+    expect(summarizeRequirements(`Incorrect${punctuation} register the full URL.`, [registration]).found).toBe(0);
+  });
+
+  it('keeps questions non-affirmative without discarding their correction boundary', () => {
+    expect(summarizeRequirements('Register the full URL?', [registration]).found).toBe(0);
+    expect(summarizeRequirements('Register the full URL? Incorrect.', [registration]).found).toBe(0);
+    expect(summarizeRequirements('Incorrect? Register the full URL.', [registration]).found).toBe(1);
+  });
+
+  it.each(['\n', ' and ', ' or ', ' but ', ' however ', ' instead '])(
+    'does not carry a trailing verdict across %j',
+    (boundary) => {
+      expect(summarizeRequirements(`Register the full URL${boundary}Incorrect`, [registration]).found).toBe(1);
+    },
+  );
+
   it.each([
     'No server callback is needed.',
     'A server callback is not required.',

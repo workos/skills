@@ -47,6 +47,16 @@ const denial = new Set([
   'false',
 ]);
 
+// One punctuation vocabulary for splitting, verdict attachment and sentence labels.
+// Newlines and conjunctions split clauses but intentionally do not link verdicts.
+const sentenceBoundaries = new Set(['.', '!', '?']);
+const punctuationBoundaries = new Set([...sentenceBoundaries, ';', ',', '—']);
+const clauseBoundary = new RegExp(
+  `([${[...punctuationBoundaries].join('')}\\n]|\\b(?:and|or|but|however|instead)\\b)`,
+  'i',
+);
+const question = new RegExp(`[^${[...sentenceBoundaries].join('')};\\n]*\\?`, 'g');
+
 /**
  * Conservative lexical evidence, not semantic entailment. Every phrase word must
  * occur in order in one clause, with at most three intervening words per gap.
@@ -56,9 +66,10 @@ export function summarizeRequirements(output: string, requirements: UnorderedReq
   const parts = output
     .replace(/^\s*>.*$/gm, '') // Quoted answers are not the agent's recommendation.
     .replace(/"[^"\n]*"|“[^”\n]*”|‘[^’\n]*’|(?<!\w)'[^'\n]*'(?!\w)/g, '')
-    .replace(/[^.!?;\n]*\?/g, '') // A question alone is not affirmative advice.
-    // Em dashes separate contrastive advice; ordinary hyphens remain within words.
-    .split(/([.!?;\n,—]|\b(?:and|or|but|however|instead)\b)/i);
+    // Questions are not evidence, but retain '?' so a following verdict refers
+    // back to the removed question rather than rejecting the replacement advice.
+    .replace(question, '?')
+    .split(clauseBoundary);
   const clauses = parts.filter((_, index) => index % 2 === 0).map(tokens);
   const rejected = new Set<number>();
   for (const [index, clause] of clauses.entries()) {
@@ -73,12 +84,12 @@ export function summarizeRequirements(output: string, requirements: UnorderedReq
     // Never carry verdicts across a newline or a conjunction into another task.
     const before = parts[index * 2 - 1];
     const after = parts[index * 2 + 1];
-    if (before === '.' && after === '—' && clause.length === 1 && clauses[index + 1]?.length) {
+    if (sentenceBoundaries.has(before) && after === '—' && clause.length === 1 && clauses[index + 1]?.length) {
       // "X. Incorrect — Y" starts a new labeled example; it does not retract X.
       rejected.add(index + 1);
-    } else if (clauses[index - 1]?.length && /^[.;,—]$/.test(before)) {
+    } else if (punctuationBoundaries.has(before) && (clauses[index - 1]?.length || before === '?')) {
       rejected.add(index - 1);
-    } else if (clauses[index + 1]?.length && /^[.;,—]$/.test(after)) {
+    } else if (clauses[index + 1]?.length && punctuationBoundaries.has(after)) {
       rejected.add(index + 1);
     }
   }
