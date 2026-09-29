@@ -94,8 +94,24 @@ describe('bounded, affirmative requirement evidence', () => {
     'Register the complete callback redirect address.',
     'Register the full URL, not just its origin.',
     'Register the full URL. The old advice was "do not register the full URL".',
+    'Do not register only the origin — register the full URL.',
+    'Register the full URL — do not register only the origin.',
+    'Do not register only the origin—register the full URL.',
+    'Do not register only the origin — allowlist the entire redirect URL.',
   ])('accepts equivalent affirmative wording: %s', (answer) => {
     expect(summarizeRequirements(answer, [registration]).found).toBe(1);
+    const rest = paraphrases['authkit-redirect-cra-custom'].filter((_, index) => index !== 1);
+    const complete = [
+      ...rest,
+      answer,
+      ...expected.params,
+      ...expected.methods,
+      ...expected.imports,
+      ...expected.envVars,
+    ].join('\n');
+    expect(scoreOutput(complete, expected).composite).toBe(100);
+    expect(categorizeErrors(complete, expected)).toEqual([]);
+    expect(summarizeSignals(complete, expected).params.matched).toContain('register full URL');
   });
 
   it.each([
@@ -122,6 +138,13 @@ describe('bounded, affirmative requirement evidence', () => {
     'Do not register the full URL. Register the full URL.',
     'Register the full URL. Never allowlist the entire redirect URL.',
     'Register the full URL. Register only the origin.',
+    'Do not register the full URL — register only the origin.',
+    'Register only the origin — do not register the full URL.',
+    'Register the full URL — register only the origin.',
+    'Register the full URL — do not register the full URL.',
+    'Do not register only the origin — do not register the full URL.',
+    'Register users — log the full URL.',
+    'Do not register only the origin — "register the full URL".',
   ])('rejects missing, quoted, negated, cross-clause or contradictory evidence: %s', (answer) => {
     expect(summarizeRequirements(answer, [registration]).found).toBe(0);
     const rest = paraphrases['authkit-redirect-cra-custom'].filter((_, index) => index !== 1);

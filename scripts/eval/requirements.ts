@@ -57,7 +57,8 @@ export function summarizeRequirements(output: string, requirements: UnorderedReq
     .replace(/^\s*>.*$/gm, '') // Quoted answers are not the agent's recommendation.
     .replace(/"[^"\n]*"|“[^”\n]*”|‘[^’\n]*’|(?<!\w)'[^'\n]*'(?!\w)/g, '')
     .replace(/[^.!?;\n]*\?/g, '') // A question alone is not affirmative advice.
-    .split(/[.!?;\n,]|\b(?:and|or|but|however|instead)\b/i)
+    // Em dashes separate contrastive advice; ordinary hyphens remain within words.
+    .split(/[.!?;\n,—]|\b(?:and|or|but|however|instead)\b/i)
     .map(tokens);
 
   function evidence(phrase: string) {
