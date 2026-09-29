@@ -1,4 +1,6 @@
 # Future model evaluations only. Offline tests load these; they do not run a model.
+# Independent setup requirements use unordered params presence checks.
+# flowSteps is reserved for causal runtime sequences, not the order of an explanation.
 - id: authkit-redirect-vite-origin
   product: authkit
   skill: workos-authkit-react
@@ -14,8 +16,17 @@
     methods: [AuthKitProvider]
     envVars: [VITE_WORKOS_CLIENT_ID]
     imports: ['@workos-inc/authkit-react']
-    params: [http://localhost:5173, Sign-out URI, Initiate login URI]
-    flowSteps: [origin default, register redirect, allowed origins, separate login route]
+    params:
+      [
+        http://localhost:5173,
+        Sign-out URI,
+        Initiate login URI,
+        origin default,
+        register redirect,
+        allowed origins,
+        separate login route,
+      ]
+    flowSteps: []
     antiPatterns:
       [
         'VITE_WORKOS_API_KEY=',
@@ -43,8 +54,17 @@
     methods: [AuthKitProvider]
     envVars: [REACT_APP_WORKOS_CLIENT_ID, REACT_APP_WORKOS_REDIRECT_URI]
     imports: ['@workos-inc/authkit-react']
-    params: [redirectUri, 'process.env.REACT_APP_WORKOS_REDIRECT_URI', 'https://auth.example.com/auth/complete']
-    flowSteps: [pass redirectUri, register full URL, CORS origin, verify destination]
+    params:
+      [
+        redirectUri,
+        'process.env.REACT_APP_WORKOS_REDIRECT_URI',
+        'https://auth.example.com/auth/complete',
+        pass redirectUri,
+        register full URL,
+        CORS origin,
+        verify destination,
+      ]
+    flowSteps: []
     antiPatterns: ['redirect URI must have no path', 'REACT_APP_WORKOS_API_KEY=']
     hallucinations: []
 
@@ -65,9 +85,17 @@
     methods: [createClient]
     envVars: []
     imports: ['@workos-inc/authkit-js']
-    params: [redirectUri, 'https://app.example.com/auth/complete/']
-    flowSteps:
-      [await createClient, origin default, explicit redirect option, CORS origin, inspect webpack configuration]
+    params:
+      [
+        redirectUri,
+        'https://app.example.com/auth/complete/',
+        await createClient,
+        origin default,
+        explicit redirect option,
+        CORS origin,
+        inspect webpack configuration,
+      ]
+    flowSteps: []
     antiPatterns: ['redirect URI must have no path', 'trailing slashes are forbidden']
     hallucinations: []
 
@@ -88,8 +116,8 @@
     methods: [AuthKitProvider]
     envVars: []
     imports: ['@workos-inc/authkit-react']
-    params: [origin, hydration]
-    flowSteps: [inspect deployment, client SDK, origin default, no server callback]
+    params: [origin, hydration, inspect deployment, client SDK, origin default, no server callback]
+    flowSteps: []
     antiPatterns: ['VITE_WORKOS_API_KEY=', 'REACT_APP_WORKOS_API_KEY=']
     hallucinations: []
 
@@ -110,8 +138,16 @@
     methods: [authLoader]
     envVars: [WORKOS_REDIRECT_URI]
     imports: ['@workos-inc/authkit-react-router']
-    params: ['https://app.example.com/auth/complete', configure]
-    flowSteps: [programmatic configuration priority, register callback route, match registration, server-only secrets]
+    params:
+      [
+        'https://app.example.com/auth/complete',
+        configure,
+        programmatic configuration priority,
+        register callback route,
+        match registration,
+        server-only secrets,
+      ]
+    flowSteps: []
     antiPatterns: ['VITE_WORKOS_API_KEY=']
     hallucinations: []
 
@@ -131,8 +167,8 @@
     methods: []
     envVars: []
     imports: []
-    params: [deployment, workspace]
-    flowSteps: [inspect configuration, inspect runtime, ask for clarification]
+    params: [deployment, workspace, inspect configuration, inspect runtime, ask for clarification]
+    flowSteps: []
     antiPatterns: ['React Router wins because', 'must migrate to framework mode']
     hallucinations: []
 
@@ -155,14 +191,17 @@
     methods: []
     envVars: []
     imports: []
-    params: [Sign-out URI, Initiate login URI, 'https://auth.example.com']
-    flowSteps:
+    params:
       [
+        Sign-out URI,
+        Initiate login URI,
+        'https://auth.example.com',
         compare effective redirect,
         verify destination,
         separate CORS origin,
         preserve existing entries,
         confirm environment,
       ]
+    flowSteps: []
     antiPatterns: ['redirect URI must have no path', 'trailing slashes are forbidden']
     hallucinations: []

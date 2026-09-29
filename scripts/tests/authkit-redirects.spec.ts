@@ -4,6 +4,7 @@ import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import { loadCases, loadSkillContent } from '../eval/runner.ts';
+import { categorizeErrors, scoreOutput } from '../eval/scorer.ts';
 
 const react = loadSkillContent('workos-authkit-react');
 const vanilla = loadSkillContent('workos-authkit-vanilla-js');
@@ -216,6 +217,106 @@ describe('shipped offline URL comparison aid', () => {
   });
 });
 
+// These are the original setup requirements, retained as unordered presence signals.
+const setupSignals = {
+  'authkit-redirect-vite-origin': ['origin default', 'register redirect', 'allowed origins', 'separate login route'],
+  'authkit-redirect-cra-custom': ['pass redirectUri', 'register full URL', 'CORS origin', 'verify destination'],
+  'authkit-redirect-vanilla-custom': [
+    'await createClient',
+    'origin default',
+    'explicit redirect option',
+    'CORS origin',
+    'inspect webpack configuration',
+  ],
+  'authkit-redirect-router-static': ['inspect deployment', 'client SDK', 'origin default', 'no server callback'],
+  'authkit-redirect-router-server': [
+    'programmatic configuration priority',
+    'register callback route',
+    'match registration',
+    'server-only secrets',
+  ],
+  'authkit-redirect-router-ambiguous': ['inspect configuration', 'inspect runtime', 'ask for clarification'],
+  'authkit-redirect-registration-vs-reachability': [
+    'compare effective redirect',
+    'verify destination',
+    'separate CORS origin',
+    'preserve existing entries',
+    'confirm environment',
+  ],
+};
+
+function permutations(items: string[]): string[][] {
+  if (items.length === 0) return [[]];
+  return items.flatMap((item, index) =>
+    permutations(items.filter((_, other) => other !== index)).map((rest) => [item, ...rest]),
+  );
+}
+
+describe.each(Object.entries(setupSignals))('unordered setup scoring: %s', (id, requirements) => {
+  const { expected } = loadCases(undefined, { caseId: id })[0];
+  const otherSignals = [
+    ...expected.methods,
+    ...expected.envVars,
+    ...expected.imports,
+    ...expected.params.filter((signal) => !requirements.includes(signal)),
+  ];
+  const output = (signals: string[]) => [...signals, ...otherSignals].join('\n\n');
+
+  it('keeps every setup requirement without imposing a flow sequence', () => {
+    expect(expected.params).toEqual(expect.arrayContaining(requirements));
+    expect(expected.flowSteps).toEqual([]);
+  });
+
+  it('gives all permutations equal full credit through the real scorer', () => {
+    const baseline = scoreOutput(output(requirements), expected);
+    expect(baseline.composite).toBe(100);
+    for (const order of permutations(requirements)) {
+      expect(scoreOutput(output(order), expected), order.join(', ')).toEqual(baseline);
+      expect(categorizeErrors(output(order), expected)).toEqual([]);
+    }
+  });
+
+  it('penalizes each omitted requirement as missing presence, not wrong ordering', () => {
+    for (const missing of requirements) {
+      const incomplete = output(requirements.filter((signal) => signal !== missing));
+      const score = scoreOutput(incomplete, expected);
+      expect(score.paramAccuracy, missing).toBeCloseTo((expected.params.length - 1) / expected.params.length);
+      expect(score.flowCorrectness).toBe(1);
+      expect(score.composite).toBeLessThan(100);
+      expect(categorizeErrors(incomplete, expected)).toEqual(['wrong_params']);
+    }
+  });
+});
+
+it('scores CORS-first and redirect-first setup explanations equally without losing missing-CORS coverage', () => {
+  const { expected } = loadCases(undefined, { caseId: 'authkit-redirect-vite-origin' })[0];
+  const paragraphs = [
+    'Use the origin default at http://localhost:5173 with AuthKitProvider from @workos-inc/authkit-react and VITE_WORKOS_CLIENT_ID.',
+    'Register redirect URLs for the confirmed environment.',
+    'Configure allowed origins separately for browser requests.',
+    'Provide a separate login route as the Initiate login URI and configure the Sign-out URI.',
+  ];
+  const forward = paragraphs.join('\n\n');
+  const corsFirst = [paragraphs[2], paragraphs[1], paragraphs[3], paragraphs[0]].join('\n\n');
+  expect(scoreOutput(forward, expected).composite).toBe(100);
+  expect(scoreOutput(corsFirst, expected)).toEqual(scoreOutput(forward, expected));
+  expect(scoreOutput(paragraphs.filter((_, index) => index !== 2).join('\n\n'), expected).composite).toBeLessThan(100);
+});
+
+it('retains causal flow penalties for the existing SSO case', () => {
+  const { expected } = loadCases(undefined, { caseId: 'sso-node-basic' })[0];
+  const otherSignals = [...expected.methods, ...expected.envVars, ...expected.imports, ...expected.params];
+  const output = (steps: string[]) => [...steps, ...otherSignals].join('\n\n');
+  const forward = scoreOutput(output(expected.flowSteps), expected);
+  const reversedOutput = output([...expected.flowSteps].reverse());
+  const reversed = scoreOutput(reversedOutput, expected);
+  expect(forward.flowCorrectness).toBe(1);
+  expect(forward.composite).toBe(100);
+  expect(reversed.flowCorrectness).toBeCloseTo(0.6);
+  expect(reversed.composite).toBe(92); // 40% ordering * the unchanged 20-point flow dimension.
+  expect(categorizeErrors(reversedOutput, expected)).toContain('wrong_flow_order');
+});
+
 describe('documentation contracts, not model behavior or project classification', () => {
   it.each([
     ['declarative/library', '<BrowserRouter>', 'Use `@workos-inc/authkit-react`'],
@@ -280,7 +381,8 @@ describe('documentation contracts, not model behavior or project classification'
     ]);
     for (const item of cases) {
       expect(loadSkillContent(item.skill)).toContain('If this file conflicts with fetched docs, follow the docs.');
-      expect(item.expected.flowSteps.length).toBeGreaterThan(0);
+      expect(item.expected.params.length).toBeGreaterThan(0);
+      expect(item.expected.flowSteps).toEqual([]);
       for (const patterns of Object.values(item.expected)) {
         expect(Array.isArray(patterns)).toBe(true);
         for (const pattern of patterns) expect(typeof pattern).toBe('string');
