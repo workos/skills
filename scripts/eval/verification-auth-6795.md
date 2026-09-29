@@ -15,7 +15,7 @@ Using pnpm **10.27.0**, the complete original command exited successfully:
 pnpm test && pnpm lint && pnpm format:check && pnpm build
 ```
 
-After the latest PR50 review fixes: **307 tests passed** across 13 files; lint had zero warnings/errors; repository-wide formatting passed; build passed. Both the focused three-case Widgets dry run and full **76-case** dry run passed with `ANTHROPIC_API_KEY` unset. Dry runs cover loading/hashing only, not model-quality evidence.
+After the latest PR50 review fixes: **355 tests passed** across 14 files; lint had zero warnings/errors; repository-wide formatting passed; build passed. Both the focused three-case Widgets dry run and full **76-case** dry run passed with `ANTHROPIC_API_KEY` unset. Dry runs cover loading/hashing only, not model-quality evidence.
 
 ## PR50 review follow-up
 
@@ -35,6 +35,14 @@ Reviewed head: `6041ec6aec51878d095b33f8b1c4ab01e3cf861f`. Both evaluation-accur
 - [AuthKit token strategy](https://github.com/workos/skills/pull/50#discussion_r4127306054): `widgets-organization-versioned-setup` now explicitly reuses the existing AuthKit React getter/switch helper and expects `getAccessToken`, `switchToOrganization`, and AuthKit React imports—not backend issuance. A separate `widgets-organization-server-token-setup` case explicitly requests Node 10.13.0 server issuance and retains the backend signals. The profile case still requires server issuance.
 
 Representative AuthKit and server-token answers both receive full deterministic credit under their respective loaded cases; cross-strategy tests still detect missing required methods/imports/parameters. The representative snippets were not executed, and these scores do not establish runtime correctness or improved model recommendations. The fixed source bundle and migration/terminology case boundaries are unchanged.
+
+## Third PR50 review follow-up
+
+Reviewed head: `be49d0612d2af9f2e1fdbc9bc4009b75a283e932`. The [explicit retraction finding](https://github.com/workos/skills/pull/50#discussion_r4127519017) was reproduced through `scoreOutput` before the fix. The exact “Recommend WorkOS Widgets … Avoid WorkOS Widgets” input now returns `unknown` with composite **60**, preserving the existing retraction/unknown cap rather than allowing an uncapped recommendation.
+
+Recommendation and rejection paths now share target, action and negation vocabulary. Direct avoidance, negated use/recommendation, and target-first passive rejections recognize package/Widgets/UserProfile targets without requiring them to end the clause. Earlier or later retractions veto both same-clause and adjacent-clause positive evidence. Both positive paths and retractions use the same quotation/code/labeled-example exclusions; explicit no-drop-in qualifications and negated avoidance are not treated as withdrawals.
+
+The 48 new table-driven tests cover the exact score cap, trailing explanations, target boundaries/aliases, punctuation/case, both orderings, both positive paths, and quoted or labeled examples versus actual retractions. Previous semicolon-linkage, denial/parity, source-loading, and AuthKit/server-token strategy tests still pass. This is a bounded grammar, not a claim to understand every paraphrase. No model or runtime calls were made; the three baseline scripts typecheck errors were rechecked and remain unchanged.
 
 ## Separate scripts typecheck: baseline failure, not fixed
 
