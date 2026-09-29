@@ -5,6 +5,7 @@ import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import { loadCases, loadSkillContent } from '../eval/runner.ts';
 import { categorizeErrors, scoreOutput } from '../eval/scorer.ts';
+import { validateUnorderedRequirements } from '../eval/requirements.ts';
 
 const react = loadSkillContent('workos-authkit-react');
 const vanilla = loadSkillContent('workos-authkit-vanilla-js');
@@ -263,7 +264,7 @@ describe.each(Object.entries(setupSignals))('unordered setup scoring: %s', (id, 
   const output = (signals: string[]) => [...signals, ...otherSignals].join('\n\n');
 
   it('keeps every setup requirement without imposing a flow sequence', () => {
-    expect(expected.params).toEqual(expect.arrayContaining(requirements));
+    expect(expected.unorderedRequirements?.map((item) => item.anyOf[0])).toEqual(requirements);
     expect(expected.flowSteps).toEqual([]);
   });
 
@@ -280,7 +281,8 @@ describe.each(Object.entries(setupSignals))('unordered setup scoring: %s', (id, 
     for (const missing of requirements) {
       const incomplete = output(requirements.filter((signal) => signal !== missing));
       const score = scoreOutput(incomplete, expected);
-      expect(score.paramAccuracy, missing).toBeCloseTo((expected.params.length - 1) / expected.params.length);
+      const count = expected.params.length + requirements.length;
+      expect(score.paramAccuracy, missing).toBeCloseTo((count - 1) / count);
       expect(score.flowCorrectness).toBe(1);
       expect(score.composite).toBeLessThan(100);
       expect(categorizeErrors(incomplete, expected)).toEqual(['wrong_params']);
@@ -301,6 +303,19 @@ it('scores CORS-first and redirect-first setup explanations equally without losi
   expect(scoreOutput(forward, expected).composite).toBe(100);
   expect(scoreOutput(corsFirst, expected)).toEqual(scoreOutput(forward, expected));
   expect(scoreOutput(paragraphs.filter((_, index) => index !== 2).join('\n\n'), expected).composite).toBeLessThan(100);
+});
+
+it('accepts a natural CRA registration explanation, not just the case phrase', () => {
+  const { expected } = loadCases(undefined, { caseId: 'authkit-redirect-cra-custom' })[0];
+  const answer = `
+Use AuthKitProvider from @workos-inc/authkit-react with REACT_APP_WORKOS_CLIENT_ID.
+Pass the redirectUri option from process.env.REACT_APP_WORKOS_REDIRECT_URI.
+Register the full redirect URL https://auth.example.com/auth/complete in WorkOS.
+Configure the CORS origin separately.
+Verify that the destination initializes the SDK.
+`;
+  expect(scoreOutput(answer, expected).composite).toBe(100);
+  expect(categorizeErrors(answer, expected)).toEqual([]);
 });
 
 it('retains causal flow penalties for the existing SSO case', () => {
@@ -383,9 +398,12 @@ describe('documentation contracts, not model behavior or project classification'
       expect(loadSkillContent(item.skill)).toContain('If this file conflicts with fetched docs, follow the docs.');
       expect(item.expected.params.length).toBeGreaterThan(0);
       expect(item.expected.flowSteps).toEqual([]);
-      for (const patterns of Object.values(item.expected)) {
+      validateUnorderedRequirements(item.expected.unorderedRequirements);
+      for (const [key, patterns] of Object.entries(item.expected)) {
         expect(Array.isArray(patterns)).toBe(true);
-        for (const pattern of patterns) expect(typeof pattern).toBe('string');
+        if (key !== 'unorderedRequirements') {
+          for (const pattern of patterns) expect(typeof pattern).toBe('string');
+        }
       }
     }
   });

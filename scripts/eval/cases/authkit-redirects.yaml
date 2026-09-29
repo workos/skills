@@ -1,5 +1,6 @@
 # Future model evaluations only. Offline tests load these; they do not run a model.
-# Independent setup requirements use unordered params presence checks.
+# Independent setup requirements accept case-authored alternative wording within a clause.
+# Each anyOf group is one requirement; noneOf lists contradictory advice (not extra requirements).
 # flowSteps is reserved for causal runtime sequences, not the order of an explanation.
 - id: authkit-redirect-vite-origin
   product: authkit
@@ -16,16 +17,14 @@
     methods: [AuthKitProvider]
     envVars: [VITE_WORKOS_CLIENT_ID]
     imports: ['@workos-inc/authkit-react']
-    params:
-      [
-        http://localhost:5173,
-        Sign-out URI,
-        Initiate login URI,
-        origin default,
-        register redirect,
-        allowed origins,
-        separate login route,
-      ]
+    params: [http://localhost:5173, Sign-out URI, Initiate login URI]
+    unorderedRequirements:
+      - anyOf: [origin default, default app origin]
+      - anyOf: [register redirect, add redirect URI, allowlist redirect URL]
+      - anyOf: [allowed origins, CORS origin, allow app origin]
+        noneOf: [CORS full URL, CORS callback path]
+      - anyOf: [separate login route, dedicated login route, separate sign in route]
+        noneOf: [callback as Initiate login]
     flowSteps: []
     antiPatterns:
       [
@@ -54,16 +53,16 @@
     methods: [AuthKitProvider]
     envVars: [REACT_APP_WORKOS_CLIENT_ID, REACT_APP_WORKOS_REDIRECT_URI]
     imports: ['@workos-inc/authkit-react']
-    params:
-      [
-        redirectUri,
-        'process.env.REACT_APP_WORKOS_REDIRECT_URI',
-        'https://auth.example.com/auth/complete',
-        pass redirectUri,
-        register full URL,
-        CORS origin,
-        verify destination,
-      ]
+    params: [redirectUri, 'process.env.REACT_APP_WORKOS_REDIRECT_URI', 'https://auth.example.com/auth/complete']
+    unorderedRequirements:
+      - anyOf: [pass redirectUri, supply redirectUri, forward redirectUri]
+        noneOf: [env automatically configures SDK]
+      - anyOf: [register full URL, allowlist entire redirect URL, register complete redirect address]
+        noneOf: [register only origin]
+      - anyOf: [CORS origin, allowed origins, allow app origin]
+        noneOf: [CORS full URL, CORS callback path]
+      - anyOf: [verify destination, check destination, confirm SDK initializes destination]
+        noneOf: [404 acceptable, missing provider acceptable, parsing proves destination]
     flowSteps: []
     antiPatterns: ['redirect URI must have no path', 'REACT_APP_WORKOS_API_KEY=']
     hallucinations: []
@@ -85,16 +84,15 @@
     methods: [createClient]
     envVars: []
     imports: ['@workos-inc/authkit-js']
-    params:
-      [
-        redirectUri,
-        'https://app.example.com/auth/complete/',
-        await createClient,
-        origin default,
-        explicit redirect option,
-        CORS origin,
-        inspect webpack configuration,
-      ]
+    params: [redirectUri, 'https://app.example.com/auth/complete/']
+    unorderedRequirements:
+      - anyOf: [await createClient, wait createClient resolve]
+      - anyOf: [origin default, default app origin]
+      - anyOf: [explicit redirect option, pass redirectUri, supply redirectUri]
+      - anyOf: [CORS origin, allowed origins, allow app origin]
+        noneOf: [CORS full URL, CORS callback path]
+      - anyOf: [inspect webpack configuration, check webpack env injection, examine webpack config]
+        noneOf: [webpack automatically exposes REACT_APP]
     flowSteps: []
     antiPatterns: ['redirect URI must have no path', 'trailing slashes are forbidden']
     hallucinations: []
@@ -116,7 +114,13 @@
     methods: [AuthKitProvider]
     envVars: []
     imports: ['@workos-inc/authkit-react']
-    params: [origin, hydration, inspect deployment, client SDK, origin default, no server callback]
+    params: [origin, hydration]
+    unorderedRequirements:
+      - anyOf: [inspect deployment, check hosting configuration, confirm static hosting]
+      - anyOf: [client SDK, browser SDK]
+      - anyOf: [origin default, default app origin]
+      - anyOf: [no server callback, server callback not required, server callback unnecessary]
+        noneOf: [server callback required, create server callback]
     flowSteps: []
     antiPatterns: ['VITE_WORKOS_API_KEY=', 'REACT_APP_WORKOS_API_KEY=']
     hallucinations: []
@@ -138,15 +142,19 @@
     methods: [authLoader]
     envVars: [WORKOS_REDIRECT_URI]
     imports: ['@workos-inc/authkit-react-router']
-    params:
-      [
-        'https://app.example.com/auth/complete',
-        configure,
-        programmatic configuration priority,
-        register callback route,
-        match registration,
-        server-only secrets,
-      ]
+    params: ['https://app.example.com/auth/complete', configure]
+    unorderedRequirements:
+      - anyOf:
+          [
+            programmatic configuration priority,
+            configure overrides environment,
+            explicit configuration takes precedence,
+          ]
+        noneOf: [environment overrides configure]
+      - anyOf: [register callback route, mount callback route]
+      - anyOf: [match registration, registration matches effective URL, register effective redirect URL]
+      - anyOf: [server-only secrets, keep secrets server, secrets stay server]
+        noneOf: [expose secrets browser, expose API key browser]
     flowSteps: []
     antiPatterns: ['VITE_WORKOS_API_KEY=']
     hallucinations: []
@@ -167,7 +175,12 @@
     methods: []
     envVars: []
     imports: []
-    params: [deployment, workspace, inspect configuration, inspect runtime, ask for clarification]
+    params: [deployment, workspace]
+    unorderedRequirements:
+      - anyOf: [inspect configuration, examine config, check configuration]
+      - anyOf: [inspect runtime, check execution path, determine request time execution]
+      - anyOf: [ask for clarification, ask intended runtime, clarify intended deployment]
+        noneOf: [choose by dependency priority]
     flowSteps: []
     antiPatterns: ['React Router wins because', 'must migrate to framework mode']
     hallucinations: []
@@ -191,17 +204,17 @@
     methods: []
     envVars: []
     imports: []
-    params:
-      [
-        Sign-out URI,
-        Initiate login URI,
-        'https://auth.example.com',
-        compare effective redirect,
-        verify destination,
-        separate CORS origin,
-        preserve existing entries,
-        confirm environment,
-      ]
+    params: [Sign-out URI, Initiate login URI, 'https://auth.example.com']
+    unorderedRequirements:
+      - anyOf: [compare effective redirect, compare configured redirect registration]
+        noneOf: [silently normalize trailing slashes]
+      - anyOf: [verify destination, check destination, confirm SDK initializes destination]
+        noneOf: [404 acceptable, missing provider acceptable, parsing proves destination]
+      - anyOf: [separate CORS origin, register origin separately CORS, CORS uses app origin]
+        noneOf: [CORS full URL, CORS callback path]
+      - anyOf: [preserve existing entries, retain current registrations, keep existing URLs]
+        noneOf: [replace entire list without reading]
+      - anyOf: [confirm environment, verify target environment, check intended environment]
     flowSteps: []
     antiPatterns: ['redirect URI must have no path', 'trailing slashes are forbidden']
     hallucinations: []

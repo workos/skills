@@ -2,6 +2,7 @@ import { join } from 'path';
 import { readdir, readFile } from 'fs/promises';
 import { parse } from 'yaml';
 import { normalizeForMatch } from './scorer.ts';
+import { summarizeRequirements, validateUnorderedRequirements } from './requirements.ts';
 import type { ExpectedSignals, EvalCase } from './types.ts';
 
 const OUTPUT_DIR = join(process.cwd(), 'scripts', 'output');
@@ -70,9 +71,16 @@ export function summarizeSignals(output: string, expected: ExpectedSignals): Sig
     }
   }
 
+  const params = checkPresence(expected.params);
+  const requirements = summarizeRequirements(output, expected.unorderedRequirements);
   return {
     methods: checkPresence(expected.methods),
-    params: checkPresence(expected.params),
+    params: {
+      found: params.found + requirements.found,
+      total: params.total + requirements.total,
+      matched: [...params.matched, ...requirements.matched],
+      missing: [...params.missing, ...requirements.missing],
+    },
     envVars: checkPresence(expected.envVars),
     imports: checkPresence(expected.imports),
     hallucinations: { found: hallNames.length, names: hallNames },
@@ -123,6 +131,7 @@ export function formatSummary(s: SignalSummary): string {
   if (s.methods.missing.length > 0) lines.push(`    ${DIM}missing: ${s.methods.missing.join(', ')}${RESET}`);
 
   lines.push(`  Params:         ${s.params.found}/${s.params.total} ${check(s.params.found, s.params.total)}`);
+  if (s.params.missing.length > 0) lines.push(`    ${DIM}missing: ${s.params.missing.join(', ')}${RESET}`);
   lines.push(`  Env vars:       ${s.envVars.found}/${s.envVars.total} ${check(s.envVars.found, s.envVars.total)}`);
   lines.push(`  Imports:        ${s.imports.found}/${s.imports.total} ${check(s.imports.found, s.imports.total)}`);
 
@@ -213,7 +222,10 @@ export async function loadCaseExpected(caseId: string): Promise<ExpectedSignals>
     const cases = parse(raw) as EvalCase[];
     if (!Array.isArray(cases)) continue;
     const found = cases.find((c) => c.id === caseId);
-    if (found) return found.expected;
+    if (found) {
+      validateUnorderedRequirements(found.expected.unorderedRequirements);
+      return found.expected;
+    }
   }
   throw new Error(`Case "${caseId}" not found in eval case files`);
 }

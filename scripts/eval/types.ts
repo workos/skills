@@ -10,12 +10,20 @@ export interface EvalCase {
   expected: ExpectedSignals;
 }
 
+/** One unordered setup requirement; alternatives are equivalent, noneOf lists contradictory advice. */
+export interface UnorderedRequirement {
+  anyOf: string[];
+  noneOf?: string[];
+}
+
 /** Expected signals to check in LLM output */
 export interface ExpectedSignals {
   methods: string[];
   envVars: string[];
   imports: string[];
   params: string[];
+  /** Optional prose requirements, each sharing one signal's weight in paramAccuracy. */
+  unorderedRequirements?: UnorderedRequirement[];
   flowSteps: string[];
   antiPatterns: string[];
   hallucinations?: string[];

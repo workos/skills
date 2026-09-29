@@ -5,6 +5,7 @@ import { parse } from 'yaml';
 import { generateCode } from './api.ts';
 import { getCacheKey, readCache, writeCache } from './cache.ts';
 import { scoreOutput, categorizeErrors } from './scorer.ts';
+import { validateUnorderedRequirements } from './requirements.ts';
 import { median, percentile } from './reporter.ts';
 import type { EvalCase, EvalOptions, EvalReport, EvalResult, ProductSummary, ErrorCategory } from './types.ts';
 
@@ -40,6 +41,7 @@ export function loadCases(
       const raw = readFileSync(join(casesDir, file), 'utf8');
       const parsed = parse(raw) as EvalCase[];
       if (Array.isArray(parsed)) {
+        for (const item of parsed) validateUnorderedRequirements(item.expected?.unorderedRequirements);
         cases.push(...parsed);
       }
     } catch (err) {

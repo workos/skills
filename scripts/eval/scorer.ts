@@ -1,4 +1,5 @@
 import type { ExpectedSignals, ScoreCard, ErrorCategory } from './types.ts';
+import { summarizeRequirements } from './requirements.ts';
 
 /**
  * Normalize a string for flexible matching across naming conventions.
@@ -381,12 +382,19 @@ export function weightedScore(dimensions: Omit<ScoreCard, 'composite'>): number 
   return Math.max(0, Math.round(base - penalty));
 }
 
+/** Optional unordered prose signals share the existing parameter dimension; no new weights. */
+function parameterAccuracy(expected: ExpectedSignals, output: string): number {
+  if (!expected.unorderedRequirements?.length) return ratioFound(expected.params, output);
+  const requirements = summarizeRequirements(output, expected.unorderedRequirements);
+  return (countFound(expected.params, output) + requirements.found) / (expected.params.length + requirements.total);
+}
+
 /**
  * Score an LLM output against expected signals.
  */
 export function scoreOutput(output: string, expected: ExpectedSignals): ScoreCard {
   const methodAccuracy = methodRatioFound(expected.methods, output);
-  const paramAccuracy = ratioFound(expected.params, output);
+  const paramAccuracy = parameterAccuracy(expected, output);
   const envVarCoverage = ratioFound(expected.envVars, output);
   const importAccuracy = expected.imports.length > 0 ? ratioFound(expected.imports, output) : 1;
   const flowCorrectness = scoreFlowOrder(expected.flowSteps, output);
@@ -421,7 +429,7 @@ export function categorizeErrors(output: string, expected: ExpectedSignals): Err
   if (expected.methods.length > 0 && methodRatioFound(expected.methods, output) < 1) {
     errors.push('missing_method');
   }
-  if (expected.params.length > 0 && ratioFound(expected.params, output) < 1) {
+  if (parameterAccuracy(expected, output) < 1) {
     errors.push('wrong_params');
   }
   if (ratioFound(expected.envVars, output) < 1) {
