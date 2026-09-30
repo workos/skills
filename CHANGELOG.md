@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.4](https://github.com/workos/skills/compare/v0.7.3...v0.7.4) (2026-09-30)
+
+
+### Bug Fixes
+
+* make AuthKit redirect guidance SDK-aware ([#49](https://github.com/workos/skills/issues/49)) ([d56befc](https://github.com/workos/skills/commit/d56befc0596bd48ea091082f17a6e7d25bb0aa21))
+
 ## [0.7.3](https://github.com/workos/skills/compare/v0.7.2...v0.7.3) (2026-09-18)
 
 
