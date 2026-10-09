@@ -211,6 +211,34 @@ describe('Widgets recommendation contract through the real loader and scorer', (
       'supported',
     ],
     [
+      'Use WorkOS Widgets UserProfile for profile UI, and do not change the existing AuthKit authentication flow. It is not a drop-in Clerk replacement.',
+      'supported',
+    ],
+    [
+      'Use WorkOS Widgets UserProfile for profile UI, and never commit secrets to Git. It is not a drop-in Clerk replacement.',
+      'supported',
+    ],
+    [
+      'Use WorkOS Widgets UserProfile for profile UI, and do not rely on it. It is not a drop-in Clerk replacement.',
+      'unknown',
+    ],
+    [
+      'Use WorkOS Widgets UserProfile for profile UI, and the account page does not work. It is not a drop-in Clerk replacement.',
+      'unknown',
+    ],
+    [
+      'Use WorkOS Widgets UserProfile for profile UI, and never use the component. It is not a drop-in Clerk replacement.',
+      'unknown',
+    ],
+    [
+      'Use WorkOS Widgets UserProfile for profile UI, and avoid Widgets. It is not a drop-in Clerk replacement.',
+      'unknown',
+    ],
+    [
+      'Do not change the AuthKit flow, and use WorkOS Widgets UserProfile for profile UI. It is not a drop-in Clerk replacement.',
+      'supported',
+    ],
+    [
       'Use @workos-inc/widgets, and its UserProfile could provide prebuilt profile UI. It is not a drop-in Clerk replacement.',
       'unknown',
     ],
