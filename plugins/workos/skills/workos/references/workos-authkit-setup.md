@@ -13,6 +13,20 @@ Read this alongside the framework's SDK README for every new AuthKit integration
 
 This reference covers saved settings and verification, not replacement auth code. Leave working routes alone when only configuration is missing. If routes are missing, read the framework reference and SDK README before implementing them. On server frameworks, sign-out must use a POST action with the framework's CSRF protection, not a GET handler. Use the SDK's session/sign-out helpers; never pass an encrypted session cookie as a session ID or build a custom OAuth flow.
 
+## Get credentials
+
+Skip this section inside the WorkOS installer: it writes the credentials before its agent starts.
+
+If the project has no WorkOS credentials yet, start with the no-account install. It provisions an unclaimed WorkOS environment, writes its credentials to the project's env file, and wires up AuthKit. The user can claim the environment later with `npx workos@latest profile claim`:
+
+```bash
+WORKOS_MODE=agent npx workos@latest install
+```
+
+The router's **Start here** section in `SKILL.md` covers what it writes, Git behavior, claiming, and failures. Afterwards, continue with the configuration and verification steps below. The installer's report does not replace them.
+
+Use API keys only when the user already has a WorkOS account or is deploying to production. In that case, use the target environment's API key and client ID from the WorkOS dashboard, or the account's environment after `workos auth login`. See https://workos.com/docs/authkit/cli-installer. Never ship an unclaimed environment's keys to production.
+
 ## Configure three different URLs
 
 Derive URLs from the app's actual origin, port, and routes. Do not copy example localhost URLs into a deployed environment.

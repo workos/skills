@@ -72,6 +72,8 @@ ls src/routes 2>/dev/null && echo "Modern (src/)" || echo "Legacy (app/)"
 
 ## Environment Variables
 
+**Missing credentials:** If the project has no WorkOS credentials yet, get them with the no-account install in [workos-authkit-setup.md](workos-authkit-setup.md#get-credentials) (`npx workos@latest install`). With an existing WorkOS account, use that environment's credentials instead. Skip this inside the WorkOS installer, which writes them before you start.
+
 | Variable                 | Format       | Required |
 | ------------------------ | ------------ | -------- |
 | `WORKOS_API_KEY`         | `sk_...`     | Yes      |

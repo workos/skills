@@ -97,6 +97,8 @@ pnpm build
 
 ## Environment Variables
 
+**Missing credentials:** If the project has no WorkOS credentials yet, get them with the no-account install in [workos-authkit-setup.md](workos-authkit-setup.md#get-credentials) (`npx workos@latest install`). With an existing WorkOS account, use that environment's credentials instead. Skip this inside the WorkOS installer, which writes them before you start.
+
 **Bundled projects only:**
 
 - Vite: `VITE_WORKOS_CLIENT_ID`, explicitly consumed as `import.meta.env.VITE_WORKOS_CLIENT_ID`; inspect any custom `envPrefix`.
