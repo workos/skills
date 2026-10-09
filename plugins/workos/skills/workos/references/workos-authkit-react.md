@@ -38,6 +38,8 @@ Inspect `package.json` scripts, dependencies, build config, and existing access 
 | Create React App (`react-scripts`, or verified CRACO setup) | `REACT_APP_`        | `process.env.REACT_APP_*`                                       |
 | Other/custom bundler                                        | No universal prefix | Inspect its explicit env injection; ask if unknown              |
 
+**Missing credentials:** If the project has no WorkOS credentials yet, get them with the no-account install in [workos-authkit-setup.md](workos-authkit-setup.md#get-credentials) (`npx workos@latest install`). With an existing WorkOS account, use that environment's credentials instead. Skip this inside the WorkOS installer, which writes them before you start.
+
 Only the public client ID is required by the client SDK. Never put `WORKOS_API_KEY` or `WORKOS_COOKIE_PASSWORD` in a client bundle or public-prefixed env variable. The SDK does not automatically read an env variable named `WORKOS_REDIRECT_URI`.
 
 ### Vite origin default

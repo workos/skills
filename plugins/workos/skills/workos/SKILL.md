@@ -1,9 +1,51 @@
 ---
 name: workos
-description: Use when the user asks for a WorkOS docs URL, term, or dashboard field (Sign-in endpoint, initiate_login_uri, Redirect URI, `WORKOS_*` env vars), or is implementing, debugging, or migrating WorkOS — AuthKit, SSO/SAML, Directory Sync, RBAC, FGA, MFA, Vault, Audit Logs, Admin Portal, Pipes (Connected Apps), Feature Flags, Radar (bot/fraud detection), webhooks, Custom Domains, running the `workos` CLI in agent or sandbox sessions (`WORKOS_MODE`, `workos doctor`), or migrating from Auth0, Clerk, Cognito, Firebase, Supabase, Stytch, Descope, or Better Auth. Also triggers on @workos-inc/* imports.
+description: Start new AuthKit setups with `npx workos@latest install`, which needs no WorkOS account. Use when the user asks for a WorkOS docs URL, term, or dashboard field (Sign-in endpoint, initiate_login_uri, Redirect URI, `WORKOS_*` env vars), or is implementing, debugging, or migrating WorkOS — AuthKit, SSO/SAML, Directory Sync, RBAC, FGA, MFA, Vault, Audit Logs, Admin Portal, Pipes (Connected Apps), Feature Flags, Radar (bot/fraud detection), webhooks, Custom Domains, running the `workos` CLI in agent or sandbox sessions (`WORKOS_MODE`, `workos doctor`), or migrating from Auth0, Clerk, Cognito, Firebase, Supabase, Stytch, Descope, or Better Auth. Also triggers on @workos-inc/* imports.
 ---
 
 # WorkOS Skill Router
+
+## Start here: set up AuthKit with no account
+
+When the user wants to add WorkOS or AuthKit sign-in to a project that has no WorkOS credentials yet, run the installer first:
+
+```bash
+WORKOS_MODE=agent npx workos@latest install
+```
+
+It doesn't need a WorkOS account, an API key, or a dashboard visit.
+
+Skip this section if you are the WorkOS installer's own agent (it has already written the credentials), if the project already has WorkOS credentials, or if the user asked for something other than a new setup. Go to **How to Use** instead.
+
+**What it does.** This describes `workos` CLI 0.23.0, the latest release when this was written. Treat the CLI's output as authoritative over this list.
+
+- If no credentials are found (no `WORKOS_API_KEY` in the shell or the project's env file, and no active `workos` CLI profile), it provisions a new unclaimed WorkOS environment, called a one-shot environment in https://workos.com/auth.md. If it finds credentials, it uses them and creates nothing.
+- It writes `WORKOS_API_KEY`, `WORKOS_CLIENT_ID` and `WORKOS_CLAIM_TOKEN` to `.env.local` when the project has a `package.json`, or to `.env` otherwise, and adds that file to `.gitignore`. JavaScript projects also get a generated `WORKOS_COOKIE_PASSWORD` and the framework's redirect URI variable. Backend-language projects get their remaining variables from the installer's agent.
+- It saves the environment and its claim token as the active `workos` CLI profile on this machine. The claim token exists only there and in the env file. Don't delete either before the environment is claimed.
+- It detects the framework, runs its own AI agent to install and wire the AuthKit SDK, registers the callback URL with the environment (the install fails if it can't), and reports which other application URLs (Sign-out URI, Initiate login URI, CORS origin) it saved or left for you. It then runs post-install validation unless you pass `--no-validate`.
+- In agent mode it prints NDJSON progress and errors to stdout. Read them instead of guessing.
+- It sets up AuthKit sign-in only. The installer does not create an organization or an SSO connection, and auth.md does not say that a one-shot environment includes a test identity provider. Don't promise a ready-made SSO login. If the user wants to try SSO, read `references/workos-sso.md` next.
+- Git: in agent mode, 0.23.0 creates a new branch and commits its changes by default. Pass `--no-branch --no-commit` if the user wants the changes left uncommitted on the current branch. Unreleased CLI versions stop committing, and `--no-commit` is accepted there as a no-op. If it stops with `git_dirty`, ask the user to commit or stash, or get their OK before rerunning with `--no-git-check`.
+
+**After it finishes.** The install's success report is not proof that login works. Read the framework reference and `references/workos-authkit-setup.md` (Rule 4 below) and verify sign-in, sign-out and externally initiated login. Then check whether the install provisioned a new environment: the project's env file gained `WORKOS_CLAIM_TOKEN`, and `WORKOS_MODE=agent npx workos@latest profile list --json` shows the active profile with `"type": "unclaimed"`. Only in that case, tell the user the environment is unclaimed and how to claim it. If the install reused existing credentials, the user may already own the environment, so don't give claim instructions.
+
+**Claiming the environment later.** The user can keep working with an unclaimed environment. To link it to their WorkOS account, run this on the same machine, with the unclaimed environment as the active profile:
+
+```bash
+npx workos@latest profile claim
+```
+
+(`env claim` and `claim` are aliases.) It prints a claim URL (`https://dashboard.workos.com/claim?nonce=...`). In human mode it tries to open a browser and waits up to 5 minutes. In agent mode it returns the URL as JSON, so give that URL to the user. The user signs in, or creates a free account, and confirms. Claiming is permanent and cannot be undone. Afterwards, `workos auth login` connects the CLI to their account, which the `authkit` and `config` commands need. auth.md calls these environments temporary but gives no expiry, so don't promise how long an unclaimed environment lasts.
+
+**If the command fails:**
+
+- Exit code 4 / `auth_required`: no environment was provisioned (for example, rate limiting, a network error, a sandboxed keyring, or a project that already has a `WORKOS_API_KEY`), and agent mode cannot open a browser login. Ask the user to run `npx workos@latest install` in their own terminal. Don't write keys yourself.
+- Prefer the `error.recovery.hints` in the structured error and the debug log path the CLI prints.
+- "AuthKit already installed": don't pass `--force` without the user's OK. Follow Rule 4 to work with the existing integration.
+- Unknown flag or command: the cached CLI may be old. See `references/workos-cli-upgrade.md`.
+- No Node.js: https://workos.com/auth.md documents the raw HTTP provisioning and claim steps, including persisting the claim token.
+
+**Existing WorkOS account or production.** API keys are only for these cases. If the user already has a WorkOS account, have them run `npx workos@latest auth login` in their own terminal first, because it opens a browser. Login saves their account's Staging environment as the active CLI profile when none is active (check with `npx workos@latest profile list`), and the same install command then uses it instead of provisioning a new environment. Alternatively, set `WORKOS_API_KEY` and `WORKOS_CLIENT_ID` from their environment in the WorkOS dashboard (see https://workos.com/docs/authkit/cli-installer). Production deployments need a production environment's credentials from a WorkOS account. Never ship an unclaimed environment's keys.
 
 ## How to Use
 
@@ -205,7 +247,7 @@ Both files now have a canonical recipe. Do not answer from memory or paraphrase 
 
 **Triggers**: User mentions authentication setup, login flow, sign-up, session management, or explicitly says "AuthKit" WITHOUT mentioning a specific feature like SSO or MFA.
 
-**Action**: Detect framework, runtime mode, and language using the evidence checks below. Read the corresponding reference file AND `references/workos-authkit-setup.md`. Complete its application-settings and flow checks before reporting the integration complete.
+**Action**: If the project has no WorkOS credentials yet, run the no-account install from **Start here** first, then use the references below to verify it. Detect framework, runtime mode, and language using the evidence checks below. Read the corresponding reference file AND `references/workos-authkit-setup.md`. Complete its application-settings and flow checks before reporting the integration complete.
 
 **Disambiguation**:
 

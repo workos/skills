@@ -47,6 +47,8 @@ Use `authkitLoader` on the relevant routes (root if sharing root loader data); d
 
 ### Server configuration
 
+**Missing credentials:** If the project has no WorkOS credentials yet, get them with the no-account install in [workos-authkit-setup.md](workos-authkit-setup.md#get-credentials) (`npx workos@latest install`). With an existing WorkOS account, use that environment's credentials instead. Skip this inside the WorkOS installer, which writes them before you start.
+
 The framework SDK supports `WORKOS_CLIENT_ID`, `WORKOS_API_KEY`, `WORKOS_REDIRECT_URI`, and `WORKOS_COOKIE_PASSWORD` (32+ characters). Its explicit `configure({ redirectUri, ... })` values take priority over environment variables. Inspect programmatic configuration and runtime env loading before claiming an `.env` value is effective.
 
 Keep API keys and cookie secrets server-only: never add public prefixes or send configuration objects containing secrets to the browser. These server requirements do not apply to client-only React Router apps; those use the React client ID/provider options instead.
