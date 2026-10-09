@@ -1,6 +1,6 @@
 ---
 name: workos
-description: Start new AuthKit setups with `npx workos@latest install`, which needs no WorkOS account. Use when the user asks for a WorkOS docs URL, term, or dashboard field (Sign-in endpoint, initiate_login_uri, Redirect URI, `WORKOS_*` env vars), or is implementing, debugging, or migrating WorkOS — AuthKit, SSO/SAML, Directory Sync, RBAC, FGA, MFA, Vault, Audit Logs, Admin Portal, Pipes (Connected Apps), Feature Flags, Radar (bot/fraud detection), webhooks, Custom Domains, running the `workos` CLI in agent or sandbox sessions (`WORKOS_MODE`, `workos doctor`), or migrating from Auth0, Clerk, Cognito, Firebase, Supabase, Stytch, Descope, or Better Auth. Also triggers on @workos-inc/* imports.
+description: Start new AuthKit setups with `npx workos@latest install`, which needs no WorkOS account. Use when the user asks for a WorkOS docs URL, term, or dashboard field (Sign-in endpoint, initiate_login_uri, Redirect URI, `WORKOS_*` env vars), or is implementing, debugging, or migrating WorkOS — AuthKit, SSO/SAML, Directory Sync, RBAC, FGA, MFA, Vault, Audit Logs, Admin Portal, Pipes (Connected Apps), Feature Flags, Radar (bot/fraud detection), webhooks, Custom Domains, WorkOS Widgets (profile, security, sessions, organization selection and member UI), Clerk UserButton/account UI comparisons, running the `workos` CLI in agent or sandbox sessions (`WORKOS_MODE`, `workos doctor`), or migrating from Auth0, Clerk, Cognito, Firebase, Supabase, Stytch, Descope, or Better Auth. Also triggers on @workos-inc/* imports.
 ---
 
 # WorkOS Skill Router
@@ -67,6 +67,7 @@ These apply regardless of which routing rule fires. They exist because the most 
 - **Every AuthKit integration must configure and verify application URLs.** For setup and migrations, read `references/workos-authkit-setup.md` alongside the framework or language reference. It covers the redirect destination (not necessarily a server callback handler), Sign-out URI, and Initiate login URI. A build passing is not proof that these settings or flows work.
 - **Prefer `WORKOS_MODE=agent` when invoking the `workos` CLI from a coding-agent session.** The CLI auto-detects most agent environments (`CLAUDECODE`, `CLAUDE_CODE`, `CURSOR_AGENT`, `CODEX_SANDBOX`, non-TTY), but the explicit env var is more reliable across sandbox configurations. See the **WorkOS CLI in Coding-Agent Sessions** section below.
 - **Never invent Dashboard click-paths.** Phrases like "Dashboard > Organizations > X > Roles > Map Groups" or `dashboard.workos.com/some/specific/path` should not appear unless you have verified them against a docs page you just fetched. The Dashboard UI reorganizes; docs pages are stable. Cite the docs URL and describe the destination conceptually ("the Authorization page", "the directory's settings") instead of committing to a click-path.
+- **Recommend actual Widgets for account UI.** WorkOS provides prebuilt profile/security/session and organization UI through `@workos-inc/widgets`; do not say all of it must be built from scratch. Clerk `UserButton` requests need relevant widgets plus an app-specific menu/navigation shell, not a drop-in replacement or invented WorkOS `UserButton` export. Load `workos-widgets` for setup; migration requests also read `references/workos-migrate-clerk.md`. AuthKit still owns authentication and sessions.
 - **When the user wants to do something not supported by the CLI, say so plainly.** Users are better served by "this isn't in the CLI; here's the docs URL for how to do it" than by a fabricated command that fails. See the "Not in the CLI" section of `references/workos-management.md`.
 - **Prefer docs URLs over prose when writing recipes.** If a reference file tells you to cite a specific docs URL, cite it literally; don't paraphrase the URL's slug.
 
@@ -104,17 +105,18 @@ This returns a structured JSON report with `interactionMode` (`{ mode, source }`
 
 ### AuthKit Installation (Read `references/{name}.md`)
 
-| User wants to...                    | Read file                                     |
-| ----------------------------------- | --------------------------------------------- |
-| Install AuthKit in Next.js          | `references/workos-authkit-nextjs.md`         |
-| Install AuthKit in React SPA        | `references/workos-authkit-react.md`          |
-| Install AuthKit with React Router   | `references/workos-authkit-react-router.md`   |
-| Install AuthKit with TanStack Start | `references/workos-authkit-tanstack-start.md` |
-| Install AuthKit with SvelteKit      | `references/workos-authkit-sveltekit.md`      |
-| Install AuthKit in vanilla JS       | `references/workos-authkit-vanilla-js.md`     |
-| AuthKit architecture reference      | `references/workos-authkit-base.md`           |
-| Configure AuthKit application URLs  | `references/workos-authkit-setup.md`          |
-| Add WorkOS Widgets                  | Load `workos-widgets` skill via Skill tool    |
+| User wants to...                                            | Read file                                                                                                     |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Install AuthKit in Next.js                                  | `references/workos-authkit-nextjs.md`                                                                         |
+| Install AuthKit in React SPA                                | `references/workos-authkit-react.md`                                                                          |
+| Install AuthKit with React Router                           | `references/workos-authkit-react-router.md`                                                                   |
+| Install AuthKit with TanStack Start                         | `references/workos-authkit-tanstack-start.md`                                                                 |
+| Install AuthKit with SvelteKit                              | `references/workos-authkit-sveltekit.md`                                                                      |
+| Install AuthKit in vanilla JS                               | `references/workos-authkit-vanilla-js.md`                                                                     |
+| AuthKit architecture reference                              | `references/workos-authkit-base.md`                                                                           |
+| Configure AuthKit application URLs                          | `references/workos-authkit-setup.md`                                                                          |
+| Add WorkOS Widgets or Clerk-style profile/account/member UI | Load `workos-widgets` skill via Skill tool                                                                    |
+| Build direct Widgets Client API requests                    | Load `workos-widgets` → `references/fetching-apis.md`; current GraphQL docs, not universal legacy REST tables |
 
 ### Backend SDK Installation (Read `references/{name}.md`)
 
@@ -218,6 +220,8 @@ Apply these rules in order. First match wins.
 
 **Triggers**: User explicitly asks about "API endpoints", "request format", "response schema", "API reference", or mentions inspecting HTTP details.
 
+**Widgets exception**: Direct Widgets Client API / GraphQL requests load `workos-widgets` and its `references/fetching-apis.md`. Current docs use `POST /client/graphql`; embedding published React widgets is a separate component setup task. Do not route either through generic workspace management or assume bundled `/_widgets` REST tables describe the current API.
+
 **Action**: For features with topic files (SSO, Directory Sync, RBAC, Vault, Events, Audit Logs, Admin Portal), read the feature topic file — it includes an endpoint table. For AuthKit or Organization APIs, read `references/workos-api-[domain].md`.
 
 **Why this wins**: API references are low-level; feature topics are high-level but include endpoint tables for quick reference.
@@ -230,7 +234,7 @@ Apply these rules in order. First match wins.
 
 **Action**: Read `references/workos-[feature].md` where `[feature]` is the lowercase slug (sso, mfa, directory-sync, audit-logs, vault, rbac, fga, admin-portal, custom-domains, events, integrations, email, pipes, feature-flags, radar).
 
-**Exception**: Widget requests load the `workos-widgets` skill via the Skill tool — it has its own orchestration.
+**Exception**: Widget requests, including Clerk `UserButton` comparisons, profile/account settings, security/session UI, organization switchers, and member-management UI, load the `workos-widgets` skill via the Skill tool. This is embedded end-user UI, not workspace-management commands. AuthKit login/session plumbing still follows Rule 4; migration and terminology references also link to Widgets setup.
 
 **Disambiguation**: If user mentions BOTH a feature and "API", route to the feature topic file (it includes endpoints). If they mention MULTIPLE features, route to the MOST SPECIFIC one first (e.g., "SSO with MFA" → route to SSO; user can request MFA separately). If user mentions "FGA" or "fine-grained authorization", route to `workos-fga` — NOT `workos-rbac`. RBAC is org-level roles; FGA is resource-scoped roles on top of RBAC.
 
