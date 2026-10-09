@@ -1,13 +1,13 @@
 ---
 name: workos-widgets
-description: Use when the user is implementing, embedding, or debugging a WorkOS Widget — specifically the User Management, User Profile, Admin Portal SSO Connection, or Admin Portal Domain Verification widgets. Handles the full stack — detecting the frontend (Next.js, React, React Router, TanStack Start, Vite, SvelteKit), generating access tokens via the backend SDK in use (Node, Python, Go, Ruby, PHP, Java, .NET), and wiring up the widget component correctly per the bundled OpenAPI spec. Also use when code imports from @workos-inc/widgets or the user pastes <UserManagement /> or <UserProfile /> JSX.
+description: Use for WorkOS Widgets or Clerk-style UserButton, profile/account, security/session, organization-switcher and member-management UI requests. Recommend published React components without drop-in parity claims; detect the stack and wire version-checked token issuance. Also handles direct Widgets Client API requests as a separate docs-first path, and @workos-inc/widgets imports.
 ---
 
 # WorkOS Widgets
 
 ## Workflow Overview
 
-1. Identify widget target from the user request (`user-management`, `user-profile`, `admin-portal-sso-connection`, `admin-portal-domain-verification`).
+1. Distinguish embedded React components from direct custom Client API development. For Clerk `UserButton` / account requests, recommend actual Widgets plus an app-specific menu/navigation shell, not exact parity. Identify the target (`user-management`, `user-profile`, `user-security`, `user-sessions`, `organization-switcher`, or Admin Portal widgets).
 2. Scan project files in this order:
    - package/dependency manifests
    - framework/router entrypoints
@@ -49,6 +49,7 @@ When input is missing, infer from existing project conventions and detected stac
 Always load these core references:
 
 - [references/detection.md](references/detection.md)
+- [references/component-setup.md](references/component-setup.md) — version-checked component roles, capabilities, imports and props
 - [references/token-strategies.md](references/token-strategies.md)
 - [references/fetching-apis.md](references/fetching-apis.md)
 - [references/styling-and-components.md](references/styling-and-components.md)
@@ -72,7 +73,7 @@ Load stack-specific reference guidance:
 - Java: [references/framework-java.md](references/framework-java.md)
 - Mixed repositories: [references/framework-mixed-repositories.md](references/framework-mixed-repositories.md)
 
-Then load exactly one widget reference:
+For profile/security/sessions/organization selection in a React-rendered UI, use `component-setup.md`. Published Widgets are React components: do not import them into `.svelte` or other non-React templates. For SvelteKit or another non-React frontend, use only an existing React rendering boundary; otherwise ask whether to add one or build a custom UI against the Client API. Additionally load the relevant widget reference when applicable (these describe desired behavior, not a mandate to rebuild published components):
 
 - User Management: [references/widget-user-management.md](references/widget-user-management.md)
 - User Profile: [references/widget-user-profile.md](references/widget-user-profile.md)
@@ -81,11 +82,8 @@ Then load exactly one widget reference:
 
 ## Global Widget Guidance
 
-- Implement widget operations using endpoint paths/methods from [references/fetching-apis.md](references/fetching-apis.md). When building request bodies or parsing responses, query the OpenAPI spec for the relevant widget's schemas:
-  ```bash
-  node references/scripts/query-spec.cjs --widget <widget-name>
-  ```
-  Use `--list` to see available widget groups.
+- Embed published components only in React-rendered UI using [references/component-setup.md](references/component-setup.md); they own their internal API calls. `WorkOsWidgets` configures theme/query context, while component-level `authToken` provides authorization.
+- For direct custom Client API work, fetch https://workos.com/docs/widgets-api first: current docs use GraphQL `POST /client/graphql`. Read [references/fetching-apis.md](references/fetching-apis.md) for the boundary. The bundled REST spec is a legacy snapshot, not authoritative for all current requests; do not regenerate or migrate API layers just to add a component.
 - Keep loading, empty, and error states explicit and user-visible.
 - Keep mutation outcomes visible and refresh/reload affected data after successful changes.
 - Align table/list/action UI with existing project conventions.
@@ -93,9 +91,8 @@ Then load exactly one widget reference:
 
 ## Core Guidelines
 
-- Reuse existing domain types from the host project and OpenAPI schemas; avoid duplicating model definitions.
-- Build widget requests using [references/fetching-apis.md](references/fetching-apis.md) for paths, methods, and schema queries.
-- Use direct `fetch`/HTTP calls (or equivalent server HTTP client) for endpoint calls.
+- Reuse host-project types and the installed package's public declarations; avoid duplicating model definitions.
+- Only custom API integrations need direct `fetch`/HTTP calls or a GraphQL client; verify operation schemas using current docs via [references/fetching-apis.md](references/fetching-apis.md).
 - Implement a consistent authorization layer for widget requests, including elevated-token handling for sensitive endpoints when required.
 - If the app already uses React Query or SWR, use them as orchestration/cache layers around those direct calls.
 - For React/TypeScript widget code quality expectations, follow [references/react-ts-standards.md](references/react-ts-standards.md).
@@ -110,16 +107,16 @@ Then load exactly one widget reference:
 
 Before finishing, verify all relevant items:
 
-1. Widget component exists and accepts `accessToken: string` when component-level integration is in scope.
+1. Imports/props match installed declarations. For Widgets 1.18.0 use component `authToken`, never a provider token prop; check `UserSessions`' string/getter union and `OrganizationSwitcher`'s callback.
 2. Route/page wiring is complete when route integration is in scope.
 3. Token source matches existing app architecture (AuthKit client flow or backend WorkOS token flow).
-4. API methods and paths match the bundled OpenAPI spec, and data-layer usage matches project conventions.
+4. Node 10.13.0 token issuance uses `createToken` and `{ token }`, bound to the authenticated user and authorized organization. Other installed versions/languages are checked independently.
 5. Loading and error branches exist for required query/mutation flows.
 
 ## Validation Checklist
 
-1. Confirm endpoint paths and HTTP methods come from the bundled OpenAPI spec.
-2. Confirm request/response handling follows schema expectations from the spec.
+1. For direct API work, confirm endpoint and operation schemas against current official docs, not assumed legacy REST paths.
+2. Confirm component/provider props and token response shape against the exact installed versions; respect permission and renewal requirements.
 3. Confirm query/mutation invalidation/refetch is applied after successful mutations where required.
 4. Confirm empty/error/loading states are explicit and user-visible.
 5. Confirm package installs (if any) used the detected package manager/tooling.

@@ -1,0 +1,18 @@
+{
+  "observed": "2026-09-28",
+  "widgetsVersion": "1.18.0",
+  "nodeVersion": "10.13.0",
+  "note": "Read-only declaration excerpts from integrity-checked npm tarballs; no runtime verification. Full provenance: plugins/workos/skills/workos-widgets/references/version-evidence.md",
+  "declarations": {
+    "package/dist/esm/workos-widgets.client.d.ts": "interface WorkOsWidgetsProps {\n    elements?: Elements;\n    theme?: Omit<GetPropDefTypes<typeof themePropDefs>, \"asChild\"> & {\n        fontFamily?: string;\n    };\n    style?: React.CSSProperties;\n    className?: string;\n    children: React.ReactNode;\n    apiHostname?: string;\n    port?: number | null;\n    https?: boolean;\n    /**\n     * Optional query client for users who are already using Tanstack Query. If\n     * not provided, a new query client will be created and mounted internally.\n     */\n    queryClient?: QueryClient;\n}",
+    "package/dist/esm/user-profile.client.d.ts": "interface UserProfileProps extends WidgetRootDomProps {\n    authToken: AuthToken;\n}",
+    "package/dist/esm/user-security.client.d.ts": "interface UserSecurityProps extends WidgetRootDomProps {\n    authToken: AuthToken;\n}",
+    "package/dist/esm/users-management.client.d.ts": "interface UsersManagementProps extends WidgetRootDomProps {\n    authToken: AuthToken;\n}",
+    "package/dist/esm/organization-switcher.client.d.ts": "interface OrganizationSwitcherProps extends OrganizationSwitcherPassthroughProps {\n    authToken: AuthToken;\n}",
+    "package/dist/esm/lib/organization-switcher.d.ts": "    switchToOrganization: ({ organizationId, }: {\n        organizationId: string;\n    }) => void | Promise<void>;",
+    "package/dist/esm/user-sessions.client.d.ts": "type UserSessionsWithoutCurrentSessionIdProps = {\n    authToken: () => Promise<string>;\n    currentSessionId?: never;\n};\ntype UserSessionsWithCurrentSessionIdProps = {\n    authToken: string;\n    currentSessionId: string;\n};\ntype UserSessionsProps = WidgetRootDomProps & (UserSessionsWithoutCurrentSessionIdProps | UserSessionsWithCurrentSessionIdProps);",
+    "package/dist/esm/api/api-provider.d.ts": "type AuthToken = string | (() => Promise<string>);",
+    "package/lib/factory-C4y25QQJ.d.cts": "interface WidgetSessionTokenResponse {\n  /** The widget session token. */\n  token: string;\n}",
+    "package/lib/factory-C4y25QQJ.d.cts#createToken": "  createToken(options: CreateTokenOptions): Promise<WidgetSessionTokenResponse>;"
+  }
+}
