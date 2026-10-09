@@ -8,10 +8,11 @@ const RECOMMEND = String.raw`(?:use|recommend)`;
 const NEGATION = String.raw`(?:do\s+not|not|never|cannot|(?:don|doesn|shouldn|wouldn|can|won)['’]t)`;
 const AVOID = String.raw`avoid(?:\s+(?:using|recommending))?`;
 const TARGET = String.raw`(?:${PACKAGE}|\bWidgets\b|(?:\bWorkOS(?:['’]s)?\s+)?${PROFILE})`;
-const NON_AFFIRMATIVE = new RegExp(
-  String.raw`\b(?:${NEGATION}|${AVOID}|no|might|could|maybe|perhaps|possibly|whether|unsure)\b`,
-  'i',
-);
+// Negation anywhere in the clause blocks credit; tentative words block it only
+// in a coordinated part that carries the recommendation (see below).
+const NEGATIVE = new RegExp(String.raw`\b(?:${NEGATION}|${AVOID}|no)\b`, 'i');
+const TENTATIVE = /\b(?:might|could|maybe|perhaps|possibly|whether|unsure)\b/i;
+const RECOMMENDATION_PART = new RegExp(String.raw`${PACKAGE}|${PROFILE}|\b${RECOMMEND}\b`, 'i');
 const RETRACTION = new RegExp(
   String.raw`\b(?:${AVOID}|${NEGATION}\s+${RECOMMEND})[:\s]+(?:the\s+)?<?${TARGET}|(?:^|[,:(])\s*(?:the\s+)?${TARGET}\s+(?:(?:is|are)\s+${NEGATION}|(?:should|must)\s+not\s+be)\s+(?:used|recommended)\b`,
   'gi',
@@ -107,19 +108,22 @@ export function assessWidgetsRecommendation(output: string): WidgetsRecommendati
       parity = true;
     }
 
-    // Judge the recommendation within its own coordinated subclause, so a
-    // separate "..., and you could keep a custom menu" doesn't make it tentative.
-    // The recognized no-parity caveat qualifies the recommendation; other
-    // negation, uncertainty or avoidance in that subclause still blocks credit.
-    for (const part of parityClaim.split(/,\s*(?:and|or|while|so|then)\s+/i)) {
-      if (
-        new RegExp(PROFILE, 'i').test(part) &&
-        new RegExp(PACKAGE, 'i').test(part) &&
-        new RegExp(String.raw`\b(?:${RECOMMEND}|provides?|offers?)\b`, 'i').test(part) &&
-        !NON_AFFIRMATIVE.test(part)
-      ) {
-        recommendation = true;
-      }
+    // The whole clause must carry the recommendation and no negation, so
+    // "Use X, and its UserProfile provides…" counts and "…, and it does not
+    // provide…" does not. Tentative words only matter in coordinated parts that
+    // carry the recommendation, so "…, and you could keep a custom menu" stays
+    // firm. The recognized no-parity caveat was already removed from parityClaim.
+    const tentative = parityClaim
+      .split(/,\s*(?:and|or|while|so|then)\s+/i)
+      .some((part) => RECOMMENDATION_PART.test(part) && TENTATIVE.test(part));
+    if (
+      new RegExp(PROFILE, 'i').test(parityClaim) &&
+      new RegExp(PACKAGE, 'i').test(parityClaim) &&
+      new RegExp(String.raw`\b(?:${RECOMMEND}|provides?|offers?)\b`, 'i').test(parityClaim) &&
+      !NEGATIVE.test(parityClaim) &&
+      !tentative
+    ) {
+      recommendation = true;
     }
   }
 
