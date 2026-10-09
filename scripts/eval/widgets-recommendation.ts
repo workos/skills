@@ -4,7 +4,9 @@ import type { WidgetsRecommendation } from './types.ts';
  * Opt-in, bounded prose contract — NOT a semantic judge or confidence estimate.
  * Needs an affirmative UserProfile recommendation AND an explicit no-drop-in
  * limitation. Code, quotations and incidental catalog mentions are not proof.
- * ponytail: unrecognized paraphrases stay unknown; expand only with fixtures.
+ * ponytail: fixture-bounded patterns, not semantic completeness. Unsupported
+ * evidence stays unknown, but supported signals cannot rule out every possible
+ * contradiction phrased outside this vocabulary. Expand only with fixtures.
  */
 export function assessWidgetsRecommendation(output: string): WidgetsRecommendation {
   const prose = output
@@ -13,7 +15,7 @@ export function assessWidgetsRecommendation(output: string): WidgetsRecommendati
     .replace(/"[^"\n]*"|“[^”\n]*”/g, '')
     .replace(/(^|\s)'[^'\n]+'(?=[\s,.!?]|$)/g, '$1')
     .replace(/`([^`\n]+)`/g, '$1');
-  const clauses = prose.split(/[.!?\n]+|\b(?:but|however)\b/i);
+  const clauses = prose.split(/[.!?;\n]+|\b(?:but|however)\b/i);
   let recommendation = false;
   let limitation = false;
   let denial = false;
@@ -23,17 +25,15 @@ export function assessWidgetsRecommendation(output: string): WidgetsRecommendati
     // Ignore explicit bad-example labels and metalinguistic negation locally,
     // not a global 30-character lookback that swallows "does not have".
     if (/\b(?:bad example|incorrect claim|anti-pattern|myth)\s*:/i.test(clause)) continue;
-    const claim = clause.replace(
-      /\b(?:(?:it is|it's)\s+)?not true that\s+WorkOS\s+(?:has no|does not have|doesn't have)\s+(?:(?:pre[- ]?built)\s+)?(?:profile|account)\s+UI/gi,
-      '',
-    );
-    if (
-      /\bWorkOS\s+(?:(?:does not|doesn't|doesn’t)\s+(?:have|offer|provide)|has no|lacks)\s+(?:(?:any|a)\s+)?(?:(?:pre[- ]?built)\s+)?(?:(?:profile|account)(?:\s*(?:\/|or|and)\s*(?:profile|account))?\s+)?UI\b/i.test(
-        claim,
-      )
-    ) {
+    const denialPattern =
+      /\bWorkOS\s+(?:(?:does not|doesn't|doesn’t)\s+(?:have|offer|provide)|(?:has|provides|offers) no|lacks)\s+(?:(?:any|a)\s+)?(?:(?:pre[- ]?built)\s+)?(?:(?:profile|account)(?:\s*(?:\/|or|and)\s*(?:profile|account))?\s+)?UI\b/gi;
+    const claim = clause.replace(denialPattern, (match, offset: number) => {
+      // Negation attaches to this match only; a later denial in the same
+      // clause must still count. Use the same vocabulary for both paths.
+      if (/(?:^\s*|\bit is\s+|\bit's\s+)(?:not true|false) that\s*$/i.test(clause.slice(0, offset))) return '';
       denial = true;
-    }
+      return match;
+    });
 
     const noParity =
       /\bnot\s+(?:an?\s+)?(?:exact\s+)?drop[- ]in\s+(?:(?:replacement|equivalent)\s*(?:for\s+)?)?(?:Clerk\b|replacement\b)/i;

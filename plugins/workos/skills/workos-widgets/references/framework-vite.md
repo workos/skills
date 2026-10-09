@@ -10,4 +10,4 @@
 
 ## Server Token Pattern (JS/TS)
 
-For the token code pattern, see [token-strategies.md](token-strategies.md) → JS/TS Authorization Tokens. In a Vite app, token generation typically lives in an existing backend service or API route rather than the Vite dev server.
+For the token code pattern, see [Server issuance: Node 10.13.0](token-strategies.md#server-issuance-node-10130). In a Vite app, token generation typically lives in an existing backend service or API route rather than the Vite dev server.
