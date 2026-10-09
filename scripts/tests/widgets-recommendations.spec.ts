@@ -175,6 +175,9 @@ describe('Widgets recommendation contract through the real loader and scorer', (
     ['Use WorkOS Widgets UserProfile for prebuilt profile UI (not a drop-in Clerk replacement).', 'supported'],
     ['Maybe use WorkOS Widgets UserProfile (not a drop-in Clerk replacement).', 'unknown'],
     ['Do not use WorkOS Widgets UserProfile (not a drop-in Clerk replacement).', 'unknown'],
+    ['We could use WorkOS Widgets UserProfile for prebuilt profile UI (not a drop-in Clerk replacement).', 'unknown'],
+    ['You could use WorkOS Widgets UserProfile. It is not a drop-in Clerk replacement.', 'unknown'],
+    ['Possibly use WorkOS Widgets UserProfile (not a drop-in Clerk replacement).', 'unknown'],
   ])('handles same-clause no-parity caveat: %s → %s', (output, evidence) => {
     const score = scoreOutput(output, expected);
     const { widgetsRecommendation: _contract, ...legacy } = expected;
