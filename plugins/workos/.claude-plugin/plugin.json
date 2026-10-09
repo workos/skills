@@ -1,6 +1,6 @@
 {
   "name": "workos",
-  "description": "WorkOS integration skills for AuthKit, SSO, Directory Sync, RBAC, Vault, Audit Logs, migrations, and API references.",
+  "description": "Set up WorkOS AuthKit with no account: npx workos@latest install provisions an environment you can claim later. Also covers SSO, Directory Sync, RBAC, Vault, Audit Logs, migrations, and API references.",
   "version": "0.7.3",
   "author": {
     "name": "WorkOS",

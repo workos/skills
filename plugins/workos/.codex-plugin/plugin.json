@@ -1,7 +1,7 @@
 {
   "name": "workos",
   "version": "0.7.3",
-  "description": "WorkOS integration skills for AuthKit, SSO, Directory Sync, RBAC, Vault, Audit Logs, migrations, and API references.",
+  "description": "Set up WorkOS AuthKit with no account: npx workos@latest install provisions an environment you can claim later. Also covers SSO, Directory Sync, RBAC, Vault, Audit Logs, migrations, and API references.",
   "author": {
     "name": "WorkOS",
     "email": "support@workos.com",
@@ -15,7 +15,7 @@
   "interface": {
     "displayName": "WorkOS",
     "shortDescription": "Implement WorkOS auth, identity, and admin flows",
-    "longDescription": "Use WorkOS skills to implement and debug AuthKit, SSO, Directory Sync, RBAC, MFA, Admin Portal, Widgets, and migration workflows.",
+    "longDescription": "Set up WorkOS AuthKit with no account: npx workos@latest install provisions an environment you can claim later. Then use WorkOS skills to implement and debug AuthKit, SSO, Directory Sync, RBAC, MFA, Admin Portal, Widgets, and migration workflows.",
     "developerName": "WorkOS",
     "category": "Coding",
     "capabilities": ["Interactive", "Write"],
