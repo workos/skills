@@ -105,18 +105,18 @@ This returns a structured JSON report with `interactionMode` (`{ mode, source }`
 
 ### AuthKit Installation (Read `references/{name}.md`)
 
-| User wants to...                                            | Read file                                                                                                     |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Install AuthKit in Next.js                                  | `references/workos-authkit-nextjs.md`                                                                         |
-| Install AuthKit in React SPA                                | `references/workos-authkit-react.md`                                                                          |
-| Install AuthKit with React Router                           | `references/workos-authkit-react-router.md`                                                                   |
-| Install AuthKit with TanStack Start                         | `references/workos-authkit-tanstack-start.md`                                                                 |
-| Install AuthKit with SvelteKit                              | `references/workos-authkit-sveltekit.md`                                                                      |
-| Install AuthKit in vanilla JS                               | `references/workos-authkit-vanilla-js.md`                                                                     |
-| AuthKit architecture reference                              | `references/workos-authkit-base.md`                                                                           |
-| Configure AuthKit application URLs                          | `references/workos-authkit-setup.md`                                                                          |
-| Add WorkOS Widgets or Clerk-style profile/account/member UI | Load `workos-widgets` skill via Skill tool                                                                    |
-| Build direct Widgets Client API requests                    | Load `workos-widgets` → `references/fetching-apis.md`; current GraphQL docs, not universal legacy REST tables |
+| User wants to...                    | Read file                                     |
+| ----------------------------------- | --------------------------------------------- |
+| Install AuthKit in Next.js          | `references/workos-authkit-nextjs.md`         |
+| Install AuthKit in React SPA        | `references/workos-authkit-react.md`          |
+| Install AuthKit with React Router   | `references/workos-authkit-react-router.md`   |
+| Install AuthKit with TanStack Start | `references/workos-authkit-tanstack-start.md` |
+| Install AuthKit with SvelteKit      | `references/workos-authkit-sveltekit.md`      |
+| Install AuthKit in vanilla JS       | `references/workos-authkit-vanilla-js.md`     |
+| AuthKit architecture reference      | `references/workos-authkit-base.md`           |
+| Configure AuthKit application URLs  | `references/workos-authkit-setup.md`          |
+| Add Widgets / Clerk-style UI        | Load `workos-widgets` skill via Skill tool    |
+| Build direct Widgets API requests   | `workos-widgets` → `fetching-apis.md`         |
 
 ### Backend SDK Installation (Read `references/{name}.md`)
 
