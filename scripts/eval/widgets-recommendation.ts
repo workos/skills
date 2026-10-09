@@ -1,5 +1,37 @@
 import type { WidgetsRecommendation } from './types.ts';
 
+// Shared vocabulary: an explicit rejection of any supported recommendation
+// target must veto both same-clause and adjacent-clause positive evidence.
+const PACKAGE = String.raw`(?:\bWorkOS\s+Widgets|@workos-inc/widgets)(?![\w/-])`;
+const PROFILE = String.raw`\bUserProfile\b`;
+const RECOMMEND = String.raw`(?:use|recommend)`;
+const NEGATION = String.raw`(?:do\s+not|not|never|cannot|(?:don|doesn|shouldn|wouldn|can|won)['’]t)`;
+const AVOID = String.raw`avoid(?:\s+(?:using|recommending))?`;
+const TARGET = String.raw`(?:${PACKAGE}|\bWidgets\b|(?:\bWorkOS(?:['’]s)?\s+)?${PROFILE})`;
+const NON_AFFIRMATIVE = new RegExp(String.raw`\b(?:${NEGATION}|${AVOID}|no|might|maybe|perhaps|whether|unsure)\b`, 'i');
+const RETRACTION = new RegExp(
+  String.raw`\b(?:${AVOID}|${NEGATION}\s+${RECOMMEND})[:\s]+(?:the\s+)?<?${TARGET}|(?:^|[,:(])\s*(?:the\s+)?${TARGET}\s+(?:(?:is|are)\s+${NEGATION}|(?:should|must)\s+not\s+be)\s+(?:used|recommended)\b`,
+  'gi',
+);
+const NEGATED_PREFIX = new RegExp(String.raw`\b${NEGATION}\s*$`, 'i');
+
+function isDisclaimed(prefix: string): boolean {
+  return /(?:^\s*|\bit is\s+|\bit's\s+)(?:not true|false) that(?:\s+(?:you|we|one)\s+should)?\s*$/i.test(prefix);
+}
+
+function hasRetraction(clause: string): boolean {
+  for (const match of clause.matchAll(RETRACTION)) {
+    const prefix = clause.slice(0, match.index);
+    const suffix = clause.slice(match.index + match[0].length);
+    // Negated avoidance and explicit no-drop-in usage qualifications are not
+    // withdrawals of the component recommendation. Other trailing prose is OK.
+    if (isDisclaimed(prefix) || NEGATED_PREFIX.test(prefix)) continue;
+    if (/^\s+as\s+(?:an?\s+)?(?:exact\s+)?drop[- ]in\b/i.test(suffix)) continue;
+    return true;
+  }
+  return false;
+}
+
 /**
  * Opt-in, bounded prose contract — NOT a semantic judge or confidence estimate.
  * Needs an affirmative UserProfile recommendation AND an explicit no-drop-in
@@ -13,37 +45,40 @@ export function assessWidgetsRecommendation(output: string): WidgetsRecommendati
     // Keep a boundary where excluded text stood; never join evidence across it.
     .replace(/```[\s\S]*?```|~~~[\s\S]*?~~~/g, '\n')
     .replace(/^\s*>.*$/gm, '\n')
-    .replace(/"[^"\n]*"|“[^”\n]*”/g, '\n')
+    .replace(/"[^"\n]*"|“[^”\n]*”|‘[^’\n]*’/g, '\n')
     .replace(/(^|\s)'[^'\n]+'(?=[\s,.!?]|$)/g, '$1\n')
     .replace(/`([^`\n]+)`/g, '$1');
-  const clauses = prose.split(/[.!?;\n]+|\b(?:but|however)\b/i);
+  // Retain delimiters so excluding a labeled clause cannot join neighboring
+  // evidence. Both positive paths and retractions see the same scoped text.
+  const parts = prose
+    .split(/([.!?;\n]+|\b(?:but|however)\b)/i)
+    .map((part, index) =>
+      index % 2 === 0 &&
+      /\b(?:bad example|incorrect claim|incorrect recommendation|anti[- ]pattern|myth)\s*:/i.test(part)
+        ? '\n'
+        : part,
+    );
+  const clauses = parts.filter((_, index) => index % 2 === 0);
   // Only an explicit recommendation immediately followed by "its UserProfile"
   // and an affirmative capability counts across clauses. No proximity window,
   // intervening text, quoted spans, or independent catalog mentions.
-  let recommendation =
-    /(?:^|[.!?\n])[ \t]*(?:(?:I|we)[ \t]+)?(?:recommend|use)[ \t]+(?:WorkOS Widgets|@workos-inc\/widgets)[ \t]*[;.][ \t]+its UserProfile (?:provides|offers) (?:pre[- ]?built )?(?:profile|account) UI\b/i.test(
-      prose,
-    );
+  let recommendation = new RegExp(
+    String.raw`(?:^|[.!?\n])[ \t]*(?:(?:I|we)[ \t]+)?${RECOMMEND}[ \t]+${PACKAGE}[ \t]*[;.][ \t]+its ${PROFILE} (?:provides|offers) (?:pre[- ]?built )?(?:profile|account) UI\b`,
+    'i',
+  ).test(parts.join(''));
   let retractedRecommendation = false;
   let limitation = false;
   let denial = false;
   let parity = false;
 
   for (const clause of clauses) {
-    // Ignore explicit bad-example labels and metalinguistic negation locally,
-    // not a global 30-character lookback that swallows "does not have".
-    if (/\b(?:bad example|incorrect claim|anti-pattern|myth)\s*:/i.test(clause)) continue;
-    if (
-      /\b(?:do not|don't|never) (?:use|recommend) (?:WorkOS Widgets|@workos-inc\/widgets|UserProfile)\s*$/i.test(clause)
-    ) {
-      retractedRecommendation = true;
-    }
+    if (hasRetraction(clause)) retractedRecommendation = true;
     const denialPattern =
       /\bWorkOS\s+(?:(?:does not|doesn't|doesn’t)\s+(?:have|offer|provide)|(?:has|provides|offers) no|lacks)\s+(?:(?:any|a)\s+)?(?:(?:pre[- ]?built)\s+)?(?:(?:profile|account)(?:\s*(?:\/|or|and)\s*(?:profile|account))?\s+)?UI\b/gi;
     const claim = clause.replace(denialPattern, (match, offset: number) => {
       // Negation attaches to this match only; a later denial in the same
       // clause must still count. Use the same vocabulary for both paths.
-      if (/(?:^\s*|\bit is\s+|\bit's\s+)(?:not true|false) that\s*$/i.test(clause.slice(0, offset))) return '';
+      if (isDisclaimed(clause.slice(0, offset))) return '';
       denial = true;
       return match;
     });
@@ -61,10 +96,10 @@ export function assessWidgetsRecommendation(output: string): WidgetsRecommendati
     }
 
     if (
-      /\bUserProfile\b/i.test(claim) &&
-      /WorkOS Widgets|@workos-inc\/widgets/i.test(claim) &&
-      /\b(?:use|recommend|provides?|offers?)\b/i.test(claim) &&
-      !/\b(?:not|never|don't|doesn't|no|avoid|might|maybe|perhaps|whether|unsure)\b/i.test(claim)
+      new RegExp(PROFILE, 'i').test(claim) &&
+      new RegExp(PACKAGE, 'i').test(claim) &&
+      new RegExp(String.raw`\b(?:${RECOMMEND}|provides?|offers?)\b`, 'i').test(claim) &&
+      !NON_AFFIRMATIVE.test(claim)
     ) {
       recommendation = true;
     }
