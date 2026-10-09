@@ -10,13 +10,21 @@ import type { WidgetsRecommendation } from './types.ts';
  */
 export function assessWidgetsRecommendation(output: string): WidgetsRecommendation {
   const prose = output
-    .replace(/```[\s\S]*?```|~~~[\s\S]*?~~~/g, '')
-    .replace(/^\s*>.*$/gm, '')
-    .replace(/"[^"\n]*"|“[^”\n]*”/g, '')
-    .replace(/(^|\s)'[^'\n]+'(?=[\s,.!?]|$)/g, '$1')
+    // Keep a boundary where excluded text stood; never join evidence across it.
+    .replace(/```[\s\S]*?```|~~~[\s\S]*?~~~/g, '\n')
+    .replace(/^\s*>.*$/gm, '\n')
+    .replace(/"[^"\n]*"|“[^”\n]*”/g, '\n')
+    .replace(/(^|\s)'[^'\n]+'(?=[\s,.!?]|$)/g, '$1\n')
     .replace(/`([^`\n]+)`/g, '$1');
   const clauses = prose.split(/[.!?;\n]+|\b(?:but|however)\b/i);
-  let recommendation = false;
+  // Only an explicit recommendation immediately followed by "its UserProfile"
+  // and an affirmative capability counts across clauses. No proximity window,
+  // intervening text, quoted spans, or independent catalog mentions.
+  let recommendation =
+    /(?:^|[.!?\n])[ \t]*(?:(?:I|we)[ \t]+)?(?:recommend|use)[ \t]+(?:WorkOS Widgets|@workos-inc\/widgets)[ \t]*[;.][ \t]+its UserProfile (?:provides|offers) (?:pre[- ]?built )?(?:profile|account) UI\b/i.test(
+      prose,
+    );
+  let retractedRecommendation = false;
   let limitation = false;
   let denial = false;
   let parity = false;
@@ -25,6 +33,11 @@ export function assessWidgetsRecommendation(output: string): WidgetsRecommendati
     // Ignore explicit bad-example labels and metalinguistic negation locally,
     // not a global 30-character lookback that swallows "does not have".
     if (/\b(?:bad example|incorrect claim|anti-pattern|myth)\s*:/i.test(clause)) continue;
+    if (
+      /\b(?:do not|don't|never) (?:use|recommend) (?:WorkOS Widgets|@workos-inc\/widgets|UserProfile)\s*$/i.test(clause)
+    ) {
+      retractedRecommendation = true;
+    }
     const denialPattern =
       /\bWorkOS\s+(?:(?:does not|doesn't|doesn’t)\s+(?:have|offer|provide)|(?:has|provides|offers) no|lacks)\s+(?:(?:any|a)\s+)?(?:(?:pre[- ]?built)\s+)?(?:(?:profile|account)(?:\s*(?:\/|or|and)\s*(?:profile|account))?\s+)?UI\b/gi;
     const claim = clause.replace(denialPattern, (match, offset: number) => {
@@ -60,5 +73,5 @@ export function assessWidgetsRecommendation(output: string): WidgetsRecommendati
   if ((denial || parity) && recommendation) return 'mixed';
   if (denial) return 'denied';
   if (parity) return 'overclaim';
-  return recommendation && limitation ? 'supported' : 'unknown';
+  return recommendation && limitation && !retractedRecommendation ? 'supported' : 'unknown';
 }
