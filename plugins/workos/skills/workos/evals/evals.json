@@ -547,6 +547,35 @@
           "needles": ["jq -r '.data.id'", "jq -er '.data.id'"]
         }
       ]
+    },
+    {
+      "id": 16,
+      "name": "authkit-setup-starts-with-accountless-install",
+      "prompt": "I want to add login to my Next.js app with WorkOS, but I don't have a WorkOS account yet. What's the first thing to do?",
+      "files": [],
+      "assertions": [
+        {
+          "text": "Leads with the accountless installer command",
+          "kind": "content_contains_any",
+          "needles": ["npx workos@latest install"]
+        },
+        {
+          "text": "Explains how the user claims the environment later",
+          "kind": "content_contains_any",
+          "needles": ["profile claim", "env claim", "workos claim", "claim the environment", "claim it later"]
+        },
+        {
+          "text": "Does NOT send the user to sign up or fetch an API key first",
+          "kind": "content_contains_none",
+          "needles": [
+            "sign up for a WorkOS account",
+            "Sign up at",
+            "create a WorkOS account first",
+            "get your API key from the dashboard",
+            "copy your API key from the dashboard"
+          ]
+        }
+      ]
     }
   ]
 }
