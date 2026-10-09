@@ -127,4 +127,16 @@ describe('skill evals cover the accountless entry', () => {
     expect(first.needles).toContain(INSTALL);
     expect(item!.assertions.some((assertion) => assertion.kind === 'content_contains_none')).toBe(true);
   });
+
+  it('forbids account-first phrasing without rejecting the skill’s own claim-later text', () => {
+    const item = evals.find((entry) => entry.name === 'authkit-setup-starts-with-accountless-install')!;
+    const forbidden = item.assertions
+      .filter((assertion) => assertion.kind === 'content_contains_none')
+      .flatMap((assertion) => assertion.needles);
+    const opening = firstSection(splitFrontmatter(read('plugins/workos/skills/workos/SKILL.md')).body, /^## /m);
+    expect(opening).toMatch(/creates a free account/);
+    for (const needle of forbidden) {
+      expect(opening.toLowerCase(), needle).not.toContain(needle.toLowerCase());
+    }
+  });
 });

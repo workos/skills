@@ -565,14 +565,21 @@
           "needles": ["profile claim", "env claim", "workos claim", "claim the environment", "claim it later"]
         },
         {
-          "text": "Does NOT send the user to sign up or fetch an API key first",
+          "text": "Does NOT make account signup or an API key the first step (claiming later may still mention signing in or creating an account)",
           "kind": "content_contains_none",
           "needles": [
-            "sign up for a WorkOS account",
-            "Sign up at",
+            "First, sign up",
+            "first sign up",
+            "Start by signing up",
+            "start by signing up",
+            "Step 1: Sign up",
+            "Step 1: Create a WorkOS account",
             "create a WorkOS account first",
-            "get your API key from the dashboard",
-            "copy your API key from the dashboard"
+            "sign up for WorkOS first",
+            "First, create a WorkOS account",
+            "First, get your API key",
+            "first get an API key",
+            "Before you start, create a WorkOS account"
           ]
         }
       ]
