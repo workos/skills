@@ -7,11 +7,13 @@ description: Start new AuthKit setups with `npx workos@latest install`, which ne
 
 ## Start here: set up AuthKit with no account
 
-When the user wants to add WorkOS or AuthKit sign-in to a project that has no WorkOS credentials yet, run the installer first. It does not need a WorkOS account, an API key, or a dashboard visit:
+When the user wants to add WorkOS or AuthKit sign-in to a project that has no WorkOS credentials yet, run the installer first:
 
 ```bash
 WORKOS_MODE=agent npx workos@latest install
 ```
+
+It doesn't need a WorkOS account, an API key, or a dashboard visit.
 
 Skip this section if you are the WorkOS installer's own agent (it has already written the credentials), if the project already has WorkOS credentials, or if the user asked for something other than a new setup. Go to **How to Use** instead.
 
