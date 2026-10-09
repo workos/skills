@@ -22,7 +22,11 @@ const sourcePaths = [
   'workos-widgets/references/token-strategies.md',
   'workos-widgets/references/fetching-apis.md',
 ];
-const caseIds = ['widgets-profile-versioned-setup', 'widgets-organization-versioned-setup'];
+const caseIds = [
+  'widgets-profile-versioned-setup',
+  'widgets-organization-versioned-setup',
+  'widgets-organization-server-token-setup',
+];
 const options: EvalOptions = {
   model: 'offline-stub',
   apiKey: '',
@@ -77,14 +81,19 @@ describe('Actual shipped Widgets eval sources (offline, not agent routing)', () 
       expect(c.skill).toBe('workos-widgets');
       expect(c.skillType).toBe('hand-crafted');
       expect(c.prompt).toContain('1.18.0');
-      expect(c.prompt).toContain('10.13.0');
-      expect(c.expected.methods).toContain('workos.widgets.createToken');
+      if (c.id === 'widgets-organization-versioned-setup') {
+        expect(c.prompt).toContain('@workos-inc/authkit-react');
+        expect(c.expected.methods).toEqual(['getAccessToken', 'switchToOrganization']);
+      } else {
+        expect(c.prompt).toContain('10.13.0');
+        expect(c.expected.methods).toContain('workos.widgets.createToken');
+      }
     }
   });
 
   it('dry-runs actual cases and hashes all source identities/content without calling a model', async () => {
     const report = await runEval(options);
-    expect(report.totalCases).toBe(2);
+    expect(report.totalCases).toBe(3);
     expect(report.results).toEqual([]);
     expect(report.widgetsSources).toEqual(loadWidgetsSources());
     expect(report.skillHash).toBe(sha256(loadSkillContent('workos-widgets')).slice(0, 12));
