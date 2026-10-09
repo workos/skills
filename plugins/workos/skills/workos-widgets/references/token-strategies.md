@@ -1,18 +1,6 @@
 # Token Strategies
 
-## Objective
-
-Provide `accessToken` to widget surfaces using the app's existing auth architecture.
-
-## Guidance
-
-- Prefer existing AuthKit/session flows when they are already established.
-- If backend token creation already exists, follow that pattern.
-- Keep token-related logic near current auth boundaries.
-- Pass token values explicitly into widget entry surfaces.
-- Send the widget token through the app's existing authenticated HTTP pattern when calling widget endpoints.
-- Use environment variables for credentials/config instead of hardcoded keys.
-- For endpoints that require elevated access, follow the elevation flow and handle elevated token usage separately from the regular widget token.
+Provide a widget token to widget surfaces using the app's existing auth architecture. Keep token logic near current auth boundaries and read credentials from environment variables.
 
 ## Widget Scope Reference
 
@@ -59,7 +47,3 @@ Some operations require elevated access in addition to the normal widget token. 
 1. Use the `POST /_widgets/UserProfile/verify` endpoint to obtain an elevated access token.
 2. Use the returned token (`elevatedAccessToken`) in request header `x-elevated-access-token`.
 3. Treat elevated tokens as short-lived credentials (10 minutes) and scope usage to sensitive action paths only.
-
-## Example Direction
-
-When backend WorkOS SDK usage is present, use its existing token creation path and adapt it for the required widget scope.

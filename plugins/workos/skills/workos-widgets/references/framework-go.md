@@ -1,15 +1,6 @@
 # Framework: Go
 
-## Scope
-
-Use this guide for Go services that issue widget tokens and support widget API integration.
-
-## Guidance
-
-- Use the official WorkOS Go SDK.
-- Keep API key in environment configuration.
-- Place token generation in existing handler/service layers.
-- Reuse existing auth/session middleware to derive organization/user identifiers.
+Use the official WorkOS Go SDK for Go services that issue widget tokens and support widget API integration. Place token generation in existing handler/service layers.
 
 ## Token Pattern
 
@@ -18,7 +9,7 @@ import (
   "context"
   "os"
 
-  "github.com/workos/workos-go/v4/pkg/widgets"
+  "github.com/workos/workos-go/v6/pkg/widgets"
 )
 
 widgets.SetAPIKey(os.Getenv("WORKOS_API_KEY"))

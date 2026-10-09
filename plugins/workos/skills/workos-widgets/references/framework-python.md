@@ -1,15 +1,6 @@
 # Framework: Python
 
-## Scope
-
-Use this guide for Python apps (for example Django/Flask/FastAPI) that generate widget tokens and/or broker widget API requests.
-
-## Guidance
-
-- Use the official WorkOS Python SDK.
-- Keep API key and client id in environment configuration.
-- Place token generation in existing service/view/router boundaries.
-- Reuse established auth/session context for `organization_id` and `user_id`.
+Use the official WorkOS Python SDK for Python apps (for example Django/Flask/FastAPI) that generate widget tokens and/or broker widget API requests. Place token generation in existing service/view/router boundaries.
 
 ## Token Pattern
 
