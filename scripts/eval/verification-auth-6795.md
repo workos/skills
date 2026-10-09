@@ -52,6 +52,10 @@ A closed set of authentication/sign-in/login purpose qualifiers is distinguished
 
 The 17 added regressions cover valid boundaries before/after both positive forms, real withdrawals, and limitations combined with actual retractions. All earlier denial/parity, quotation, semicolon linkage, and AuthKit/server-token tests pass. Grammar coverage remains deliberately bounded; no runtime or model-quality proof is claimed.
 
+## Accepted limit: whole-clause negation
+
+Any negation in the same clause withholds recommendation credit, including an unrelated instruction such as “…, and do not change the existing AuthKit authentication flow”. That valid answer scores `unknown`, capped at 60. This is a known, accepted false negative, covered by a labeled regression. Keyword exemptions for “unrelated” negation were tried and reverted, because each one let a contradiction get full credit, for example “…, and no prebuilt screen exists” (also a regression). An honest `unknown` is preferred over false full credit. Do not add vocabulary exemptions.
+
 ## Separate scripts typecheck: baseline failure, not fixed
 
 `pnpm exec tsc --noEmit` was rerun after the review fixes and still exits 2 with only the same three diagnostics below. The original base was archived inside this worktree with `scripts`, `plugins`, and `tsconfig.json`, then checked using the same installed compiler/dependencies. After normalizing the temporary path prefix, its diagnostics matched the current branch exactly:

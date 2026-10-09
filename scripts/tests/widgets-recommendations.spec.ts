@@ -226,6 +226,27 @@ describe('Widgets recommendation contract through the real loader and scorer', (
     }
   });
 
+  it('never gives full credit to a recommendation contradicted by "no prebuilt screen exists"', () => {
+    const output =
+      'Use WorkOS Widgets UserProfile for prebuilt profile UI, and no prebuilt screen exists. It is not a drop-in Clerk replacement.';
+    const score = scoreOutput(output, expected);
+    expect(score.widgetsRecommendation).not.toBe('supported');
+    expect(score.composite).toBeLessThanOrEqual(60);
+    expect(categorizeErrors(output, expected)).toContain('unverified_recommendation');
+  });
+
+  it('KNOWN ACCEPTED FALSE NEGATIVE: unrelated negation in the same clause caps a valid recommendation', () => {
+    // Deliberate: whole-clause negation is kept because every keyword exemption
+    // for "unrelated" negation let a contradiction through. See the comment at
+    // the negation check in scripts/eval/widgets-recommendation.ts.
+    const output =
+      'Use WorkOS Widgets UserProfile for profile UI, and do not change the existing AuthKit authentication flow. It is not a drop-in Clerk replacement.';
+    const score = scoreOutput(output, expected);
+    expect(score.widgetsRecommendation).toBe('unknown');
+    expect(score.composite).toBeLessThanOrEqual(60);
+    expect(categorizeErrors(output, expected)).toContain('unverified_recommendation');
+  });
+
   it('does not alter legacy non-Widgets scoring or global negation semantics', () => {
     const { widgetsRecommendation: _contract, ...legacy } = expected;
     const output = `${good} WorkOS has no profile UI.`;
