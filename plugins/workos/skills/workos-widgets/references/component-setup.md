@@ -38,7 +38,7 @@ Import styles once in the app's global stylesheet and configure your application
 @import '@workos-inc/widgets/styles.css';
 ```
 
-`WorkOsWidgets` supplies theme/query configuration, not authentication. These are client React components; use the appropriate client boundary in server-rendered frameworks. Mount only UI the user is authorized to access.
+`WorkOsWidgets` supplies theme/query configuration, not authentication. These are client React components and require a React-rendered UI; use the appropriate client boundary in server-rendered frameworks. Mount only UI the user is authorized to access.
 
 ```tsx
 import { UserProfile, UserSecurity, WorkOsWidgets } from '@workos-inc/widgets';
@@ -75,14 +75,16 @@ For an existing `authkit-react` app, current docs show the getter/switch integra
 import { useAuth } from '@workos-inc/authkit-react';
 import { OrganizationSwitcher, UserSessions, WorkOsWidgets } from '@workos-inc/widgets';
 
-export function OrganizationAndSessions() {
+// canViewSessions must come from the app's verified permission check for
+// widgets:users-table:manage. UI gating is not the authorization boundary.
+export function OrganizationAndSessions({ canViewSessions }: { canViewSessions: boolean }) {
   const { isLoading, user, getAccessToken, switchToOrganization } = useAuth();
   if (isLoading) return <p>Loading account…</p>;
   if (!user) return <p>Sign in to manage your account.</p>;
   return (
     <WorkOsWidgets>
       <OrganizationSwitcher authToken={getAccessToken} switchToOrganization={switchToOrganization} />
-      <UserSessions authToken={getAccessToken} />
+      {canViewSessions && <UserSessions authToken={getAccessToken} />}
     </WorkOsWidgets>
   );
 }

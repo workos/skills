@@ -73,7 +73,7 @@ Load stack-specific reference guidance:
 - Java: [references/framework-java.md](references/framework-java.md)
 - Mixed repositories: [references/framework-mixed-repositories.md](references/framework-mixed-repositories.md)
 
-For profile/security/sessions/organization selection, use `component-setup.md`. Additionally load the relevant widget reference when applicable (these describe desired behavior, not a mandate to rebuild published components):
+For profile/security/sessions/organization selection in a React-rendered UI, use `component-setup.md`. Published Widgets are React components: do not import them into `.svelte` or other non-React templates. For SvelteKit or another non-React frontend, use only an existing React rendering boundary; otherwise ask whether to add one or build a custom UI against the Client API. Additionally load the relevant widget reference when applicable (these describe desired behavior, not a mandate to rebuild published components):
 
 - User Management: [references/widget-user-management.md](references/widget-user-management.md)
 - User Profile: [references/widget-user-profile.md](references/widget-user-profile.md)
@@ -82,7 +82,7 @@ For profile/security/sessions/organization selection, use `component-setup.md`. 
 
 ## Global Widget Guidance
 
-- Embed published components using [references/component-setup.md](references/component-setup.md); they own their internal API calls. `WorkOsWidgets` configures theme/query context, while component-level `authToken` provides authorization.
+- Embed published components only in React-rendered UI using [references/component-setup.md](references/component-setup.md); they own their internal API calls. `WorkOsWidgets` configures theme/query context, while component-level `authToken` provides authorization.
 - For direct custom Client API work, fetch https://workos.com/docs/widgets-api first: current docs use GraphQL `POST /client/graphql`. Read [references/fetching-apis.md](references/fetching-apis.md) for the boundary. The bundled REST spec is a legacy snapshot, not authoritative for all current requests; do not regenerate or migrate API layers just to add a component.
 - Keep loading, empty, and error states explicit and user-visible.
 - Keep mutation outcomes visible and refresh/reload affected data after successful changes.

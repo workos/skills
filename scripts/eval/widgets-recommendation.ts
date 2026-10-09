@@ -105,10 +105,12 @@ export function assessWidgetsRecommendation(output: string): WidgetsRecommendati
     }
 
     if (
-      new RegExp(PROFILE, 'i').test(claim) &&
-      new RegExp(PACKAGE, 'i').test(claim) &&
-      new RegExp(String.raw`\b(?:${RECOMMEND}|provides?|offers?)\b`, 'i').test(claim) &&
-      !NON_AFFIRMATIVE.test(claim)
+      new RegExp(PROFILE, 'i').test(parityClaim) &&
+      new RegExp(PACKAGE, 'i').test(parityClaim) &&
+      new RegExp(String.raw`\b(?:${RECOMMEND}|provides?|offers?)\b`, 'i').test(parityClaim) &&
+      // The recognized no-parity caveat qualifies the recommendation; other
+      // negation, uncertainty or avoidance in the clause still blocks credit.
+      !NON_AFFIRMATIVE.test(parityClaim)
     ) {
       recommendation = true;
     }

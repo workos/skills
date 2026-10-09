@@ -6,7 +6,8 @@
 - Keep token generation in server/load boundaries that already handle auth/session context.
 - For JS/TS token strategy details (AuthKit token vs version-checked backend issuance with scopes), follow [token-strategies.md](token-strategies.md).
 - Keep frontend data calls aligned with current SvelteKit patterns.
-- Never embed a widget directly in a `+page.svelte`. Always extract it into its own `.svelte` component file. The page imports and renders that component.
+- Published `@workos-inc/widgets` components are React components and cannot render as Svelte components. Use them only through an existing React rendering boundary. If none exists, ask whether to add one or build a custom Svelte UI against the Client API; do not import Widgets into `.svelte` files.
+- For a custom Svelte UI, keep it in its own `.svelte` component rather than directly in `+page.svelte`.
 
 ## Server Token Pattern (JS/TS)
 
