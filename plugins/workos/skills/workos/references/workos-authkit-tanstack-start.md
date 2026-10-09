@@ -32,7 +32,7 @@ Generate the password if missing: `openssl rand -base64 32`. Default redirect UR
 
 ## Middleware
 
-`authkitMiddleware` runs as server middleware or auth fails silently. It belongs in `start.ts` via `requestMiddleware`, not in `createRouter()` (that is client-side TanStack Router). If `start.ts` exists, add `authkitMiddleware()` to its `requestMiddleware` array and keep the existing export style. Otherwise create `src/start.ts`:
+`authkitMiddleware` runs as server middleware or auth fails silently. It belongs in `start.ts` via `requestMiddleware`, not in `createRouter()` (that is client-side TanStack Router). If `start.ts` exists, add `authkitMiddleware()` to its `requestMiddleware` array and keep the existing export style. Otherwise create `src/start.ts` (`app/start.ts` in legacy `app/`-rooted projects):
 
 ```typescript
 import { createStart } from '@tanstack/react-start';
