@@ -102,11 +102,20 @@ export interface ProductSummary {
   avgDeltaStddev: number;
 }
 
+/** Exact, fixed Widgets bundle input; paths are relative to plugins/workos/skills. */
+export interface SkillSource {
+  path: string;
+  content: string;
+  sha256: string;
+}
+
 /** Full eval run report */
 export interface EvalReport {
   runId: string;
   model: string;
   skillHash?: string;
+  /** Present only for cases that explicitly load the shipped Widgets bundle. */
+  widgetsSources?: SkillSource[];
   totalCases: number;
   results: EvalResult[];
   summary: ProductSummary[];
