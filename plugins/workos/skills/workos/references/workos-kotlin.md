@@ -72,12 +72,12 @@ Add the WorkOS Kotlin SDK dependency to `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("com.workos:workos-kotlin:4.18.1")
+    implementation("com.workos:workos:<version>")
     // ... existing dependencies
 }
 ```
 
-Check the README for the latest version number — use the version from the README if it differs from above.
+The Maven artifact is `com.workos:workos` (there is no `workos-kotlin` artifact). Use the latest version from the README or Maven Central; the examples below match 7.x.
 
 **JVM target**: Ensure `jvmTarget` in `build.gradle.kts` matches the JDK on the system. Check with `java -version`. Common values: `"17"`, `"21"`. If `kotlin { jvmToolchain(...) }` is set, ensure it matches too.
 
@@ -107,8 +107,11 @@ class WorkOSConfig {
     @Value("\${workos.api-key}")
     lateinit var apiKey: String
 
+    @Value("\${workos.client-id}")
+    lateinit var clientId: String
+
     @Bean
-    fun workos(): WorkOS = WorkOS(apiKey)
+    fun workos(): WorkOS = WorkOS(apiKey = apiKey, clientId = clientId)
 }
 ```
 
@@ -119,13 +122,11 @@ Adapt based on the SDK README — the exact client initialization may vary.
 Create a Spring `@RestController` with these endpoints:
 
 1. **GET /auth/login** — Redirect user to WorkOS AuthKit hosted login
-   - Use `workos.userManagement.getAuthorizationUrl()` — this returns a URL string
-   - Parameters: `clientId`, `redirectUri`, `provider = "authkit"`
-   - The method uses a builder pattern: `.provider("authkit").redirectUri(uri).build()`
+   - `workos.userManagement.getAuthorizationUrl(AuthKitAuthorizationUrlOptions(redirectUri = uri, provider = "authkit"))` returns a URL string (`clientId` falls back to the client's)
 
 2. **GET /auth/callback** — Exchange authorization code for user profile
    - Extract `code` query parameter
-   - Call `workos.userManagement.authenticateWithCode()` with the code and clientId
+   - Call `workos.userManagement.authenticateWithCode(code = code)`
    - Store user session (use Spring's `HttpSession`)
    - Redirect to home page
 

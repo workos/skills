@@ -18,7 +18,7 @@ import (
   "context"
   "os"
 
-  "github.com/workos/workos-go/v4/pkg/widgets"
+  "github.com/workos/workos-go/v6/pkg/widgets"
 )
 
 widgets.SetAPIKey(os.Getenv("WORKOS_API_KEY"))

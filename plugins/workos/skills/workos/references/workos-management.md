@@ -328,10 +328,10 @@ These operations have no named CLI command in this snapshot. Check live command 
 
 ### SDK operations
 
-| Operation                              | MCP operation (if connected) | Otherwise                           | Notes                                                          |
-| -------------------------------------- | ---------------------------- | ----------------------------------- | -------------------------------------------------------------- |
-| Webhook signature verification         | —                            | SDK (`workos.webhooks.verifyEvent`) | CLI can create/list/delete webhooks but does not verify events |
-| Session introspection / JWT validation | —                            | SDK                                 | CLI has `workos session list/revoke` only                      |
+| Operation                              | MCP operation (if connected) | Otherwise                              | Notes                                                          |
+| -------------------------------------- | ---------------------------- | -------------------------------------- | -------------------------------------------------------------- |
+| Webhook signature verification         | —                            | SDK (`workos.webhooks.constructEvent`) | CLI can create/list/delete webhooks but does not verify events |
+| Session introspection / JWT validation | —                            | SDK                                    | CLI has `workos session list/revoke` only                      |
 
 **Available CLI alternatives:** `workos connection create` and `workos connection update` support SSO connection management; inspect their flags and the connection-type schema before use. Admin Portal setup links remain useful when the customer should configure their own IdP. For an individual user's organization role, use `workos membership update <membershipId> --role=<slug> --yes --environment-id "$ENVIRONMENT_ID"` with the confirmed environment and approval. IdP group mappings can override that role at the next sync/login; see `workos-rbac.md`.
 

@@ -15,18 +15,12 @@ Use this guide for Java services/apps that issue widget tokens and support widge
 
 ```java
 import com.workos.WorkOS;
-import com.workos.widgets.WidgetsApi.GetTokenOptions;
-import com.workos.widgets.models.WidgetScope;
-import com.workos.widgets.models.WidgetTokenResponse;
+import com.workos.types.WidgetSessionTokenScopes;
 
+// com.workos:workos 7.x
 WorkOS workos = new WorkOS(System.getenv("WORKOS_API_KEY"));
 
-GetTokenOptions options = GetTokenOptions.builder()
-    .organizationID(organizationId)
-    .userID(userId)
-    .scopes(Arrays.asList(WidgetScope.WidgetsUsersTableManage))
-    .build();
-
-WidgetTokenResponse response = workos.widgets.getToken(options);
-String token = response.token;
+String token = workos.getWidgets()
+    .createToken(organizationId, userId, List.of(WidgetSessionTokenScopes.WidgetsUsersTableManage))
+    .getToken();
 ```

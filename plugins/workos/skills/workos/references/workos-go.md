@@ -75,10 +75,10 @@ If existing auth detected:
 Run:
 
 ```bash
-go get github.com/workos/workos-go/v4
+go get github.com/workos/workos-go/v6
 ```
 
-**Verify:** Check that `go.mod` now contains `github.com/workos/workos-go/v4`. Both `go.mod` and `go.sum` will be modified — this is expected.
+**Verify:** Check that `go.mod` now contains `github.com/workos/workos-go/v6`. Both `go.mod` and `go.sum` will be modified — this is expected.
 
 ## Step 4: Configure Authentication
 
@@ -93,7 +93,7 @@ Create an auth handler file. Respect existing project structure:
 The file must:
 
 - Declare a package matching the directory name
-- Import `github.com/workos/workos-go/v4` packages as needed
+- Import `github.com/workos/workos-go/v6` packages as needed
 - Read env vars with `os.Getenv("WORKOS_API_KEY")`, `os.Getenv("WORKOS_CLIENT_ID")`, `os.Getenv("WORKOS_REDIRECT_URI")`
 
 ### 4b: Implement Handlers
@@ -155,7 +155,7 @@ Wire these routes into the existing router setup in `main.go` or wherever routes
 In the appropriate init location (package-level `init()` or `main()`), initialize the WorkOS client:
 
 ```go
-import "github.com/workos/workos-go/v4/pkg/usermanagement"
+import "github.com/workos/workos-go/v6/pkg/usermanagement"
 
 func init() {
     usermanagement.SetAPIKey(os.Getenv("WORKOS_API_KEY"))
@@ -199,7 +199,7 @@ If build fails:
 
 ## Error Recovery
 
-### "cannot find module providing package github.com/workos/workos-go/v4/..."
+### "cannot find module providing package github.com/workos/workos-go/v6/..."
 
 - Run `go mod tidy` to sync dependencies
 - Check that `go get` completed successfully

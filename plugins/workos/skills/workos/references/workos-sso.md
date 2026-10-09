@@ -27,7 +27,7 @@ Use only the relevant flow when the user asks for implementation help. Do not in
 Standalone SSO SDK methods:
 
 - Node: use `workos.sso.getAuthorizationUrl(...)` and `workos.sso.getProfileAndToken(...)`.
-- Ruby: use `WorkOS::SSO.authorization_url(...)` and `WorkOS::SSO.profile_and_token(...)`.
+- Ruby (gem 7+): use `WorkOS.client.sso.get_authorization_url(...)` and `WorkOS.client.sso.get_profile_and_token(...)`. Gems before 7 use module methods (`WorkOS::SSO.authorization_url`, `WorkOS::SSO.profile_and_token`).
 - Do not use AuthKit/User Management methods such as `workos.userManagement.getAuthorizationUrl(...)` or `authenticateWithCode(...)` for standalone SSO prompts.
 
 ### SP-initiated SSO

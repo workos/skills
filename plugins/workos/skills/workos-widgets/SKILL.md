@@ -1,6 +1,6 @@
 ---
 name: workos-widgets
-description: Use when the user is implementing, embedding, or debugging a WorkOS Widget — specifically the User Management, User Profile, Admin Portal SSO Connection, or Admin Portal Domain Verification widgets. Handles the full stack — detecting the frontend (Next.js, React, React Router, TanStack Start, Vite, SvelteKit), generating access tokens via the backend SDK in use (Node, Python, Go, Ruby, PHP, Java, .NET), and wiring up the widget component correctly per the bundled OpenAPI spec. Also use when code imports from @workos-inc/widgets or the user pastes <UserManagement /> or <UserProfile /> JSX.
+description: Use when the user is implementing, embedding, or debugging a WorkOS Widget — specifically the User Management, User Profile, Admin Portal SSO Connection, or Admin Portal Domain Verification widgets. Handles the full stack — detecting the frontend (Next.js, React, React Router, TanStack Start, Vite, SvelteKit), generating access tokens via the backend SDK in use (Node, Python, Go, Ruby, PHP, Java, .NET), and wiring up the widget component correctly per the bundled OpenAPI spec. Also use when code imports from @workos-inc/widgets or the user pastes <UsersManagement /> or <UserProfile /> JSX.
 ---
 
 # WorkOS Widgets
@@ -93,6 +93,7 @@ Then load exactly one widget reference:
 
 ## Core Guidelines
 
+- If the project renders the packaged `@workos-inc/widgets` components (`UsersManagement`, `UserProfile`, `AdminPortalSsoConnection`, ...), they must sit inside `<WorkOsWidgets>`, need the peer deps `@radix-ui/themes` and `@tanstack/react-query`, and take `authToken` (a string or `() => Promise<string>`), not `accessToken`.
 - Reuse existing domain types from the host project and OpenAPI schemas; avoid duplicating model definitions.
 - Build widget requests using [references/fetching-apis.md](references/fetching-apis.md) for paths, methods, and schema queries.
 - Use direct `fetch`/HTTP calls (or equivalent server HTTP client) for endpoint calls.

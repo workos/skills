@@ -68,6 +68,8 @@ If existing auth detected:
 bundle add workos
 ```
 
+The examples below are for gem 7+, which calls everything through a client instance (`WorkOS.client.user_management...`). If `Gemfile.lock` already pins `workos` below 7, use that version's module-level methods (`WorkOS::UserManagement.authorization_url`, `config.key`) instead of upgrading.
+
 If `dotenv` is not in the Gemfile:
 
 ```bash
@@ -94,8 +96,8 @@ bundle add dotenv
    ```
 
 2. **Create AuthController** — `app/controllers/auth_controller.rb`:
-   - `login` action: call `WorkOS::UserManagement.get_authorization_url(provider: "authkit", redirect_uri: ...)`, redirect
-   - `callback` action: call `WorkOS::UserManagement.authenticate_with_code(code: params[:code])`, store user in session
+   - `login` action: call `WorkOS.client.user_management.get_authorization_url(provider: "authkit", redirect_uri: ...)`, redirect
+   - `callback` action: call `WorkOS.client.user_management.authenticate_with_code(code: params[:code])`, store user in session
    - `logout` action: clear session, redirect
 
 3. **Add routes** to `config/routes.rb`:
@@ -129,13 +131,14 @@ Follow the quickstart pattern exactly:
    require "sinatra"
 
    WorkOS.configure do |config|
-     config.key = ENV["WORKOS_API_KEY"]
+     config.api_key = ENV.fetch("WORKOS_API_KEY")
+     config.client_id = ENV.fetch("WORKOS_CLIENT_ID")
    end
    ```
 
-2. **Create `/login` route** — call `WorkOS::UserManagement.authorization_url(provider: "authkit", client_id: ..., redirect_uri: ...)`, redirect
+2. **Create `/login` route** — call `WorkOS.client.user_management.get_authorization_url(provider: "authkit", redirect_uri: ...)`, redirect
 
-3. **Create `/callback` route** — call `WorkOS::UserManagement.authenticate_with_code(client_id: ..., code: ...)`, store in session cookie
+3. **Create `/callback` route** — call `WorkOS.client.user_management.authenticate_with_code(code: ...)`, store in session cookie
 
 4. **Create `/logout` route** — clear session cookie, redirect
 

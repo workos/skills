@@ -84,7 +84,7 @@ If `middleware.ts` already exists with custom logic (rate limiting, logging, hea
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
-import { authkit, handleAuthkitHeaders } from '@workos-inc/authkit-nextjs';
+import { authkit, handleAuthkitProxy } from '@workos-inc/authkit-nextjs';
 
 export default async function middleware(request: NextRequest) {
   // 1. Get auth session and headers from AuthKit
@@ -100,21 +100,19 @@ export default async function middleware(request: NextRequest) {
 
   // 3. Protect routes - redirect to auth if needed
   if (pathname.startsWith('/dashboard') && !session.user && authorizationUrl) {
-    return handleAuthkitHeaders(request, headers, { redirect: authorizationUrl });
+    return handleAuthkitProxy(request, headers, { redirect: authorizationUrl });
   }
 
   // 4. Continue with AuthKit headers properly handled
-  return handleAuthkitHeaders(request, headers);
+  return handleAuthkitProxy(request, headers);
 }
 ```
 
 **Key functions:**
 
 - `authkit(request)` - Returns `{ session, headers, authorizationUrl }` for composition
-- `handleAuthkitHeaders(request, headers, options?)` - Ensures AuthKit headers pass through correctly
+- `handleAuthkitProxy(request, headers, options?)` - Passes AuthKit headers through so `withAuth()` works in pages. `handleAuthkitHeaders` is the older name for the same function and still works; use whichever the installed version exports.
 - For rewrites, use `partitionAuthkitHeaders()` and `applyResponseHeaders()` (see README)
-
-**Critical:** Always return via `handleAuthkitHeaders()` to ensure `withAuth()` works in pages.
 
 ## Step 6: Create Callback Route
 
