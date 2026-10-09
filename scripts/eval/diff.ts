@@ -3,7 +3,8 @@ import { readdir, readFile } from 'fs/promises';
 import { parse } from 'yaml';
 import { normalizeForMatch } from './scorer.ts';
 import { summarizeRequirements, validateUnorderedRequirements } from './requirements.ts';
-import type { ExpectedSignals, EvalCase } from './types.ts';
+import { assessWidgetsRecommendation } from './widgets-recommendation.ts';
+import type { ExpectedSignals, EvalCase, WidgetsRecommendation } from './types.ts';
 
 const OUTPUT_DIR = join(process.cwd(), 'scripts', 'output');
 const CASES_DIR = join(process.cwd(), 'scripts', 'eval', 'cases');
@@ -25,6 +26,7 @@ export interface SignalSummary {
   imports: { found: number; total: number; matched: string[]; missing: string[] };
   hallucinations: { found: number; names: string[] };
   flowSteps: { found: number; total: number; inOrder: boolean };
+  widgetsRecommendation?: WidgetsRecommendation;
 }
 
 /** Compute which expected signals are present/missing in output. */
@@ -85,6 +87,7 @@ export function summarizeSignals(output: string, expected: ExpectedSignals): Sig
     imports: checkPresence(expected.imports),
     hallucinations: { found: hallNames.length, names: hallNames },
     flowSteps: { found: flowFound, total: expected.flowSteps.length, inOrder },
+    ...(expected.widgetsRecommendation && { widgetsRecommendation: assessWidgetsRecommendation(output) }),
   };
 }
 
@@ -147,6 +150,10 @@ export function formatSummary(s: SignalSummary): string {
   lines.push(
     `  Hallucinations: ${hallColor}${s.hallucinations.found}${RESET}${s.hallucinations.names.length > 0 ? ` (${s.hallucinations.names.join(', ')})` : ''}`,
   );
+
+  if (s.widgetsRecommendation) {
+    lines.push(`  Widgets recommendation: ${s.widgetsRecommendation} (bounded heuristic, not semantic proof)`);
+  }
 
   return lines.join('\n');
 }
