@@ -7,42 +7,11 @@ description: Use when the user is implementing, embedding, or debugging a WorkOS
 
 ## Workflow Overview
 
-1. Identify widget target from the user request (`user-management`, `user-profile`, `admin-portal-sso-connection`, `admin-portal-domain-verification`).
-2. Scan project files in this order:
-   - package/dependency manifests
-   - framework/router entrypoints
-   - auth/token utilities
-   - styling/component patterns
-3. Detect stack, data-layer style, styling, component system, and package manager using [references/detection.md](references/detection.md).
-4. Check for AuthKit/WorkOS presence:
-   - if detected, continue;
-   - if not detected, ask the user to run `WORKOS_MODE=agent npx workos@latest install`. Wait for confirmation, then continue.
-5. If detection is ambiguous or conflicting, ask one focused question, then continue.
-6. Load only the relevant reference files for the detected stack and widget.
-7. Implement integration based on stack shape:
-   - frontend route/page + widget component when widget UI lives in the same app
-   - token endpoint/service + client integration surface when backend-first/multi-app architecture is detected
-8. Validate routing/wiring, imports, and token/API usage before finishing.
-
-## Canonical Inputs
-
-Accept these inputs from the user request when available:
-
-- widget type (or infer from request intent)
-- optional component path
-- optional page/route path
-- optional token endpoint/service preference
-- optional constraints (for example: avoid broad refactors)
-
-When input is missing, infer from existing project conventions and detected stack.
-
-## Detection and Ambiguity Protocol
-
-- Apply detection heuristics from [references/detection.md](references/detection.md).
-- Explore before asking. Ask only when ambiguity remains after checking manifests and route/auth entrypoints.
-- Ask a single concrete question that resolves one decision.
-- Default to the strongest detected ownership signals when no user response is available.
-- When installs are required, use the package manager detected from project files/lockfiles.
+1. Identify the widget target (`user-management`, `user-profile`, `admin-portal-sso-connection`, `admin-portal-domain-verification`).
+2. Detect the stack and whether AuthKit/WorkOS is already present ([references/detection.md](references/detection.md)).
+3. If AuthKit/WorkOS is not present, ask the user to run `WORKOS_MODE=agent npx workos@latest install`, wait for confirmation, then continue.
+4. Load the relevant reference files for the detected stack and widget.
+5. Implement: a frontend route/page + widget component when the UI lives in the same app, or a token endpoint/service when a backend-first/multi-app architecture is detected.
 
 ## Reference Loading Map
 
@@ -86,43 +55,15 @@ Then load exactly one widget reference:
   node references/scripts/query-spec.cjs --widget <widget-name>
   ```
   Use `--list` to see available widget groups.
-- Keep loading, empty, and error states explicit and user-visible.
-- Keep mutation outcomes visible and refresh/reload affected data after successful changes.
-- Align table/list/action UI with existing project conventions.
-- Keep behavior resilient for partial/optional data and avoid brittle UI assumptions.
-
-## Core Guidelines
-
 - If the project renders the packaged `@workos-inc/widgets` components (`UsersManagement`, `UserProfile`, `AdminPortalSsoConnection`, ...), they must sit inside `<WorkOsWidgets>`, need the peer deps `@radix-ui/themes` and `@tanstack/react-query`, and take `authToken` (a string or `() => Promise<string>`), not `accessToken`.
-- Reuse existing domain types from the host project and OpenAPI schemas; avoid duplicating model definitions.
-- Build widget requests using [references/fetching-apis.md](references/fetching-apis.md) for paths, methods, and schema queries.
-- Use direct `fetch`/HTTP calls (or equivalent server HTTP client) for endpoint calls.
-- Implement a consistent authorization layer for widget requests, including elevated-token handling for sensitive endpoints when required.
-- If the app already uses React Query or SWR, use them as orchestration/cache layers around those direct calls.
-- For React/TypeScript widget code quality expectations, follow [references/react-ts-standards.md](references/react-ts-standards.md).
-- If AuthKit/WorkOS is missing, prompt the user to run `WORKOS_MODE=agent npx workos@latest install` before continuing. `WORKOS_MODE=agent` keeps the installer deterministic (no prompts, no browser, no host-trust); pass `--json` when you need to parse the output.
-- Install additional dependencies only when strictly necessary, using the detected package manager/tooling.
-- Keep server-state handling aligned with the selected data-layer approach.
-- Use local state/reducers for UI interaction state as needed.
-- Prefer existing design system and styling conventions.
-- Avoid broad unrelated refactors and global style rewrites.
+- Reuse existing domain types and OpenAPI schemas rather than duplicating model definitions.
+- Implement an authorization layer for widget requests, including elevated-token handling for sensitive endpoints ([references/token-strategies.md](references/token-strategies.md)).
+- For React/TypeScript widget code conventions, follow [references/react-ts-standards.md](references/react-ts-standards.md).
+- `WORKOS_MODE=agent` keeps the installer deterministic (no prompts, no browser, no host-trust); pass `--json` when you need to parse its output.
 
 ## Completion Requirements
 
-Before finishing, verify all relevant items:
-
-1. Widget component exists and accepts `accessToken: string` when component-level integration is in scope.
-2. Route/page wiring is complete when route integration is in scope.
-3. Token source matches existing app architecture (AuthKit client flow or backend WorkOS token flow).
-4. API methods and paths match the bundled OpenAPI spec, and data-layer usage matches project conventions.
-5. Loading and error branches exist for required query/mutation flows.
-
-## Validation Checklist
-
-1. Confirm endpoint paths and HTTP methods come from the bundled OpenAPI spec.
-2. Confirm request/response handling follows schema expectations from the spec.
-3. Confirm query/mutation invalidation/refetch is applied after successful mutations where required.
-4. Confirm empty/error/loading states are explicit and user-visible.
-5. Confirm package installs (if any) used the detected package manager/tooling.
-6. Confirm implementation stays aligned with existing codebase conventions.
-7. Confirm no existing component has been passed `className` or `style` props to override its built-in styling. Use each component as-is or via its own props API (`variant`, `size`, etc.).
+- Token source matches the existing app architecture (AuthKit client flow or backend WorkOS token flow).
+- Endpoint paths, methods, and request/response handling match the bundled OpenAPI spec.
+- Loading, empty, and error branches are explicit and user-visible; affected data is refreshed after successful mutations.
+- Packaged components are used as-is or via their own props API (`variant`, `size`, etc.), not overridden with `className`/`style`.

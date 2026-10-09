@@ -77,7 +77,7 @@ createRoot(document.getElementById('root')).render(
 
 For a custom Vite redirect, explicitly pass `redirectUri={import.meta.env.VITE_WORKOS_REDIRECT_URI}`. For other bundlers, pass the value from their verified configuration mechanism. An env prefix alone does not wire any SDK option.
 
-## Verification Checklist (ALL MUST PASS)
+## Verification Checklist
 
 - [ ] Application settings and sign-in/sign-out flows pass the completion checklist in [workos-authkit-setup.md](workos-authkit-setup.md).
 - [ ] Confirm the app's runtime mode and build-tool env consumption, including any explicit redirect prop; inspect the effective non-secret values.
@@ -94,4 +94,4 @@ For a custom Vite redirect, explicitly pass `redirectUri={import.meta.env.VITE_W
 
 ## Source baseline
 
-Verified against React [README](https://github.com/workos/authkit-react/blob/4602e49b13d3677e7cc37602318a8e4833498bae/README.md) and [provider option forwarding](https://github.com/workos/authkit-react/blob/4602e49b13d3677e7cc37602318a8e4833498bae/src/provider.tsx), plus AuthKit JS [origin default and callback initialization](https://github.com/workos/authkit-js/blob/220f46557dd89401036cd0dbed01bded391d1788/src/create-client.ts). Recheck the installed SDK version before applying custom options.
+Recheck the installed SDK version before applying custom options. See the [authkit-react README](https://github.com/workos/authkit-react/blob/main/README.md).

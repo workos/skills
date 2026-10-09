@@ -1,15 +1,6 @@
 # Framework: Ruby
 
-## Scope
-
-Use this guide for Ruby apps (for example Rails/Sinatra) that generate widget tokens and/or proxy widget API calls.
-
-## Guidance
-
-- Use the official WorkOS Ruby SDK.
-- Keep API key in environment configuration.
-- Place token generation in existing service/controller boundaries.
-- Reuse existing session/auth context to resolve `organization_id` and `user_id`.
+Use the official WorkOS Ruby SDK for Ruby apps (for example Rails/Sinatra) that generate widget tokens and/or proxy widget API calls. Place token generation in existing service/controller boundaries.
 
 ## Token Pattern
 

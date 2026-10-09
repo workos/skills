@@ -22,17 +22,11 @@ This is one of the most common customer asks. Full recipe lives in `workos-rbac.
 
 ## Gotchas
 
-- dsync.deleted sends ONE event for the whole directory — it does NOT send individual dsync.user.deleted or dsync.group.deleted events. You must cascade-delete all users and groups by directory_id yourself.
-- Use email as stable user identity, NOT the WorkOS directory*user*\* ID — the ID changes if a user is recreated in the IdP. Upsert by email.
-- Return 200 from webhook handler IMMEDIATELY (WorkOS times out at 10s) — process events asynchronously after acknowledging
-- Webhooks are NOT mandatory — the Events API (workos.events.listEvents) is a fully supported pull-based alternative for batch processing
-- Webhook signature verification must use the RAW request body, not parsed JSON — parsing first breaks the signature
-- Use dsync.\* wildcard for Events API filter, not just "dsync" — bare string returns nothing
-- Events API after param must be within 30-day retention window
+- dsync.deleted sends ONE event for the whole directory — it does NOT send individual dsync.user.deleted or dsync.group.deleted events. Cascade-delete all users and groups by directory_id yourself.
+- Use email as stable user identity, not the WorkOS directory*user*\* ID — the ID changes if a user is recreated in the IdP. Upsert by email.
 - User state "inactive" is far more common than "deleted" — most IdPs deactivate users rather than deleting them. Handle dsync.user.updated with state=inactive as a deprovisioning event.
-- Webhook handler pattern: call `workos.webhooks.constructEvent({ payload, sigHeader, secret })` with the raw body + `workos-signature` header, THEN return 200, THEN process event in async handler. Order matters.
-- Ruby webhook trap: use request.raw_post for signature verification, NOT request.body — Rails parses body into params which breaks the signature. Disable JSON parsing for the webhook endpoint (use ActionController::API or skip_before_action).
-- Use upsert pattern (ON CONFLICT / upsert) for all webhook handlers — events can be delivered more than once. dsync.user.created should upsert, not insert.
+- Webhooks are not mandatory — the Events API (`workos.events.listEvents`) is a fully supported pull-based alternative for batch processing. Filter with the `dsync.*` wildcard, not a bare `dsync` string (which returns nothing). The `after` param must be within the 30-day retention window.
+- Webhook handler mechanics (signature verification with `constructEvent`, return-200, idempotent dedupe by `event.id`) are canonical in `workos-events.md`.
 
 ## Endpoints
 

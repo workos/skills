@@ -1,15 +1,6 @@
 # Framework: Java
 
-## Scope
-
-Use this guide for Java services/apps that issue widget tokens and support widget integrations.
-
-## Guidance
-
-- Use the official WorkOS Java SDK.
-- Keep API key in environment configuration.
-- Place token creation in existing service/controller boundaries.
-- Reuse existing auth/session context for organization and user identifiers.
+Use the official WorkOS Java SDK for Java services/apps that issue widget tokens and support widget integrations. Place token creation in existing service/controller boundaries.
 
 ## Token Pattern
 

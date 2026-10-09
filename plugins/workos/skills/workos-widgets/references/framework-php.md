@@ -1,15 +1,6 @@
 # Framework: PHP
 
-## Scope
-
-Use this guide for PHP apps (for example Laravel/Symfony) that create widget tokens and integrate widget APIs.
-
-## Guidance
-
-- Use the official WorkOS PHP SDK.
-- Keep API key in environment configuration.
-- Place token generation in existing controller/service boundaries.
-- Reuse current auth/session context to resolve organization/user identifiers.
+Use the official WorkOS PHP SDK for PHP apps (for example Laravel/Symfony) that create widget tokens and integrate widget APIs. Place token generation in existing controller/service boundaries.
 
 ## Token Pattern
 

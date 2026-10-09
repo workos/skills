@@ -53,7 +53,7 @@ The framework SDK supports `WORKOS_CLIENT_ID`, `WORKOS_API_KEY`, `WORKOS_REDIREC
 
 Keep API keys and cookie secrets server-only: never add public prefixes or send configuration objects containing secrets to the browser. These server requirements do not apply to client-only React Router apps; those use the React client ID/provider options instead.
 
-## Verification Checklist (ALL MUST PASS)
+## Verification Checklist
 
 - [ ] Application settings and sign-in/sign-out flows pass the completion checklist in [workos-authkit-setup.md](workos-authkit-setup.md).
 - [ ] SDK selection follows actual execution/deployment evidence; unresolved mixed signals are clarified with the user.
@@ -70,4 +70,4 @@ Keep API keys and cookie secrets server-only: never add public prefixes or send 
 
 ## Source baseline
 
-Server requirements and configuration precedence verified against [AuthKit React Router README at 78f8e4366abbc2d3b7061a24a3635f9beb71256a](https://github.com/workos/authkit-react-router/blob/78f8e4366abbc2d3b7061a24a3635f9beb71256a/README.md). That revision focuses on framework mode; do not invent library-mode sections or APIs. Recheck installed SDK support and the router's deployment docs before implementation.
+Recheck installed SDK support and the router's deployment docs before implementation. See the [authkit-react-router README](https://github.com/workos/authkit-react-router/blob/main/README.md); it focuses on framework mode, so do not invent library-mode APIs.
