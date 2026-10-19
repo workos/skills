@@ -1,5 +1,7 @@
 # Future model-eval scenarios adapted from Nick Nisi's PR42 (17eeaa3).
-# Offline tests exercise loading/scoring, not model recommendation quality.
+# These are single migration/terminology-reference cases, not full routing tests.
+# Actual Widgets bundle cases live in widgets.yaml. Offline tests exercise
+# loading/scoring, not model recommendation quality.
 - id: migrate-clerk-widgets-recommendation
   product: migrate-clerk
   skill: workos-migrate-clerk

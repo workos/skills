@@ -175,6 +175,7 @@ export async function writeTranscripts(report: EvalReport): Promise<string> {
     runId: report.runId,
     model: report.model,
     totalCases: report.totalCases,
+    ...(report.widgetsSources && { widgetsSources: report.widgetsSources }),
     transcripts: report.results.map((r) => ({
       caseId: r.caseId,
       product: r.product,
