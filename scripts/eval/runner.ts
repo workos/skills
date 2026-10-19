@@ -49,6 +49,14 @@ export function loadCases(
     }
   }
 
+  // Validate this opt-in contract explicitly; a typo/false value must not
+  // silently disable its cap. Keep legacy cases and their scoring unchanged.
+  for (const c of cases) {
+    if (c.expected && 'widgetsRecommendation' in c.expected && c.expected.widgetsRecommendation !== true) {
+      throw new Error(`${c.id}: expected.widgetsRecommendation must be true or omitted`);
+    }
+  }
+
   return cases.filter((c) => {
     if (filter?.product && c.product !== filter.product) return false;
     if (filter?.caseIds?.length && !filter.caseIds.includes(c.id)) return false;
