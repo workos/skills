@@ -9,7 +9,7 @@
     login, logout, and protected routes. Walk me through the full setup.
   expected:
     methods:
-      - authkitMiddleware
+      - authkitProxy
       - handleAuth
       - getSignInUrl
       - getUser
@@ -89,7 +89,7 @@
     I get "cookies was called outside a request scope" error. How do I fix it?
   expected:
     methods:
-      - authkitMiddleware
+      - authkitProxy
       - handleAuth
     envVars: []
     imports:

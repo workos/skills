@@ -21,17 +21,19 @@ SDK README (source of truth): `https://raw.githubusercontent.com/workos/authkit-
 
 ## Step 2: Install SDK and middleware/proxy
 
-Install the SDK package named in the README, then add the middleware/proxy file by Next.js version:
+Install the SDK package named in the README. The README also installs `@workos-inc/node`, but authkit-nextjs 4.4 peer-depends on `@workos-inc/node@^9 || ^10`, so a bare `@workos-inc/node` install pulls v11 and breaks the peer range. Pin it to the range in the installed authkit-nextjs `peerDependencies` (e.g. `@workos-inc/node@^10`).
+
+Then add the middleware/proxy file by Next.js version:
 
 - **Next.js 16+** → `proxy.ts` (preferred convention). `middleware.ts` still works but warns; Next.js 16 throws **error E900** if both files exist at the same level.
 - **Next.js 15** → `middleware.ts` (`cookies()` is async)
 - **Next.js 13–14** → `middleware.ts` (`cookies()` is sync)
 
-The file must sit in the parent directory of `app/` — so `src/middleware.ts` (or `src/proxy.ts`) for a `src/app/` project, root-level otherwise. At the wrong level it is silently ignored — no error, it just never runs. See README for the `authkitMiddleware()` export.
+The file must sit in the parent directory of `app/` — so `src/middleware.ts` (or `src/proxy.ts`) for a `src/app/` project, root-level otherwise. At the wrong level it is silently ignored — no error, it just never runs. Export `authkitProxy()` from it; `authkitMiddleware` is the deprecated alias of the same function and still works. See README for options.
 
 ### Composing with existing middleware
 
-If `middleware.ts` already has custom logic (rate limiting, logging, headers), use the `authkit()` composable instead of `authkitMiddleware`:
+If `middleware.ts` already has custom logic (rate limiting, logging, headers), use the `authkit()` composable instead of `authkitProxy`:
 
 ```typescript
 import { authkit, handleAuthkitProxy } from '@workos-inc/authkit-nextjs';
