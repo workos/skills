@@ -8,11 +8,19 @@ const RECOMMEND = String.raw`(?:use|recommend)`;
 const NEGATION = String.raw`(?:do\s+not|not|never|cannot|(?:don|doesn|shouldn|wouldn|can|won)['’]t)`;
 const AVOID = String.raw`avoid(?:\s+(?:using|recommending))?`;
 const TARGET = String.raw`(?:${PACKAGE}|\bWidgets\b|(?:\bWorkOS(?:['’]s)?\s+)?${PROFILE})`;
-// Negation anywhere in the clause blocks credit; tentative words block it only
-// in a coordinated part that carries the recommendation (see below).
+// Negation blocks credit in any coordinated part that could bear on the
+// recommendation; tentative words only in parts that carry it (see below).
 const NEGATIVE = new RegExp(String.raw`\b(?:${NEGATION}|${AVOID}|no)\b`, 'i');
 const TENTATIVE = /\b(?:might|could|maybe|perhaps|possibly|whether|unsure)\b/i;
 const RECOMMENDATION_PART = new RegExp(String.raw`${PACKAGE}|${PROFILE}|\b${RECOMMEND}\b`, 'i');
+// A part "bears on" the recommendation if it names a target, refers back with
+// a pronoun, mentions the profile/account UI, or uses a capability verb.
+// ponytail: lexical proxy for relevance; unrelated-looking paraphrases that
+// still contradict ("…, and the account page won't work") stay capped.
+const RELATED_PART = new RegExp(
+  String.raw`${TARGET}|\b(?:${RECOMMEND}|it|its|they|them|this|that|these|those|widgets?|components?|profile|account|UI|provides?|offers?|has|have|supports?|works?)\b`,
+  'i',
+);
 const RETRACTION = new RegExp(
   String.raw`\b(?:${AVOID}|${NEGATION}\s+${RECOMMEND})[:\s]+(?:the\s+)?<?${TARGET}|(?:^|[,:(])\s*(?:the\s+)?${TARGET}\s+(?:(?:is|are)\s+${NEGATION}|(?:should|must)\s+not\s+be)\s+(?:used|recommended)\b`,
   'gi',
@@ -108,19 +116,20 @@ export function assessWidgetsRecommendation(output: string): WidgetsRecommendati
       parity = true;
     }
 
-    // The whole clause must carry the recommendation and no negation, so
-    // "Use X, and its UserProfile provides…" counts and "…, and it does not
-    // provide…" does not. Tentative words only matter in coordinated parts that
-    // carry the recommendation, so "…, and you could keep a custom menu" stays
-    // firm. The recognized no-parity caveat was already removed from parityClaim.
-    const tentative = parityClaim
-      .split(/,\s*(?:and|or|while|so|then)\s+/i)
-      .some((part) => RECOMMENDATION_PART.test(part) && TENTATIVE.test(part));
+    // The whole clause must carry the recommendation, so "Use X, and its
+    // UserProfile provides…" counts. Negation blocks credit in any coordinated
+    // part that bears on it ("…, and it does not provide profile UI"), but not in
+    // an unrelated instruction ("…, and do not change the AuthKit flow").
+    // Tentative words only matter in parts carrying the recommendation. The
+    // recognized no-parity caveat was already removed from parityClaim.
+    const parts = parityClaim.split(/,\s*(?:and|or|while|so|then)\s+/i);
+    const negated = parts.some((part) => RELATED_PART.test(part) && NEGATIVE.test(part));
+    const tentative = parts.some((part) => RECOMMENDATION_PART.test(part) && TENTATIVE.test(part));
     if (
       new RegExp(PROFILE, 'i').test(parityClaim) &&
       new RegExp(PACKAGE, 'i').test(parityClaim) &&
       new RegExp(String.raw`\b(?:${RECOMMEND}|provides?|offers?)\b`, 'i').test(parityClaim) &&
-      !NEGATIVE.test(parityClaim) &&
+      !negated &&
       !tentative
     ) {
       recommendation = true;
