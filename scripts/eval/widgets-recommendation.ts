@@ -8,7 +8,10 @@ const RECOMMEND = String.raw`(?:use|recommend)`;
 const NEGATION = String.raw`(?:do\s+not|not|never|cannot|(?:don|doesn|shouldn|wouldn|can|won)['’]t)`;
 const AVOID = String.raw`avoid(?:\s+(?:using|recommending))?`;
 const TARGET = String.raw`(?:${PACKAGE}|\bWidgets\b|(?:\bWorkOS(?:['’]s)?\s+)?${PROFILE})`;
-const NON_AFFIRMATIVE = new RegExp(String.raw`\b(?:${NEGATION}|${AVOID}|no|might|maybe|perhaps|whether|unsure)\b`, 'i');
+const NON_AFFIRMATIVE = new RegExp(
+  String.raw`\b(?:${NEGATION}|${AVOID}|no|might|could|maybe|perhaps|possibly|whether|unsure)\b`,
+  'i',
+);
 const RETRACTION = new RegExp(
   String.raw`\b(?:${AVOID}|${NEGATION}\s+${RECOMMEND})[:\s]+(?:the\s+)?<?${TARGET}|(?:^|[,:(])\s*(?:the\s+)?${TARGET}\s+(?:(?:is|are)\s+${NEGATION}|(?:should|must)\s+not\s+be)\s+(?:used|recommended)\b`,
   'gi',
