@@ -113,6 +113,64 @@ describe('Widgets recommendation contract through the real loader and scorer', (
     expect(formatSummary(summary)).toContain(`${evidence} (bounded heuristic, not semantic proof)`);
   });
 
+  it.each([
+    ['Recommend @workos-inc/widgets; its UserProfile provides prebuilt profile UI.', 'supported'],
+    ['Recommend WorkOS Widgets; its UserProfile provides prebuilt profile UI.', 'supported'],
+    ['I recommend @workos-inc/widgets. Its UserProfile offers pre-built account UI.', 'supported'],
+    ['Do not recommend @workos-inc/widgets; its UserProfile provides prebuilt profile UI.', 'unknown'],
+    ['Never use WorkOS Widgets; its UserProfile provides prebuilt profile UI.', 'unknown'],
+    ['Do not; recommend @workos-inc/widgets; its UserProfile provides prebuilt profile UI.', 'unknown'],
+    [
+      'Recommend @workos-inc/widgets; its UserProfile provides prebuilt profile UI. Do not use @workos-inc/widgets.',
+      'unknown',
+    ],
+    [
+      'Recommend @workos-inc/widgets; its UserProfile provides prebuilt profile UI; never recommend UserProfile.',
+      'unknown',
+    ],
+    [
+      'Recommend @workos-inc/widgets; its UserProfile provides prebuilt profile UI. "Do not use @workos-inc/widgets."',
+      'supported',
+    ],
+    ['Recommend @workos-inc/widgets; its UserProfile does not provide prebuilt profile UI.', 'unknown'],
+    ['Recommend @workos-inc/widgets; its UserProfile provides no prebuilt profile UI.', 'unknown'],
+    ['Documentation mentions @workos-inc/widgets; its UserProfile provides prebuilt profile UI.', 'unknown'],
+    ['Recommend @workos-inc/widgets for something else; UserProfile provides prebuilt profile UI.', 'unknown'],
+    ['Recommend @workos-inc/widgets; use another package; its UserProfile provides prebuilt profile UI.', 'unknown'],
+    ['Recommend another package; its UserProfile provides prebuilt profile UI.', 'unknown'],
+    ['Recommend @workos-inc/widgets; unrelated prose. Its UserProfile provides prebuilt profile UI.', 'unknown'],
+    ['Bad example: Recommend @workos-inc/widgets; its UserProfile provides prebuilt profile UI.', 'unknown'],
+    ['"Recommend @workos-inc/widgets; its UserProfile provides prebuilt profile UI."', 'unknown'],
+    ['"Recommend @workos-inc/widgets"; its UserProfile provides prebuilt profile UI.', 'unknown'],
+    ['Recommend @workos-inc/widgets; "its UserProfile provides prebuilt profile UI."', 'unknown'],
+    ['Recommend @workos-inc/widgets; "unrelated quote" its UserProfile provides prebuilt profile UI.', 'unknown'],
+    ['```text\nRecommend @workos-inc/widgets; its UserProfile provides prebuilt profile UI.\n```', 'unknown'],
+    [
+      'Recommend @workos-inc/widgets; its UserProfile provides prebuilt profile UI. WorkOS offers no prebuilt profile UI.',
+      'mixed',
+    ],
+    [
+      'Recommend @workos-inc/widgets; its UserProfile provides prebuilt profile UI. WorkOS Widgets offers exact parity with Clerk UserButton.',
+      'mixed',
+    ],
+  ])('bounds adjacent evidence: %s → %s', (recommendation, evidence) => {
+    const output = `${recommendation}\nIt is not a drop-in Clerk replacement.`;
+    const score = scoreOutput(output, expected);
+    const errors = categorizeErrors(output, expected);
+    expect(score.widgetsRecommendation).toBe(evidence);
+    if (evidence === 'supported') {
+      // This minimal answer need not cover every other case signal, but the
+      // recommendation contract itself must not impose the unknown cap.
+      const { widgetsRecommendation: _contract, ...legacy } = expected;
+      expect(score.composite).toBe(scoreOutput(output, legacy).composite);
+      expect(score.composite).toBeGreaterThan(60);
+      expect(errors).not.toContain('unverified_recommendation');
+    } else {
+      expect(score.composite).toBeLessThanOrEqual(evidence === 'unknown' ? 60 : 40);
+      expect(errors).toContain(evidence === 'unknown' ? 'unverified_recommendation' : 'incorrect_recommendation');
+    }
+  });
+
   it('does not alter legacy non-Widgets scoring or global negation semantics', () => {
     const { widgetsRecommendation: _contract, ...legacy } = expected;
     const output = `${good} WorkOS has no profile UI.`;
