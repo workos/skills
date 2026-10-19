@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { median, percentile, checkGates } from '../eval/reporter.ts';
+import { describe, expect, it, vi } from 'vitest';
+import { median, percentile, checkGates, printSummary, printErrorReductions } from '../eval/reporter.ts';
 import { aggregateResults } from '../eval/runner.ts';
 import type { EvalReport, EvalResult, ProductSummary, ScoreCard } from '../eval/types.ts';
 
@@ -71,6 +71,29 @@ function makeReport(overrides: Partial<EvalReport> = {}): EvalReport {
     ...overrides,
   };
 }
+
+describe('Widgets evidence reporting', () => {
+  it('reports bounded evidence and recommendation errors without implying semantic proof', () => {
+    const result = makeResult();
+    result.withSkill.scores.widgetsRecommendation = 'supported';
+    result.withoutSkill.scores.widgetsRecommendation = 'unknown';
+    result.withoutSkillErrors = ['unverified_recommendation', 'incorrect_recommendation'];
+    const report = makeReport({ results: [result] });
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      printSummary(report);
+      printErrorReductions(report);
+      const output = log.mock.calls.flat().join('\n');
+      expect(output).toContain('bounded heuristic, not semantic proof; first sample');
+      expect(output).toContain('with=supported, without=unknown');
+      expect(output).toContain('unverified_recommendation');
+      expect(output).toContain('incorrect_recommendation');
+      expect(JSON.parse(JSON.stringify(report)).results[0].withSkill.scores.widgetsRecommendation).toBe('supported');
+    } finally {
+      log.mockRestore();
+    }
+  });
+});
 
 describe('median', () => {
   it('returns middle of odd-length array', () => {

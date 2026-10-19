@@ -1,0 +1,85 @@
+# Future model-eval scenarios adapted from Nick Nisi's PR42 (17eeaa3).
+# These are single migration/terminology-reference cases, not full routing tests.
+# Actual Widgets bundle cases live in widgets.yaml. Offline tests exercise
+# loading/scoring, not model recommendation quality.
+- id: migrate-clerk-widgets-recommendation
+  product: migrate-clerk
+  skill: workos-migrate-clerk
+  skillType: generated
+  language: node
+  prompt: |
+    We're evaluating Clerk vs WorkOS for our B2B SaaS. Clerk's UserButton
+    opens profile and account management UI. Does WorkOS have prebuilt UI
+    for this, or must we build everything? Explain the relevant components
+    and remaining app responsibilities, without assuming drop-in parity.
+  expected:
+    widgetsRecommendation: true
+    methods: []
+    envVars: []
+    imports: ['@workos-inc/widgets']
+    params: []
+    flowSteps: ['UserProfile', 'UserSecurity', 'UserSessions']
+    antiPatterns: []
+    hallucinations: ['@workos/widgets', '@workos-inc/user-button', 'workos.widgets.UserButton']
+
+- id: migrate-clerk-userbutton-setup
+  product: migrate-clerk
+  skill: workos-migrate-clerk
+  skillType: generated
+  language: node
+  prompt: |
+    Replace Clerk UserButton and UserProfile in our React app using WorkOS
+    Widgets 1.18.0 and @workos-inc/node 10.13.0. Show imports, provider versus
+    component token props, server token issuance and refresh expectations.
+    Our existing server session helper verifies the signed-in user and org
+    membership. Do not let the browser choose the acting identity or scopes.
+    Distinguish the custom menu/sign-out shell from embedded account UI.
+  expected:
+    widgetsRecommendation: true
+    methods: ['workos.widgets.createToken']
+    envVars: ['WORKOS_API_KEY']
+    imports: ['@workos-inc/widgets', '@workos-inc/node']
+    params: ['{ token }', 'authToken', 'userId', 'organizationId', 'scopes']
+    flowSteps: ['WorkOsWidgets', 'UserProfile', 'server', 'refresh']
+    antiPatterns: ['<WorkOsWidgets authToken=', '<UserProfile accessToken=']
+    hallucinations: ['@workos/widgets', '@workos-inc/user-button']
+
+- id: migrate-clerk-organization-ui
+  product: migrate-clerk
+  skill: workos-migrate-clerk
+  skillType: generated
+  language: node
+  prompt: |
+    We are migrating Clerk UserProfile, OrganizationProfile and
+    OrganizationSwitcher to WorkOS. With Widgets 1.18.0, what prebuilt UI
+    covers profile, security, sessions, member management and org selection?
+    Which permissions, token props and session-switch callback are needed?
+    Explain what remains custom instead of claiming identical Clerk behavior.
+  expected:
+    widgetsRecommendation: true
+    methods: []
+    envVars: []
+    imports: ['@workos-inc/widgets']
+    params: ['authToken', 'switchToOrganization', 'widgets:users-table:manage']
+    flowSteps: ['UserProfile', 'UserSecurity', 'UserSessions', 'UsersManagement', 'OrganizationSwitcher']
+    antiPatterns: []
+    hallucinations: ['@workos/widgets', 'workos.widgets.UserButton']
+
+- id: widgets-terminology-boundary
+  product: widgets
+  skill: workos-terms
+  skillType: generated
+  language: node
+  prompt: |
+    What are WorkOS Widgets? Is there prebuilt profile UI like Clerk UserButton,
+    or does Widgets just mean building a custom UI against an API? Distinguish
+    embedded components, direct Client API calls, and AuthKit session management.
+  expected:
+    widgetsRecommendation: true
+    methods: []
+    envVars: []
+    imports: ['@workos-inc/widgets']
+    params: ['/client/graphql']
+    flowSteps: ['UserProfile', 'AuthKit', 'GraphQL']
+    antiPatterns: []
+    hallucinations: ['@workos/widgets', 'workos.widgets.UserButton']

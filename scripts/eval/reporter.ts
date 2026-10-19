@@ -113,6 +113,16 @@ export function printSummary(report: EvalReport): void {
     }
   }
 
+  const widgetsResults = report.results.filter((r) => r.withSkill.scores.widgetsRecommendation !== undefined);
+  if (widgetsResults.length > 0) {
+    console.log('\n  Widgets recommendation evidence (bounded heuristic, not semantic proof; first sample):');
+    for (const r of widgetsResults) {
+      console.log(
+        `    ${r.caseId}: with=${r.withSkill.scores.widgetsRecommendation}, without=${r.withoutSkill.scores.widgetsRecommendation}`,
+      );
+    }
+  }
+
   // Token usage estimate
   const totalTokens = report.results.reduce(
     (sum, r) =>
@@ -165,6 +175,7 @@ export async function writeTranscripts(report: EvalReport): Promise<string> {
     runId: report.runId,
     model: report.model,
     totalCases: report.totalCases,
+    ...(report.widgetsSources && { widgetsSources: report.widgetsSources }),
     transcripts: report.results.map((r) => ({
       caseId: r.caseId,
       product: r.product,

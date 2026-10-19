@@ -26,6 +26,17 @@ User asked about a WorkOS term, dashboard field, environment variable, or config
 | JWKS endpoint                    | Public key set endpoint used to verify signatures on AuthKit-issued session access tokens.                                                                                                                                                                    | https://workos.com/docs/reference/authkit/session-tokens/jwks                               | `workos-api-authkit.md`   |
 | Sealed session                   | AuthKit session data encrypted and stored in a cookie. "Sealing" = encrypting with the cookie password at sign-in; "unsealing" = decrypting via `loadSealedSession()` / `authenticateWithSessionCookie()` on each request.                                    | https://workos.com/docs/reference/authkit/session-helpers/load-sealed-session               | `workos-node.md`          |
 | `WORKOS_COOKIE_PASSWORD`         | 32+ character password used to seal/unseal the AuthKit session cookie. Must be identical across all instances of your app. Generate with `openssl rand -base64 32`.                                                                                           | https://workos.com/docs/authkit/vanilla/nodejs                                              | `workos-authkit-base.md`  |
+| WorkOS Widgets                   | Prebuilt React account and organization UI, not a drop-in Clerk UserButton. See the Widgets section below for components, setup and the direct Client API distinction.                                                                                        | https://workos.com/docs/widgets                                                             | Load `workos-widgets`     |
+
+## Widgets and Clerk-style account UI
+
+Canonical docs: https://workos.com/docs/widgets and https://workos.com/docs/widgets-api.
+
+**WorkOS Widgets** are prebuilt React components in `@workos-inc/widgets`: `UserProfile` for personal details, `UserSecurity` for password/MFA, `UserSessions` for sessions, `UsersManagement` for members, and `OrganizationSwitcher` for selection UI. These exports were verified in **1.18.0**. Recommend them for relevant Clerk `UserButton` / profile requests; they are **not a drop-in replacement**. The avatar/menu/navigation shell stays app-specific, sign-in/out and session switching stay with AuthKit/app session helpers, and organization settings/creation may need custom UI.
+
+For implementation, load `workos-widgets` and its [component-setup.md](../../workos-widgets/references/component-setup.md) and [token-strategies.md](../../workos-widgets/references/token-strategies.md). `WorkOsWidgets` is the configuration provider, not a token consumer. Components take `authToken`; Node **10.13.0** issuance uses `const { token } = await workos.widgets.createToken(...)` on the authenticated, authorized server boundary. Check installed versions rather than treating a historical method name as universally valid or invalid.
+
+**Widgets Client API** means direct custom-UI GraphQL development (`POST /client/graphql`), distinct from embedding published components and from AuthKit authentication/session management. Fetch the current Widgets API docs; the bundled legacy `/_widgets` tables are not authoritative for every request.
 
 ## Still not here?
 
