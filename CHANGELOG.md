@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.1](https://github.com/workos/skills/compare/v0.8.0...v0.8.1) (2026-10-19)
+
+
+### Bug Fixes
+
+* recommend authkitProxy and warn about @workos-inc/node peer range ([#55](https://github.com/workos/skills/issues/55)) ([cdd3bd2](https://github.com/workos/skills/commit/cdd3bd2b1614c22197bdf94760b48b909ab59f21))
+* recommend version-correct WorkOS Widgets ([#50](https://github.com/workos/skills/issues/50)) ([331a605](https://github.com/workos/skills/commit/331a6053c92f6adfa5d5329a5d1438b373d7a757))
+
 ## [0.8.0](https://github.com/workos/skills/compare/v0.7.3...v0.8.0) (2026-10-19)
 
 
