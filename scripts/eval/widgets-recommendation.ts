@@ -113,6 +113,12 @@ export function assessWidgetsRecommendation(output: string): WidgetsRecommendati
     // provide…" does not. Tentative words only matter in coordinated parts that
     // carry the recommendation, so "…, and you could keep a custom menu" stays
     // firm. The recognized no-parity caveat was already removed from parityClaim.
+    //
+    // Deliberate limit: negation ANYWHERE in the clause withholds credit, even in
+    // an unrelated instruction ("…, and do not change the AuthKit flow" scores
+    // unknown/60). Keyword exemptions for "unrelated" negation were tried and
+    // each let a contradiction through ("…, and no prebuilt screen exists"), so
+    // an honest unknown is preferred over false full credit. Don't add exemptions.
     const tentative = parityClaim
       .split(/,\s*(?:and|or|while|so|then)\s+/i)
       .some((part) => RECOMMENDATION_PART.test(part) && TENTATIVE.test(part));
