@@ -22,8 +22,7 @@ Skip this section if you are the WorkOS installer's own agent (it has already wr
 - If no credentials are found (no `WORKOS_API_KEY` in the shell or the project's env file, and no active `workos` CLI profile), it provisions a new unclaimed WorkOS environment, called a one-shot environment in https://workos.com/auth.md. If it finds credentials, it uses them and creates nothing.
 - It writes `WORKOS_API_KEY`, `WORKOS_CLIENT_ID` and `WORKOS_CLAIM_TOKEN` to `.env.local` when the project has a `package.json`, or to `.env` otherwise, and adds that file to `.gitignore`. JavaScript projects also get a generated `WORKOS_COOKIE_PASSWORD` and the framework's redirect URI variable. Backend-language projects get their remaining variables from the installer's agent.
 - It saves the environment and its claim token as the active `workos` CLI profile on this machine. The claim token exists only there and in the env file. Don't delete either before the environment is claimed.
-- It detects the framework, runs its own AI agent to install and wire the AuthKit SDK, registers the callback URL with the environment (the install fails if it can't), and reports which other application URLs (Sign-out URI, Initiate login URI, CORS origin) it saved or left for you. It then runs post-install validation unless you pass `--no-validate`.
-- In agent mode it prints NDJSON progress and errors to stdout. Read them instead of guessing.
+- It wires the AuthKit SDK and registers the callback URL with the environment (the install fails if it can't), then reports which other application URLs (Sign-out URI, Initiate login URI, CORS origin) it saved or left for you. It runs post-install validation unless you pass `--no-validate`.
 - It sets up AuthKit sign-in only. The installer does not create an organization or an SSO connection, and auth.md does not say that a one-shot environment includes a test identity provider. Don't promise a ready-made SSO login. If the user wants to try SSO, read `references/workos-sso.md` next.
 - Git: in agent mode, 0.23.0 creates a new branch and commits its changes by default. Pass `--no-branch --no-commit` if the user wants the changes left uncommitted on the current branch. Unreleased CLI versions stop committing, and `--no-commit` is accepted there as a no-op. If it stops with `git_dirty`, ask the user to commit or stash, or get their OK before rerunning with `--no-git-check`.
 
@@ -49,11 +48,11 @@ npx workos@latest profile claim
 
 ## How to Use
 
-**This file is a router, NOT the answer.** Before responding to the user:
+This file routes to a reference; the reference holds the answer. Before responding:
 
 1. Match the request to a reference file using Rule 0 and the decision tree below.
-2. **You MUST Read the matched reference file with the Read tool before producing any answer, URL, or code.** If you have not Read a reference, you have not followed this skill.
-3. Follow the instructions inside the reference (it will tell you which live docs to fetch with WebFetch and which gotchas to avoid).
+2. Read the matched reference file with the Read tool before producing any answer, URL, or code.
+3. Follow the instructions inside the reference (it tells you which live docs to fetch with WebFetch and which gotchas to avoid).
 
 **Exception**: Widget requests use the `workos-widgets` skill via the Skill tool — it has its own multi-framework orchestration.
 
@@ -272,36 +271,21 @@ When React Router is present, read its mode checks in `references/workos-authkit
 
 #### Language Detection (Backend SDKs)
 
-If the project is NOT a JavaScript/TypeScript frontend framework, check:
+If the project is NOT a JavaScript/TypeScript frontend framework, detect by manifest:
 
-```
-1. `pyproject.toml` OR `requirements.txt` OR `setup.py` exists
-   → Read: references/workos-python.md
+| Manifest evidence                                          | Read                               |
+| ---------------------------------------------------------- | ---------------------------------- |
+| `pyproject.toml` / `requirements.txt` / `setup.py`         | `references/workos-python.md`      |
+| `go.mod`                                                   | `references/workos-go.md`          |
+| `Gemfile` / `config/routes.rb`                             | `references/workos-ruby.md`        |
+| `composer.json` with `laravel/framework` in dependencies   | `references/workos-php-laravel.md` |
+| `composer.json` without Laravel                            | `references/workos-php.md`         |
+| `*.csproj` / `*.sln`                                       | `references/workos-dotnet.md`      |
+| `build.gradle.kts` / `build.gradle`                        | `references/workos-kotlin.md`      |
+| `mix.exs`                                                  | `references/workos-elixir.md`      |
+| `package.json` with `express` / `fastify` / `hono` / `koa` | `references/workos-node.md`        |
 
-2. `go.mod` exists
-   → Read: references/workos-go.md
-
-3. `Gemfile` exists OR `config/routes.rb` exists
-   → Read: references/workos-ruby.md
-
-4. `composer.json` exists AND `laravel/framework` in dependencies
-   → Read: references/workos-php-laravel.md
-
-5. `composer.json` exists (without Laravel)
-   → Read: references/workos-php.md
-
-6. `*.csproj` OR `*.sln` exists
-   → Read: references/workos-dotnet.md
-
-7. `build.gradle.kts` OR `build.gradle` exists
-   → Read: references/workos-kotlin.md
-
-8. `mix.exs` exists
-   → Read: references/workos-elixir.md
-
-9. `package.json` exists with `express` / `fastify` / `hono` / `koa` (backend JS)
-   → Read: references/workos-node.md
-```
+The Laravel-vs-plain-PHP split (presence of `laravel/framework`) is the one non-obvious case here.
 
 **Mixed signals are not a priority contest.** Next.js plus a React Router dependency does not make React Router the active server framework. Inspect which app and runtime own authentication. Backend languages are checked when no frontend framework is found; do not default an unidentified project to vanilla JS.
 
@@ -367,38 +351,4 @@ If the project is NOT a JavaScript/TypeScript frontend framework, check:
 3. If you find a match, WebFetch that section URL and proceed
 4. If NO match, respond: "I couldn't find a WorkOS feature matching '[user's term]'. Could you clarify? For example: authentication, SSO, MFA, directory sync, audit logs, etc."
 
----
-
-## Edge Cases
-
-### User mentions multiple features
-
-Route to the MOST SPECIFIC reference first. Example: "SSO with MFA and directory sync" → route to `workos-sso` first. After completing SSO setup, the user can request MFA and Directory Sync separately.
-
-### User mentions a feature + API reference
-
-Route to the feature topic file — it includes an endpoint table. Example: "SSO API endpoints" → `workos-sso.md`.
-
-### User wants to ADD a feature to an existing AuthKit setup
-
-Route to the feature reference (#3), not back to AuthKit installation. Example: "I'm using AuthKit in Next.js and want to add SSO" → `workos-sso.md`.
-
-### User mentions a provider but no feature
-
-Route to Integrations (#5). Example: "How do I connect Okta?" → `workos-integrations.md`.
-
-### User mentions a provider AND a feature
-
-Route to the feature reference (#3). Example: "Set up Okta SSO" → `workos-sso.md` (it will reference Integrations for Okta setup).
-
-### Unknown framework for AuthKit
-
-If you cannot detect framework and the user hasn't specified, ASK: "Which framework/language are you using?" Do NOT default without confirmation.
-
-### Framework conflicts (multiple frameworks detected)
-
-If detection finds conflicting signals (e.g., both Next.js and TanStack Start configs), ASK: "I see both [framework A] and [framework B]. Which one do you want to use for AuthKit?"
-
-### User provides no context at all
-
-Follow step #8 (Vague or General Request): fetch llms.txt, show options, and force disambiguation.
+Disambiguation across rules lives inline in each rule above: multiple features → most specific (Rule 3), feature + API → feature file (Rules 2–3), adding a feature to an existing AuthKit app → feature reference (Rule 4), provider without a feature → Integrations (Rule 5), provider + feature → feature reference (Rule 3), and unknown or conflicting frameworks → ASK (Rule 4).

@@ -6,9 +6,9 @@ If this file conflicts with fetched docs, follow the docs. For installed CLI com
 
 Two agent-friendly surfaces can manage WorkOS resources: the **WorkOS MCP server** and the **`workos` CLI**. They coexist — choose per task, not per session.
 
-## Choosing a surface: MCP server vs CLI (READ THIS FIRST)
+## Choosing a surface: MCP server vs CLI
 
-**If the session has WorkOS MCP tools connected** (a server exposing `whoami`, `list_operations`, `query`, and `mutate` — tool names may carry a client-specific prefix), **prefer the MCP for reading and changing workspace resources.** It runs as the signed-in dashboard user via OAuth — no CLI install, no API key — and covers ~350 operations, including several that are not in the CLI (see the surface tables at the bottom of this file). Discover operations with `list_operations`, run reads with `query` and writes with `mutate`. Permanent deletions and billing-affecting changes require an explicit confirmation step; role-forbidden operations return `Forbidden` at execution.
+**If the session has WorkOS MCP tools connected** (a server exposing `whoami`, `list_operations`, `query`, and `mutate` — tool names may carry a client-specific prefix), **prefer the MCP for reading and changing workspace resources.** It runs as the signed-in dashboard user via OAuth — no CLI install, no API key — and covers ~350 operations, including several not in the CLI (see the surface tables at the bottom of this file). Discover operations with `list_operations`, run reads with `query` and writes with `mutate`. Permanent deletions and billing-affecting changes require an explicit confirmation step; role-forbidden operations return `Forbidden` at execution.
 
 **Use the CLI when the task is one of its specialties:**
 
@@ -21,7 +21,7 @@ Two agent-friendly surfaces can manage WorkOS resources: the **WorkOS MCP server
 
 Admin Portal setup links exist on both surfaces: `workos portal generate-link` on the CLI, `generatePortalSetupLink` on the MCP.
 
-**Do not** walk a user through CLI install + `workos auth login` for a one-off management operation that connected MCP tools can already perform. Conversely, do not tell a user something is "Dashboard-only" without checking the MCP column in the tables at the bottom of this file.
+Do not walk a user through CLI install + `workos auth login` for a one-off management operation that connected MCP tools can already perform. Conversely, do not tell a user something is "Dashboard-only" without checking the MCP column in the tables at the bottom of this file.
 
 ## CLI usage
 
@@ -30,32 +30,26 @@ Use `WORKOS_MODE=agent` in coding-agent sessions and `--json` when parsing outpu
 - **Dashboard session:** `whoami`, `environment`, `authkit`, `branding`, `config`, and migrated resource commands such as `organization`, `user`, `role`, `permission`, `membership`, `invitation`, `session`, `event`, `feature-flag`, `webhook`, `portal`, and `org-domain` require `workos auth login`. `WORKOS_API_KEY` alone does not authenticate these commands. An `auth_required` error is not a reason to request another API key; follow its recovery hints in the user's trusted host shell. A `forbidden` error may indicate missing team access or an unavailable capability.
 - **API key:** `workos api` and remaining REST-backed commands such as `connection`, `directory`, `audit-log`, and `vault` use API-key authentication. Verify the installed command's flags before recommending `--api-key`.
 
-Before changing environment-scoped settings, run `workos environment list --json`, choose the intended project/environment, then run `workos whoami --environment-id "$ENVIRONMENT_ID" --json`. Confirm the team, environment, and client ID match the app. Pass that `--environment-id` explicitly on scoped reads and writes that support it. Never infer the dashboard command's target from `WORKOS_API_KEY` or change production to fix local setup. Stop on `environment_unresolved` or `environment_stale` and resolve the target rather than guessing.
+Before changing environment-scoped settings, run `workos environment list --json`, choose the intended project/environment, then run `workos whoami --environment-id "$ENVIRONMENT_ID" --json`. Confirm the team, environment, and client ID match the app. Pass that `--environment-id` explicitly on scoped reads and writes that support it. Do not infer the dashboard command's target from `WORKOS_API_KEY` or change production to fix local setup. Stop on `environment_unresolved` or `environment_stale` and resolve the target rather than guessing.
 
 Obtain approval for destructive or privilege-changing actions before passing `--yes` or `--force`. Role/permission writes and membership role updates require `--yes` in agent mode; inspect live help for other commands. A confirmation flag does not authorize an unrequested change.
 
 ## Verifying a CLI command exists
 
-**If a user asks whether the CLI supports operation X, or if you're about to suggest a `workos ...` command, verify it first.** The authoritative, machine-readable command tree is:
+Before suggesting a `workos ...` command, or answering whether the CLI supports operation X, verify it. The authoritative, machine-readable command tree is:
 
 ```bash
 WORKOS_MODE=agent workos --help --json
 WORKOS_MODE=agent workos api ls --json
 ```
 
-The first lists registered commands and flags. If a named command is absent, do not invent it. The second lists REST endpoints from the installed OpenAPI spec that can be called through `workos api`, even without a dedicated command. Inspect the endpoint's docs/schema for method, parameters, and request body before calling it. A GraphQL operation name is not a REST endpoint.
+The first lists registered commands and flags — if a named command is absent, do not invent it. The second lists REST endpoints from the installed OpenAPI spec that can be called through `workos api`, even without a dedicated command. Inspect the endpoint's docs/schema for method, parameters, and request body before calling it; a GraphQL operation name is not a REST endpoint.
 
 Before declaring an operation unsupported, check both outputs, then discover connected WorkOS MCP operations with `list_operations`. If you cannot run discovery, say what remains unverified instead of claiming the operation does not exist.
 
 **The tables below are a snapshot and may lag the published CLI.** Live `--help --json` and `api ls --json` are the CLI sources of truth. Do not assume `create` or `update` exists because a resource has `list`, `get`, or `delete`.
 
-## Detecting and recommending CLI upgrades
-
-If `workos --help --json` is missing a command you expected, or the user reports `unknown command: <something>` for a command that exists in the latest release, **the user is likely on an outdated CLI** rather than encountering a bug. Before suggesting a workaround:
-
-1. Ask the user to run `workos --version`.
-2. Compare against the latest published version with `npm view workos version` (do NOT guess the latest version from memory — it moves frequently).
-3. If the user is behind, send them to `references/workos-cli-upgrade.md` for the upgrade command for their package manager (npm/pnpm) and the no-install `npx workos@latest` fallback.
+If `workos --help --json` is missing a command you expected, or the user reports `unknown command: <something>` for a command that exists in the latest release, the user is likely on an outdated CLI. Confirm with `workos --version`, compare against `npm view workos version` (do not guess the latest version — it moves frequently), and if they are behind, send them to `references/workos-cli-upgrade.md`.
 
 ## Quick Reference
 
@@ -71,6 +65,7 @@ If `workos --help --json` is missing a command you expected, or the user reports
 | Assign perms to role   | `workos role set-permissions admin --permissions=read-users,write-users --yes --environment-id "$ENVIRONMENT_ID"` |
 | Create org-scoped role | `workos role create --slug=admin --name=Admin --org=org_xxx --yes --environment-id "$ENVIRONMENT_ID"`             |
 | Add user to org        | `workos membership create --org=org_xxx --user=user_xxx --environment-id "$ENVIRONMENT_ID"`                       |
+| Change membership role | `workos membership update <membershipId> --role=admin --yes --environment-id "$ENVIRONMENT_ID"`                   |
 | Send invitation        | `workos invitation send --email=alice@acme.com --org=org_xxx --environment-id "$ENVIRONMENT_ID"`                  |
 | Revoke session         | `workos session revoke <sessionId> --environment-id "$ENVIRONMENT_ID"`                                            |
 | Add redirect URI       | `workos config redirect add "$CALLBACK_URL" --environment-id "$ENVIRONMENT_ID"`                                   |
@@ -79,7 +74,6 @@ If `workos --help --json` is missing a command you expected, or the user reports
 | Inspect sign-out URLs  | `workos authkit logout-uris list --environment-id "$ENVIRONMENT_ID" --json`                                       |
 | Inspect callback URLs  | `workos authkit redirect-uris list --environment-id "$ENVIRONMENT_ID" --json`                                     |
 | Upload branding logo   | `workos branding set --logo ./logo.png --environment-id "$ENVIRONMENT_ID"`                                        |
-| Change membership role | `workos membership update <membershipId> --role=admin --yes --environment-id "$ENVIRONMENT_ID"`                   |
 | Create webhook         | `workos webhook create --url=https://example.com/hook --events=user.created --environment-id "$ENVIRONMENT_ID"`   |
 | List SSO connections   | `workos connection list --org=org_xxx`                                                                            |
 | List directories       | `workos directory list`                                                                                           |
@@ -94,56 +88,15 @@ If `workos --help --json` is missing a command you expected, or the user reports
 
 ## Workflows
 
-### Setting up RBAC
+The Quick Reference rows cover the one-liner tasks. The workflows below add the few things a single command does not: ordering, declarative seeding, and the destructive-overwrite trap on list settings.
 
-When setting up RBAC, propose resources matching the permission checks in the codebase, such as `hasPermission('read-users')`. After the user approves the permissions and target environment:
+### RBAC
 
-```bash
-workos permission create --slug=read-users --name="Read Users" --yes --environment-id "$ENVIRONMENT_ID"
-workos permission create --slug=write-users --name="Write Users" --yes --environment-id "$ENVIRONMENT_ID"
-workos role create --slug=admin --name=Admin --yes --environment-id "$ENVIRONMENT_ID"
-workos role set-permissions admin --permissions=read-users,write-users --yes --environment-id "$ENVIRONMENT_ID"
-workos role create --slug=viewer --name=Viewer --yes --environment-id "$ENVIRONMENT_ID"
-workos role set-permissions viewer --permissions=read-users --yes --environment-id "$ENVIRONMENT_ID"
-```
-
-For organization-scoped roles, add `--org=org_xxx` to role commands.
-
-### Organization Onboarding
-
-One-shot setup with the compound command:
-
-```bash
-workos setup-org "Acme Corp" --domain=acme.com --roles=admin,viewer
-```
-
-Or step by step:
-
-```bash
-ORG_ID=$(workos organization create "Acme Corp" --environment-id "$ENVIRONMENT_ID" --json | jq -er '.organization.id')
-workos org-domain create acme.com --org=$ORG_ID --environment-id "$ENVIRONMENT_ID"
-workos role create --slug=admin --name=Admin --org=$ORG_ID --yes --environment-id "$ENVIRONMENT_ID"
-workos portal generate-link --intent=sso --org=$ORG_ID --environment-id "$ENVIRONMENT_ID"
-```
-
-### User Onboarding
-
-```bash
-workos onboard-user alice@acme.com --org=org_xxx --role=admin
-```
-
-Or step by step:
-
-```bash
-workos invitation send --email=alice@acme.com --org=org_xxx --role=admin --environment-id "$ENVIRONMENT_ID"
-workos membership create --org=org_xxx --user=user_xxx --role=admin --environment-id "$ENVIRONMENT_ID"
-```
+Propose resources matching the permission checks in the codebase, such as `hasPermission('read-users')`. After the user approves the permissions and target environment, create permissions, create roles, then `workos role set-permissions <role> --permissions=... --yes` (see Quick Reference for exact invocations). Add `--org=org_xxx` for organization-scoped roles.
 
 ### Local Development Setup
 
-Read [workos-authkit-setup.md](workos-authkit-setup.md) for the required callback, Sign-out URI, and Initiate login URI workflow. Use actual app URLs and the confirmed development environment. `CALLBACK_URL` means the effective SDK redirect destination, not necessarily a server callback handler. React/vanilla browser SDKs default to the app origin (e.g., `http://localhost:5173`); supported explicit custom redirects must be passed into the SDK, registered exactly, and reach a destination where it initializes and handles the response. Server SDKs use their mounted callback handler URL. Do not reject custom paths or trailing slashes universally. `APP_ORIGIN` is the browser app's origin for CORS, never a full callback path. See the selected SDK reference and shared setup for effective-value and reachability checks.
-
-For a single addition:
+Read [workos-authkit-setup.md](workos-authkit-setup.md) for the required callback, Sign-out URI, and Initiate login URI workflow. Use actual app URLs and the confirmed development environment. `CALLBACK_URL` means the effective SDK redirect destination, not necessarily a server callback handler. React/vanilla browser SDKs default to the app origin (e.g., `http://localhost:5173`); supported explicit custom redirects must be passed into the SDK, registered exactly, and reach a destination where it initializes and handles the response. Server SDKs use their mounted callback handler URL. Do not reject custom paths or trailing slashes universally. `APP_ORIGIN` is the browser app's origin for CORS, never a full callback path.
 
 ```bash
 workos config redirect add "$CALLBACK_URL" --environment-id "$ENVIRONMENT_ID"
@@ -157,99 +110,40 @@ Configuring a homepage URL is optional and is not a substitute for an Initiate l
 
 ### Environment Seeding
 
-Create a `workos-seed.yml` file in your repo. The example below assumes a server handler at `/callback`; for a browser SDK use its origin default or verified explicit redirect instead. CORS remains an origin. Seeding does not replace the Sign-out/Initiate login setup and verification above:
+Create a `workos-seed.yml` file. The example assumes a server handler at `/callback`; for a browser SDK use its origin default or verified explicit redirect instead. CORS remains an origin. Seeding does not replace the Sign-out/Initiate login setup and verification above:
 
 ```yaml
 permissions:
-  - name: 'Read Users'
-    slug: 'read-users'
-  - name: 'Write Users'
-    slug: 'write-users'
-
+  - { name: 'Read Users', slug: 'read-users' }
+  - { name: 'Write Users', slug: 'write-users' }
 roles:
-  - name: 'Admin'
-    slug: 'admin'
-    permissions: ['read-users', 'write-users']
-  - name: 'Viewer'
-    slug: 'viewer'
-    permissions: ['read-users']
-
+  - { name: 'Admin', slug: 'admin', permissions: ['read-users', 'write-users'] }
+  - { name: 'Viewer', slug: 'viewer', permissions: ['read-users'] }
 organizations:
-  - name: 'Test Org'
-    domains: ['test.com']
-
+  - { name: 'Test Org', domains: ['test.com'] }
 config:
   redirect_uris: ['http://localhost:3000/callback']
   cors_origins: ['http://localhost:3000']
   homepage_url: 'http://localhost:3000'
 ```
 
-Then run:
-
 ```bash
 workos seed --file=workos-seed.yml   # Create resources
 workos seed --clean                  # Tear down seeded resources
 ```
 
-### Debugging SSO
-
-```bash
-workos debug-sso conn_xxx
-```
-
-Shows: connection type/state, organization binding, recent auth events, and common issues (inactive connection, org mismatch).
-
-### Debugging Directory Sync
-
-```bash
-workos debug-sync directory_xxx
-```
-
-Shows: directory type/state, user/group counts, recent sync events, and stall detection.
-
-### Webhook Management
-
-```bash
-workos webhook list --environment-id "$ENVIRONMENT_ID"
-workos webhook create --url=https://example.com/hook --events=user.created,dsync.user.created --environment-id "$ENVIRONMENT_ID"
-workos webhook delete we_xxx --environment-id "$ENVIRONMENT_ID"
-```
-
-### Audit Logs
-
-```bash
-workos audit-log create-event --org=org_xxx --action=user.login --actor-type=user --actor-id=user_xxx
-workos audit-log list-actions
-workos audit-log get-schema user.login
-workos audit-log export --org=org_xxx --range-start=2024-01-01 --range-end=2024-02-01
-workos audit-log get-retention --org=org_xxx
-```
-
 ## Using --json for Structured Output
 
-All commands support `--json` for machine-readable output. Use this when you need to extract values:
+All commands support `--json`. JSON shapes differ by command and version — inspect the actual output before writing a `jq` expression; there is no universal `.data` wrapper. Check exit status before using an extracted ID; errors use `{ "error": { "code": "...", "message": "..." } }` on stderr.
 
 ```bash
-# Get an organization ID
-workos organization list --environment-id "$ENVIRONMENT_ID" --json | jq '.organizations[].id'
-
-# Get a connection's state
-workos connection get conn_xxx --json | jq '.state'
-
-# List all role slugs
-workos role list --environment-id "$ENVIRONMENT_ID" --json | jq '.roles[].slug'
-
-# Chain commands: create org then add domain
 ORG_ID=$(workos organization create "Acme" --environment-id "$ENVIRONMENT_ID" --json | jq -er '.organization.id')
 workos org-domain create acme.com --org=$ORG_ID --environment-id "$ENVIRONMENT_ID"
 ```
 
-JSON shapes differ by command and version. Inspect the actual output before writing a `jq` expression; there is no universal `.data` wrapper.
-
 - Dashboard-backed organization lists return `{ "organizations": [...], "pagination": {...} }`; get/create/update return `{ "organization": {...} }`.
 - Role lists return `{ "roles": [...] }`. AuthKit URI lists return `{ "redirectUris": [...] }` or `{ "logoutUris": [...] }`; CORS reads return `{ "origins": [...] }`.
 - Remaining REST-backed commands may return `{ "data": [...], "listMetadata": {...} }` for lists and raw objects for gets.
-- Errors use `{ "error": { "code": "...", "message": "..." } }` on stderr. Check exit status before using an extracted ID.
 
 ## Command Reference
 
@@ -279,16 +173,15 @@ JSON shapes differ by command and version. Inspect the actual output before writ
 | `workos api-key`      | `list`, `create`, `validate`, `delete`                                                                |
 | `workos org-domain`   | `get`, `create`, `verify`, `delete`                                                                   |
 
-### Workflow Commands
+### Workflow and Bootstrap Commands
 
 | Command                       | Purpose                                                                                        |
 | ----------------------------- | ---------------------------------------------------------------------------------------------- |
-| `workos seed --file=<yaml>`   | Declarative resource provisioning from YAML                                                    |
-| `workos seed --clean`         | Tear down seeded resources                                                                     |
+| `workos seed --file=<yaml>`   | Declarative resource provisioning from YAML (`--clean` tears down)                             |
 | `workos setup-org <name>`     | One-shot org onboarding                                                                        |
 | `workos onboard-user <email>` | Send invitation + optional wait                                                                |
-| `workos debug-sso <connId>`   | SSO connection diagnostics                                                                     |
-| `workos debug-sync <dirId>`   | Directory sync diagnostics                                                                     |
+| `workos debug-sso <connId>`   | SSO connection diagnostics (type/state, org binding, recent events)                            |
+| `workos debug-sync <dirId>`   | Directory sync diagnostics (type/state, user/group counts, stall detection)                    |
 | `workos install`              | Install AuthKit into a project (bootstrap; can provision credentials with no existing account) |
 | `workos env claim`            | Link an unclaimed environment to your account                                                  |
 | `workos mcp`                  | Install/manage the WorkOS MCP server in Claude Code, Codex, and Cursor                         |
@@ -307,9 +200,7 @@ JSON shapes differ by command and version. Inspect the actual output before writ
 
 ## Not in the CLI (check the MCP server first, then Dashboard, Admin Portal, or API)
 
-These operations have no named CLI command in this snapshot. Check live command help and `workos api ls --json` before concluding that the CLI cannot perform them. Do not invent commands or endpoints. For each, an alternative is listed. **The "MCP operation" column is the connected-MCP alternative** — when WorkOS MCP tools are present, prefer that over sending the user to the Dashboard. Verify the exact operation name and parameters with `list_operations` before calling it.
-
-### Not in the CLI — where each operation lives
+These operations have no named CLI command in this snapshot. Check live command help and `workos api ls --json` before concluding the CLI cannot perform them, and do not invent commands or endpoints. **The "MCP operation" column is the connected-MCP alternative** — when WorkOS MCP tools are present, prefer that over sending the user to the Dashboard. Verify the exact operation name and parameters with `list_operations` before calling it.
 
 | Operation                                                       | MCP operation (if connected)                                                                                                      | Otherwise                                                                                                                  | Docs                                                                        |
 | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
@@ -328,15 +219,13 @@ These operations have no named CLI command in this snapshot. Check live command 
 
 ### SDK operations
 
-| Operation                              | MCP operation (if connected) | Otherwise                           | Notes                                                          |
-| -------------------------------------- | ---------------------------- | ----------------------------------- | -------------------------------------------------------------- |
-| Webhook signature verification         | —                            | SDK (`workos.webhooks.verifyEvent`) | CLI can create/list/delete webhooks but does not verify events |
-| Session introspection / JWT validation | —                            | SDK                                 | CLI has `workos session list/revoke` only                      |
+| Operation                              | MCP operation (if connected) | Otherwise                              | Notes                                                          |
+| -------------------------------------- | ---------------------------- | -------------------------------------- | -------------------------------------------------------------- |
+| Webhook signature verification         | —                            | SDK (`workos.webhooks.constructEvent`) | CLI can create/list/delete webhooks but does not verify events |
+| Session introspection / JWT validation | —                            | SDK                                    | CLI has `workos session list/revoke` only                      |
 
-**Available CLI alternatives:** `workos connection create` and `workos connection update` support SSO connection management; inspect their flags and the connection-type schema before use. Admin Portal setup links remain useful when the customer should configure their own IdP. For an individual user's organization role, use `workos membership update <membershipId> --role=<slug> --yes --environment-id "$ENVIRONMENT_ID"` with the confirmed environment and approval. IdP group mappings can override that role at the next sync/login; see `workos-rbac.md`.
-
-**Rule of thumb:** discover named commands with `workos --help --json`, REST endpoints with `workos api ls --json`, and connected MCP operations with `list_operations`. Check all available options before sending the user to the dashboard.
+**Available CLI alternatives:** `workos connection create` and `workos connection update` support SSO connection management; inspect their flags and the connection-type schema before use. For an individual user's organization role, use `workos membership update <membershipId> --role=<slug> --yes --environment-id "$ENVIRONMENT_ID"` with the confirmed environment and approval. IdP group mappings can override that role at the next sync/login; see `workos-rbac.md`. Discover named commands with `workos --help --json`, REST endpoints with `workos api ls --json`, and connected MCP operations with `list_operations` before sending the user to the dashboard.
 
 ### Do not invent click-paths in the Dashboard
 
-The paths in the "Otherwise" column above are intentionally described in conceptual terms ("Authentication settings", "directory page") rather than as literal click-paths like "Dashboard > Organizations > X > Y". The docs don't commit to exact menu paths, and the Dashboard UI is re-organized periodically. Link the user to the docs URL and let them navigate. If you see yourself writing `Dashboard > A > B > C` or `dashboard.workos.com/some/path`, stop and link to docs instead.
+The paths in the "Otherwise" column are described in conceptual terms ("Authentication settings", "directory page") rather than literal click-paths. The docs don't commit to exact menu paths, and the Dashboard UI is re-organized periodically. Link the user to the docs URL and let them navigate. If you see yourself writing `Dashboard > A > B > C` or `dashboard.workos.com/some/path`, stop and link to docs instead.

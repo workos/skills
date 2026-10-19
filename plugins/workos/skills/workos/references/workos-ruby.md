@@ -1,90 +1,23 @@
 # WorkOS AuthKit for Ruby
 
-## Step 1: Fetch SDK Documentation (BLOCKING)
+## Docs
 
-**STOP — Do not proceed until this fetch is complete.**
+Fetch the README first — it's the source of truth for gem API usage:
 
-WebFetch: `https://raw.githubusercontent.com/workos/workos-ruby/main/README.md`
+- SDK README: `https://raw.githubusercontent.com/workos/workos-ruby/main/README.md`
+- AuthKit quickstart: `https://workos.com/docs/authkit/vanilla/ruby`
 
-Also fetch the AuthKit quickstart for reference:
-WebFetch: `https://workos.com/docs/authkit/vanilla/ruby`
+If this file conflicts with fetched docs, follow the docs.
 
-The README is the **source of truth** for gem API usage. If this skill conflicts with the README, **follow the README**.
+## Setup
 
-## Step 2: Detect Framework
+Order matters: install gem → configure → login/callback/logout routes → `.env` → build.
 
-Examine the project to determine which Ruby web framework is in use:
+1. **Install:** `bundle add workos` (and `dotenv-rails` for Rails, or `dotenv` otherwise). On a partial install, `bundle install` rather than `bundle update` to avoid unexpected gem upgrades.
 
-```
-config/routes.rb exists?                 → Rails
-  Gemfile has 'rails' gem?               → Confirmed Rails
+   The examples below are for gem 7+, which calls everything through a client instance (`WorkOS.client.user_management...`). If `Gemfile.lock` already pins `workos` below 7, use that version's module-level methods (`WorkOS::UserManagement.authorization_url`, `config.key`) instead of upgrading.
 
-Gemfile has 'sinatra' gem?               → Sinatra
-  server.rb/app.rb has Sinatra routes?   → Confirmed Sinatra
-
-None of the above?                       → Vanilla Ruby (use Sinatra quickstart pattern)
-```
-
-**Adapt all subsequent steps to the detected framework.** Do not force Rails on a Sinatra project or vice versa.
-
-## Step 2b: Partial Install Recovery
-
-Before creating new files, check if a previous AuthKit attempt exists:
-
-1. Check if `workos` is already in `Gemfile`
-2. Check for incomplete auth files — files that `require "workos"` but have non-functional routes (TODO comments, 501 responses, empty handlers)
-3. If partial install detected:
-   - Do NOT reinstall the gem (it's already there)
-   - Read existing auth files to understand what's done vs missing
-   - Complete the integration by filling gaps rather than starting fresh
-   - Preserve any working code — only fix what's broken
-   - Run `bundle install` (not `bundle update`) to avoid unexpected gem upgrades
-
-## Step 2c: Existing Auth System Detection
-
-Check for existing authentication before integrating:
-
-```
-Gemfile has 'devise'?                       → Devise auth (uses Warden)
-Gemfile has 'warden'?                       → Warden auth
-Gemfile has 'omniauth'?                     → OmniAuth (OAuth/OIDC)
-*.rb files have 'Warden'?                   → Warden middleware in use
-config/initializers has devise.rb?          → Devise configured
-```
-
-If existing auth detected:
-
-- Do NOT remove or disable it
-- Add WorkOS AuthKit alongside the existing system
-- If Devise is present, Devise uses Warden under the hood — integrate WorkOS at the Warden strategy level if possible
-- Create separate route paths for WorkOS auth (e.g., `/auth/workos/login` if `/login` is taken)
-- Ensure Rack middleware ordering is correct (WorkOS session middleware must not conflict)
-- Ensure existing auth routes continue to work unchanged
-- Document in code comments how to migrate fully to WorkOS later
-
-## Step 3: Install WorkOS Gem
-
-```bash
-bundle add workos
-```
-
-If `dotenv` is not in the Gemfile:
-
-```bash
-# Rails
-bundle add dotenv-rails --group development,test
-
-# Sinatra / other
-bundle add dotenv
-```
-
-**Verify:** `bundle show workos`
-
-## Step 4: Integrate Authentication
-
-### If Rails
-
-1. **Create initializer** — `config/initializers/workos.rb`:
+2. **Configure** (Rails: `config/initializers/workos.rb`; Sinatra: top of `server.rb`):
 
    ```ruby
    WorkOS.configure do |config|
@@ -93,101 +26,25 @@ bundle add dotenv
    end
    ```
 
-2. **Create AuthController** — `app/controllers/auth_controller.rb`:
-   - `login` action: call `WorkOS::UserManagement.get_authorization_url(provider: "authkit", redirect_uri: ...)`, redirect
-   - `callback` action: call `WorkOS::UserManagement.authenticate_with_code(code: params[:code])`, store user in session
-   - `logout` action: clear session, redirect
+3. **Routes** (Rails: `AuthController` + `get` routes in `config/routes.rb`; Sinatra: routes in `server.rb`):
+   - `/login` — `WorkOS.client.user_management.get_authorization_url(provider: "authkit", redirect_uri: ...)`, redirect.
+   - `/callback` — `WorkOS.client.user_management.authenticate_with_code(code: ...)`, store user in session.
+   - `/logout` — clear session, redirect.
 
-3. **Add routes** to `config/routes.rb`:
+4. **`.env`** (don't overwrite existing values):
 
-   ```ruby
-   get "/auth/login", to: "auth#login"
-   get "/auth/callback", to: "auth#callback"
-   get "/auth/logout", to: "auth#logout"
+   ```
+   WORKOS_API_KEY=sk_...
+   WORKOS_CLIENT_ID=client_...
    ```
 
-4. **Add current_user helper** to `ApplicationController` (optional):
+5. **Build:** Rails `bundle exec rails routes | grep auth`; Sinatra `ruby -c server.rb`.
 
-   ```ruby
-   helper_method :current_user
-   def current_user
-     @current_user ||= session[:user] && JSON.parse(session[:user])
-   end
-   ```
+## Gotchas
 
-5. **Verify:** `bundle exec rails routes | grep auth`
+- Callback route path must equal `WORKOS_REDIRECT_URI` exactly, or the callback 404s.
+- Sinatra: sessions are off by default — add `enable :sessions` (or use `rack-session`) or the session won't persist.
 
-### If Sinatra
+## Existing auth
 
-Follow the quickstart pattern exactly:
-
-1. **Configure WorkOS** in `server.rb`:
-
-   ```ruby
-   require "dotenv/load"
-   require "workos"
-   require "sinatra"
-
-   WorkOS.configure do |config|
-     config.key = ENV["WORKOS_API_KEY"]
-   end
-   ```
-
-2. **Create `/login` route** — call `WorkOS::UserManagement.authorization_url(provider: "authkit", client_id: ..., redirect_uri: ...)`, redirect
-
-3. **Create `/callback` route** — call `WorkOS::UserManagement.authenticate_with_code(client_id: ..., code: ...)`, store in session cookie
-
-4. **Create `/logout` route** — clear session cookie, redirect
-
-5. **Update home route** — read session, show user info if present
-
-6. **Verify:** `ruby -c server.rb`
-
-### If Vanilla Ruby (no framework detected)
-
-Install Sinatra and follow the Sinatra pattern above. This matches the official quickstart.
-
-## Step 5: Environment Setup
-
-Create/update `.env` with WorkOS credentials. Do NOT overwrite existing values.
-
-```
-WORKOS_API_KEY=sk_...
-WORKOS_CLIENT_ID=client_...
-```
-
-## Step 6: Verification
-
-### Rails
-
-```bash
-bundle show workos
-bundle exec rails routes | grep auth
-grep WORKOS .env
-```
-
-### Sinatra
-
-```bash
-bundle show workos
-ruby -c server.rb
-grep WORKOS .env
-```
-
-## Error Recovery
-
-### "uninitialized constant WorkOS"
-
-Gem not loaded. Verify `bundle show workos` succeeds. For Rails, ensure initializer exists. For Sinatra, ensure `require "workos"` is at top of server file.
-
-### "NoMethodError" on WorkOS methods
-
-SDK API may differ from this skill. Re-read the README (Step 1) and use exact method names.
-
-### Routes not working (Rails)
-
-Run `bundle exec rails routes | grep auth`. Verify routes are inside `Rails.application.routes.draw` block.
-
-### Session not persisting (Sinatra)
-
-Enable sessions: `enable :sessions` in server.rb, or use `rack-session` gem.
+Add WorkOS on separate routes (e.g. `/auth/workos/login`). Devise runs on Warden; integrate WorkOS at the Warden strategy level, and keep Rack middleware ordering intact.

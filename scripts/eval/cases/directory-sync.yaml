@@ -10,7 +10,7 @@
     verification.
   expected:
     methods:
-      - workos.webhooks.verifyEvent
+      - workos.webhooks.constructEvent
     envVars:
       - WORKOS_API_KEY
       - WORKOS_WEBHOOK_SECRET
@@ -156,7 +156,7 @@
     removed from Okta groups, those changes should reflect in our app.
   expected:
     methods:
-      - workos.webhooks.verifyEvent
+      - workos.webhooks.constructEvent
     envVars:
       - WORKOS_WEBHOOK_SECRET
     imports:

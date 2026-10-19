@@ -1,35 +1,14 @@
 # Fetching APIs
 
-## Objective
-
-Implement Widgets API calls using the endpoint tables and query script below, matching the host application's data layer.
-
-## Source of Truth
-
-Use the endpoint tables below for paths and methods. For request/response schemas, run:
+Use the endpoint tables below for paths and methods, matching the host application's data layer. For request/response schemas, run:
 
 ```bash
 node references/scripts/query-spec.cjs --widget <widget-name>
 ```
 
-## Guidance
-
-- Build direct fetch/http client functions from the OpenAPI endpoints.
-- Keep request and mutation handling consistent with existing code style.
-- If React Query or SWR already exists, use it for query/mutation orchestration on top of the direct endpoint functions.
-- Prefer one consistent data pattern per widget flow unless the project already mixes patterns.
-- Reuse existing error/loading conventions from the host project.
-
 ## Base URL
 
-Use `process.env.WORKOS_BASE_API_URL` (or the equivalent env access for the stack) as the base URL for all widget API calls. Fall back to `https://api.workos.com` when the env variable is not set.
-
-## Authorization Layer
-
-- Add a small shared request layer that injects authorization consistently for all widget calls.
-- Send the widget bearer token in the app's standard authenticated request path.
-- Keep authorization wiring close to existing auth/session utilities instead of duplicating token logic across components.
-- Handle `401`/`403` responses explicitly and surface clear recovery actions.
+Use `process.env.WORKOS_BASE_API_URL` (or the equivalent env access for the stack) as the base URL, falling back to `https://api.workos.com` when it is not set. Send the widget bearer token in the app's standard authenticated request path.
 
 ## Error Responses
 
@@ -39,13 +18,9 @@ All error responses (`400`, `403`, `404`, `422`) return a JSON object with a sin
 { "message": "Description of the error" }
 ```
 
-For full request/response schemas, run `node references/scripts/query-spec.cjs --widget <widget-name>`.
-
 ## Elevated Access Endpoints
 
-- Check the endpoint's description (via `node references/scripts/query-spec.cjs --widget <widget-name>`) **before calling it** — not on failure. If it mentions elevated access, acquire the elevated token first.
-- Use `POST /_widgets/UserProfile/verify` to obtain an elevated token, then pass it in header `x-elevated-access-token`.
-- Treat elevated tokens as short-lived (10 minutes) and scope them to sensitive operations only.
+Endpoints marked ⚠️ elevated below require an elevated token in addition to the widget token. Acquire it **before calling** (not on failure) — see [token-strategies.md](token-strategies.md) → Elevated Access Tokens.
 
 ## Endpoint Reference
 
