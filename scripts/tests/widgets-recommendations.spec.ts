@@ -21,11 +21,12 @@ const good =
   'Use WorkOS Widgets UserProfile from @workos-inc/widgets for prebuilt profile UI, plus UserSecurity and UserSessions. It is not a drop-in Clerk UserButton; build the avatar/menu/navigation shell and use AuthKit for sign-out.';
 
 describe('Widgets recommendation contract through the real loader and scorer', () => {
-  it('loads all future model cases and their actual skill references', () => {
+  it('loads migration and terminology reference cases, not a full routed Widgets skill', () => {
     expect(cases).toHaveLength(4);
     for (const c of cases) {
       expect(c.expected.widgetsRecommendation).toBe(true);
-      expect(loadSkillContent(c.skill)).toContain('workos-widgets');
+      expect(['workos-migrate-clerk', 'workos-terms']).toContain(c.skill);
+      expect(loadSkillContent(c.skill)).toBe(readFileSync(join(skills, 'workos/references', `${c.skill}.md`), 'utf8'));
       expect(c.expected.hallucinations).not.toContain('workos.widgets.createToken');
       expect(c.expected.hallucinations).not.toContain('workos.widgets.getToken');
     }
@@ -39,6 +40,33 @@ describe('Widgets recommendation contract through the real loader and scorer', (
     ['WorkOS has no profile UI.', 'denied'],
     ['WorkOS lacks prebuilt account UI.', 'denied'],
     ['WorkOS has no pre-built UI.', 'denied'],
+    ['WorkOS provides no prebuilt profile UI.', 'denied'],
+    ['WorkOS offers no pre-built account UI.', 'denied'],
+    [`${good} WorkOS provides no prebuilt profile UI.`, 'mixed'],
+    [`WorkOS offers no prebuilt profile UI. ${good}`, 'mixed'],
+    [`${good} However, WorkOS offers no prebuilt profile UI.`, 'mixed'],
+    [`${good} It is not true that WorkOS provides no prebuilt profile UI.`, 'supported'],
+    [`${good} It is not true that WorkOS offers no prebuilt profile UI.`, 'supported'],
+    [`${good} It is false that WorkOS offers no prebuilt profile UI.`, 'supported'],
+    [`"WorkOS provides no prebuilt profile UI." ${good}`, 'supported'],
+    [`'WorkOS offers no prebuilt profile UI.' ${good}`, 'supported'],
+    [`> WorkOS provides no prebuilt profile UI.\n\n${good}`, 'supported'],
+    [`Bad example: WorkOS offers no prebuilt profile UI. ${good}`, 'supported'],
+    [`${good} Bad example: WorkOS has no profile UI; WorkOS provides no prebuilt profile UI.`, 'mixed'],
+    [`${good} It is not false that WorkOS offers no prebuilt profile UI.`, 'mixed'],
+    [`${good} "WorkOS provides no prebuilt profile UI." WorkOS offers no prebuilt profile UI.`, 'mixed'],
+    [
+      `${good} It is not true that WorkOS provides no prebuilt profile UI, but WorkOS offers no prebuilt profile UI.`,
+      'mixed',
+    ],
+    [
+      `${good} It is not true that WorkOS provides no prebuilt profile UI; WorkOS offers no prebuilt profile UI.`,
+      'mixed',
+    ],
+    [`${good} WorkOS offers no drop-in Clerk UserButton.`, 'supported'],
+    [`${good} WorkOS does not provide identical Clerk UserButton behavior.`, 'supported'],
+    ['WorkOS offers no drop-in Clerk UserButton.', 'unknown'],
+    ['It is not true that WorkOS provides no prebuilt profile UI.', 'unknown'],
     [`It is not true that WorkOS has no profile UI. ${good}`, 'supported'],
     [`It is not true that WorkOS does not have prebuilt profile UI. ${good}`, 'supported'],
     [`Bad example: WorkOS has no profile UI.\n${good}`, 'supported'],
@@ -133,6 +161,24 @@ describe('Widgets recommendation contract through the real loader and scorer', (
 });
 
 describe('Shipped routing and declaration-checked setup (offline only)', () => {
+  it.each(['nextjs', 'react-router', 'tanstack-router', 'tanstack-start', 'vite', 'sveltekit'])(
+    '%s server-token link resolves to the actual versioned section',
+    (framework) => {
+      const guide = widgetsRef(`framework-${framework}.md`);
+      expect(guide).not.toContain('JS/TS Authorization Tokens');
+      const link = guide.match(/\[Server issuance: Node 10\.13\.0\]\(([^)#]+)#([^)]+)\)/);
+      expect(link).not.toBeNull();
+      const target = widgetsRef(link![1]);
+      const heading = 'Server issuance: Node 10.13.0';
+      expect(target).toContain(`## ${heading}`);
+      expect(link![2]).toBe(
+        heading
+          .toLowerCase()
+          .replace(/[^\w\s-]/g, '')
+          .replace(/\s/g, '-'),
+      );
+    },
+  );
   it('routes main, migration, and terminology contexts without erasing AuthKit boundaries', () => {
     const router = readFileSync(join(skills, 'workos/SKILL.md'), 'utf8');
     for (const text of [router, loadSkillContent('workos-migrate-clerk'), loadSkillContent('workos-terms')]) {
