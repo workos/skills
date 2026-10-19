@@ -107,15 +107,19 @@ export function assessWidgetsRecommendation(output: string): WidgetsRecommendati
       parity = true;
     }
 
-    if (
-      new RegExp(PROFILE, 'i').test(parityClaim) &&
-      new RegExp(PACKAGE, 'i').test(parityClaim) &&
-      new RegExp(String.raw`\b(?:${RECOMMEND}|provides?|offers?)\b`, 'i').test(parityClaim) &&
-      // The recognized no-parity caveat qualifies the recommendation; other
-      // negation, uncertainty or avoidance in the clause still blocks credit.
-      !NON_AFFIRMATIVE.test(parityClaim)
-    ) {
-      recommendation = true;
+    // Judge the recommendation within its own coordinated subclause, so a
+    // separate "..., and you could keep a custom menu" doesn't make it tentative.
+    // The recognized no-parity caveat qualifies the recommendation; other
+    // negation, uncertainty or avoidance in that subclause still blocks credit.
+    for (const part of parityClaim.split(/,\s*(?:and|or|while|so|then)\s+/i)) {
+      if (
+        new RegExp(PROFILE, 'i').test(part) &&
+        new RegExp(PACKAGE, 'i').test(part) &&
+        new RegExp(String.raw`\b(?:${RECOMMEND}|provides?|offers?)\b`, 'i').test(part) &&
+        !NON_AFFIRMATIVE.test(part)
+      ) {
+        recommendation = true;
+      }
     }
   }
 
