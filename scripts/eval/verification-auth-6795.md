@@ -1,4 +1,4 @@
-# AUTH-6795 verification — 2026-09-28
+# AUTH-6795 verification — 2026-09-29
 
 ## Formatting cleanup
 
@@ -15,7 +15,7 @@ Using pnpm **10.27.0**, the complete original command exited successfully:
 pnpm test && pnpm lint && pnpm format:check && pnpm build
 ```
 
-After the latest PR50 review fixes: **355 tests passed** across 14 files; lint had zero warnings/errors; repository-wide formatting passed; build passed. Both the focused three-case Widgets dry run and full **76-case** dry run passed with `ANTHROPIC_API_KEY` unset. Dry runs cover loading/hashing only, not model-quality evidence.
+After the latest PR50 review fixes: **372 tests passed** across 14 files; lint had zero warnings/errors; repository-wide formatting passed; build passed. Both the focused three-case Widgets dry run and full **76-case** dry run passed with `ANTHROPIC_API_KEY` unset. Dry runs cover loading/hashing only, not model-quality evidence.
 
 ## PR50 review follow-up
 
@@ -43,6 +43,14 @@ Reviewed head: `be49d0612d2af9f2e1fdbc9bc4009b75a283e932`. The [explicit retract
 Recommendation and rejection paths now share target, action and negation vocabulary. Direct avoidance, negated use/recommendation, and target-first passive rejections recognize package/Widgets/UserProfile targets without requiring them to end the clause. Earlier or later retractions veto both same-clause and adjacent-clause positive evidence. Both positive paths and retractions use the same quotation/code/labeled-example exclusions; explicit no-drop-in qualifications and negated avoidance are not treated as withdrawals.
 
 The 48 new table-driven tests cover the exact score cap, trailing explanations, target boundaries/aliases, punctuation/case, both orderings, both positive paths, and quoted or labeled examples versus actual retractions. Previous semicolon-linkage, denial/parity, source-loading, and AuthKit/server-token strategy tests still pass. This is a bounded grammar, not a claim to understand every paraphrase. No model or runtime calls were made; the three baseline scripts typecheck errors were rechecked and remain unchanged.
+
+## Fourth PR50 review follow-up
+
+Reviewed head: `326c047a52d9b7eb0682d1b1891bfe2b247f66fb`. The [authentication-purpose false positive](https://github.com/workos/skills/pull/50#discussion_r4137798393) was reproduced through `scoreOutput` before the fix. “WorkOS Widgets is not used for authentication” now preserves a valid UserProfile recommendation and receives the same composite as scoring without the recommendation cap.
+
+A closed set of authentication/sign-in/login purpose qualifiers is distinguished from withdrawing the profile UI recommendation, for both active and passive wording. This is not a blanket exemption for “for …”: profile/account-UI rejections, mixed authentication-and-profile purposes, and general avoidance justified by authentication still count. Qualifiers must consume the remainder of their clause, and separate actual retractions still veto the recommendation.
+
+The 17 added regressions cover valid boundaries before/after both positive forms, real withdrawals, and limitations combined with actual retractions. All earlier denial/parity, quotation, semicolon linkage, and AuthKit/server-token tests pass. Grammar coverage remains deliberately bounded; no runtime or model-quality proof is claimed.
 
 ## Separate scripts typecheck: baseline failure, not fixed
 

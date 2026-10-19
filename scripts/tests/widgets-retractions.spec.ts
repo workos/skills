@@ -41,6 +41,12 @@ describe('Scoped Widgets recommendation retractions through scoreOutput', () => 
     'I can’t recommend WorkOS Widgets.',
     'WorkOS Widgets is not recommended for this app.',
     'UserProfile should not be used here.',
+    'Widgets is not used for profile UI.',
+    'WorkOS Widgets is not recommended for account management.',
+    'Avoid Widgets because AuthKit already handles authentication.',
+    'Widgets is not used for authentication or profile UI.',
+    'Widgets is not used for authentication, profile UI, or any account settings.',
+    'Do not use Widgets for authentication and account settings.',
     'AVOID: WORKOS WIDGETS!',
     'Do not use <UserProfile /> here.',
     'Avoid `UserProfile` for account UI.',
@@ -77,6 +83,16 @@ describe('Scoped Widgets recommendation retractions through scoreOutput', () => 
     'It is not true that you should avoid UserProfile.',
     'Avoid treating Widgets as a drop-in Clerk replacement.',
     'Do not use WorkOS Widgets as a drop-in Clerk replacement.',
+    'WorkOS Widgets is not used for authentication.',
+    'Widgets are not used for authentication; AuthKit handles sign-in.',
+    'Widgets are not used for authentication, but AuthKit handles sign-in.',
+    'UserProfile should not be used for authentication.',
+    'Do not use @workos-inc/widgets for authentication.',
+    'Avoid using Widgets for login.',
+    'I do not recommend Widgets for sign-in.',
+    'Widgets should not be used to authenticate users.',
+    'UserProfile is not recommended as an authentication provider.',
+    'WIDGETS IS NOT USED FOR AUTHENTICATION!',
     'Avoid SuperUserProfile.',
     'Avoid @workos-inc/widgets-experimental.',
     'Avoid Widgetstown.',
@@ -98,6 +114,15 @@ describe('Scoped Widgets recommendation retractions through scoreOutput', () => 
       expectCapped(output);
     },
   );
+
+  it('does not let an authentication-purpose limitation hide a real retraction', () => {
+    const scoped = 'Widgets is not used for authentication';
+    expectCapped(`${adjacent} ${scoped}; avoid Widgets for this project.`);
+    expectCapped(`Avoid Widgets for this project. ${scoped}. ${adjacent}`);
+    expectCapped(`${adjacent} ${scoped}, and do not recommend UserProfile.`);
+    expectCapped(`${adjacent} ${scoped} and should not be used for profile UI.`);
+    expectCapped(`${scoped}. It is not a drop-in Clerk replacement.`);
+  });
 
   it('does not let a quoted or labeled retraction hide an actual one', () => {
     expectCapped(`${adjacent} "Avoid Widgets." Avoid UserProfile for this app.`);

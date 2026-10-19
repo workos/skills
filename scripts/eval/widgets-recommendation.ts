@@ -27,6 +27,15 @@ function hasRetraction(clause: string): boolean {
     // withdrawals of the component recommendation. Other trailing prose is OK.
     if (isDisclaimed(prefix) || NEGATED_PREFIX.test(prefix)) continue;
     if (/^\s+as\s+(?:an?\s+)?(?:exact\s+)?drop[- ]in\b/i.test(suffix)) continue;
+    // A closed authentication-purpose qualifier limits the job of the widget,
+    // not its profile UI recommendation. Require the whole remaining qualifier:
+    // "for authentication or profile UI" is not an authentication-only boundary.
+    if (
+      /^\s+(?:for\s+(?:authentication|sign[- ]?in|log[- ]?in)|to\s+authenticate(?:\s+users)?|as\s+an?\s+authentication\s+provider)\s*,?\s*$/i.test(
+        suffix,
+      )
+    )
+      continue;
     return true;
   }
   return false;
