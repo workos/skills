@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.8.0](https://github.com/workos/skills/compare/v0.7.3...v0.8.0) (2026-10-19)
+
+
+### Features
+
+* **workos:** lead the Claude Code plugin with the accountless install ([#52](https://github.com/workos/skills/issues/52)) ([f1095c8](https://github.com/workos/skills/commit/f1095c8dab9ca509e660275de177001c85cb3a66))
+
+
+### Bug Fixes
+
+* make AuthKit redirect guidance SDK-aware ([#49](https://github.com/workos/skills/issues/49)) ([d56befc](https://github.com/workos/skills/commit/d56befc0596bd48ea091082f17a6e7d25bb0aa21))
+* update skills for current SDKs and frontier models ([#53](https://github.com/workos/skills/issues/53)) ([3b59a43](https://github.com/workos/skills/commit/3b59a439b5c813df39d36ed2475d9239249f7f0c))
+
 ## [0.7.3](https://github.com/workos/skills/compare/v0.7.2...v0.7.3) (2026-09-18)
 
 
