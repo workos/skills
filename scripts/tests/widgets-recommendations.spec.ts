@@ -171,6 +171,22 @@ describe('Widgets recommendation contract through the real loader and scorer', (
     }
   });
 
+  it.each([
+    ['Use WorkOS Widgets UserProfile for prebuilt profile UI (not a drop-in Clerk replacement).', 'supported'],
+    ['Maybe use WorkOS Widgets UserProfile (not a drop-in Clerk replacement).', 'unknown'],
+    ['Do not use WorkOS Widgets UserProfile (not a drop-in Clerk replacement).', 'unknown'],
+  ])('handles same-clause no-parity caveat: %s → %s', (output, evidence) => {
+    const score = scoreOutput(output, expected);
+    const { widgetsRecommendation: _contract, ...legacy } = expected;
+    expect(score.widgetsRecommendation).toBe(evidence);
+    if (evidence === 'supported') {
+      expect(score.composite).toBe(scoreOutput(output, legacy).composite);
+      expect(categorizeErrors(output, expected)).not.toContain('unverified_recommendation');
+    } else {
+      expect(score.composite).toBeLessThanOrEqual(60);
+    }
+  });
+
   it('does not alter legacy non-Widgets scoring or global negation semantics', () => {
     const { widgetsRecommendation: _contract, ...legacy } = expected;
     const output = `${good} WorkOS has no profile UI.`;
@@ -254,6 +270,17 @@ describe('Shipped routing and declaration-checked setup (offline only)', () => {
     expect(loadSkillContent('workos-terms')).toContain('| WorkOS Widgets');
   });
 
+  it('limits published Widgets to React-rendered UI, including SvelteKit', () => {
+    const skill = readFileSync(join(skills, 'workos-widgets/SKILL.md'), 'utf8');
+    const svelte = widgetsRef('framework-sveltekit.md');
+    expect(skill).toContain('Published Widgets are React components');
+    expect(skill).toContain('do not import them into `.svelte`');
+    expect(svelte).toContain('cannot render as Svelte components');
+    expect(svelte).toContain('existing React rendering boundary');
+    expect(svelte).toContain('custom Svelte UI against the Client API');
+    expect(svelte).not.toContain('Always extract it into its own `.svelte` component file');
+  });
+
   it('matches provider/component roles to captured 1.18.0 public declarations', () => {
     const setup = widgetsRef('component-setup.md');
     const snippets = [...setup.matchAll(/```tsx\n([\s\S]*?)```/g)].map((m) => m[1]).join('\n');
@@ -279,7 +306,9 @@ describe('Shipped routing and declaration-checked setup (offline only)', () => {
     expect(sessions).toContain('authToken: string;\n    currentSessionId: string;');
     expect(sessions).toContain('authToken: () => Promise<string>;\n    currentSessionId?: never;');
     expect(snippets).toContain('<UserSessions authToken={authToken} currentSessionId={currentSessionId} />');
-    expect(snippets).toContain('<UserSessions authToken={getAccessToken} />');
+    expect(snippets).toContain('{canViewSessions && <UserSessions authToken={getAccessToken} />}');
+    expect(snippets).not.toMatch(/^\s*<UserSessions authToken=\{getAccessToken\} \/>/m);
+    expect(setup).toContain('verified permission check for\n// widgets:users-table:manage');
     expect(declarations.declarations['package/dist/esm/lib/organization-switcher.d.ts']).toContain(
       '({ organizationId, }',
     );
