@@ -15,7 +15,7 @@ Using pnpm **10.27.0**, the complete original command exited successfully:
 pnpm test && pnpm lint && pnpm format:check && pnpm build
 ```
 
-After the PR50 review fixes: **280 tests passed** across 12 files; lint had zero warnings/errors; repository-wide formatting passed; build passed. Both the focused two-case Widgets dry run and full **75-case** dry run passed with `ANTHROPIC_API_KEY` unset. Dry runs cover loading/hashing only, not model-quality evidence.
+After the latest PR50 review fixes: **307 tests passed** across 13 files; lint had zero warnings/errors; repository-wide formatting passed; build passed. Both the focused three-case Widgets dry run and full **76-case** dry run passed with `ANTHROPIC_API_KEY` unset. Dry runs cover loading/hashing only, not model-quality evidence.
 
 ## PR50 review follow-up
 
@@ -26,6 +26,15 @@ Reviewed head: `f9b7ba92fa12eb99b9a1ce950075cd6581812cbb`. All three findings we
 - [Missing actual skill coverage](https://github.com/workos/skills/pull/50#discussion_r4127086145): two new `workos-widgets` cases explicitly load a fixed bundle: `SKILL.md`, `component-setup.md`, `token-strategies.md`, and `fetching-apis.md`. Migration/terminology cases still load only their named reference. This is **not** agent routing, recursive reference loading, or live docs fetching.
 
 The Widgets bundle accepts no YAML-selected source paths; skill names and canonical paths are checked, including rejection of symlink substitution. The runner snapshots source paths, exact text and SHA-256 once, using that snapshot for input hashing and prompts and retaining it in JSON reports/transcripts. Offline tests compare against the shipped files, verify the skill's links to the selected references, check identity changes/cache keys and unsafe/missing sources, and exercise both prompt arms with generation and cache writes mocked. No model/provider calls were made.
+
+## Second PR50 review follow-up
+
+Reviewed head: `6041ec6aec51878d095b33f8b1c4ab01e3cf861f`. Both evaluation-accuracy findings were reproduced before fixes, independently of the 5/5 review score:
+
+- [Adjacent evidence](https://github.com/workos/skills/pull/50#discussion_r4127306043): the assessor now recognizes an explicit package/vendor recommendation immediately followed by “its UserProfile provides/offers … UI” across a semicolon or sentence boundary. It does not combine arbitrary nearby mentions. Excluded quotations/code preserve boundaries; negated or retracted recommendations, unrelated intervening text, quoted bad examples, denials and parity overclaims remain covered by capped fixtures. Previous denial tests still pass. This adds a bounded pattern, not semantic completeness.
+- [AuthKit token strategy](https://github.com/workos/skills/pull/50#discussion_r4127306054): `widgets-organization-versioned-setup` now explicitly reuses the existing AuthKit React getter/switch helper and expects `getAccessToken`, `switchToOrganization`, and AuthKit React imports—not backend issuance. A separate `widgets-organization-server-token-setup` case explicitly requests Node 10.13.0 server issuance and retains the backend signals. The profile case still requires server issuance.
+
+Representative AuthKit and server-token answers both receive full deterministic credit under their respective loaded cases; cross-strategy tests still detect missing required methods/imports/parameters. The representative snippets were not executed, and these scores do not establish runtime correctness or improved model recommendations. The fixed source bundle and migration/terminology case boundaries are unchanged.
 
 ## Separate scripts typecheck: baseline failure, not fixed
 
