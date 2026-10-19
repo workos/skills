@@ -1,5 +1,22 @@
 # Fetching APIs
 
+## Docs and routing boundary
+
+- https://workos.com/docs/widgets — published React components
+- https://workos.com/docs/widgets-api — direct Widgets Client API development
+
+If this file conflicts with fetched docs, follow the docs.
+
+**Embedding a component?** Read [component-setup.md](component-setup.md). Do not rebuild its internal calls from the tables below. AuthKit authentication/session management is a separate concern.
+
+**Building a custom UI with the current Client API?** Fetch the Widgets API docs and relevant operation/authentication pages. Observed 2026-09-28: this is GraphQL at **`POST https://api.workos.com/client/graphql`**, with a short-lived user-scoped bearer token and JSON `{ query, variables }`. Handle GraphQL `errors` as well as HTTP failures. Do not send a server API key from the browser. Do not infer GraphQL fields, error shapes, elevation or pagination from the REST tables below.
+
+This routing boundary does not regenerate the schema or migrate existing integrations. Broader GraphQL migration remains separate work (DAAP-3221).
+
+## Legacy REST snapshot only
+
+Everything below (endpoint tables, error/elevation/pagination recipes, and query script) describes the bundled `/_widgets` REST snapshot. Use it only when maintaining a verified integration that actually uses those routes; it is **not authoritative for every current Widgets API request**. Verify support against the target release/current docs before writing new calls.
+
 Use the endpoint tables below for paths and methods, matching the host application's data layer. For request/response schemas, run:
 
 ```bash
@@ -24,7 +41,7 @@ Endpoints marked ⚠️ elevated below require an elevated token in addition to 
 
 ## Endpoint Reference
 
-All available endpoints, grouped by widget. For request/response schemas, run `node references/scripts/query-spec.cjs --widget <widget-name>`.
+Endpoints in the legacy snapshot, grouped by widget. For request/response schemas, run `node references/scripts/query-spec.cjs --widget <widget-name>`.
 
 ### User Management
 
