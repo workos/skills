@@ -25,7 +25,7 @@ Generate the password if missing: `openssl rand -base64 32`. Default redirect UR
 
 ## Install order
 
-1. Install `@workos/authkit-tanstack-react-start`.
+1. Install `@workos/authkit-tanstack-react-start`. It peer-depends on `@workos-inc/node@^10.7.0`; if you add `@workos-inc/node` explicitly, pin it to that range rather than installing the latest (v11).
 2. Add `authkitMiddleware()` to `start.ts`.
 3. Add the callback route matching `WORKOS_REDIRECT_URI`.
 4. Regenerate the route tree and build.
