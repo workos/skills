@@ -12,7 +12,7 @@ The app name from `mix.exs` (`app: :my_app`) determines all paths: `lib/my_app_w
 
 ## Call shapes
 
-Verified against `workos@3.1.0` (Hex). Every function takes a `WorkOS.Client` as its first argument; there is no global config.
+Verified against `workos@3.1.0` (Hex). There is no global config. API calls (`WorkOS.UserManagement.*`, `WorkOS.Session.new/3`, `WorkOS.Session.refresh_session/3`) take a `WorkOS.Client` first. Local session helpers (`seal_session_from_auth_response/2`, `authenticate/2`, `get_logout_url/2`) don't; pass exactly the arguments shown.
 
 ```elixir
 # Client: reads WORKOS_API_KEY / WORKOS_CLIENT_ID from the env when opts are omitted
@@ -52,7 +52,7 @@ Order matters: add dep → build client → auth controller → routes → build
 ## Gotchas
 
 - Callback route path must equal `WORKOS_REDIRECT_URI` exactly.
-- `config :workos, ...` has no effect; the client must be built with `WorkOS.client/1` and passed to every call.
+- `config :workos, ...` has no effect; the client must be built with `WorkOS.client/1` and passed explicitly to the API calls above.
 - Minimal Phoenix projects may lack the `{AppName}Web` `:controller` macro that `use {AppName}Web, :controller` depends on — confirm `lib/{app}_web.ex` defines it, and create it if absent.
 
 ## Existing auth

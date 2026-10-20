@@ -22,7 +22,7 @@ Order matters: install SDK → publish config → `.env` → auth controller →
    WORKOS_COOKIE_PASSWORD=<base64 of 32 random bytes>
    ```
    The published `config/workos.php` only reads `api_key` and `client_id`. Add `'redirect_uri' => env('WORKOS_REDIRECT_URI')` and `'cookie_password' => env('WORKOS_COOKIE_PASSWORD')` to it so `config()` works after `config:cache`. Generate the cookie password with `base64_encode(random_bytes(32))` (the SDK uses libsodium secretbox, which needs a 32-byte key).
-4. **Auth controller** (`app/Http/Controllers/AuthController.php`): `login()` redirects to the AuthKit authorization URL, `callback()` exchanges the code and stores a sealed session, `logout()` clears the local session and redirects to the WorkOS logout URL so the AuthKit session ends too. The package ships no controllers, routes, or middleware; write them using the call shapes below. Don't construct OAuth URLs manually.
+4. **Auth controller** (`app/Http/Controllers/AuthController.php`): `login()` redirects to the AuthKit authorization URL, `callback()` exchanges the code and stores a sealed session plus its session ID, `logout()` clears the local session and redirects to the WorkOS logout URL so the AuthKit session ends too. The package ships no controllers, routes, or middleware; write them using the call shapes below. Don't construct OAuth URLs manually.
 5. **Routes** (`routes/web.php`):
    ```php
    Route::get('/login', [AuthController::class, 'login'])->name('login');
@@ -47,24 +47,26 @@ return redirect()->away(WorkOS::userManagement()->getAuthorizationUrl(
 
 // callback: $auth->user (WorkOS\Resource\User), ->accessToken, ->refreshToken
 $auth = WorkOS::userManagement()->authenticateWithCode(code: $request->query('code'));
-session(['wos_session' => SessionManager::sealSessionFromAuthResponse(accessToken: $auth->accessToken,
-    refreshToken: $auth->refreshToken, cookiePassword: $pw, user: $auth->user->toArray())]);
+$sealed = SessionManager::sealSessionFromAuthResponse(accessToken: $auth->accessToken,
+    refreshToken: $auth->refreshToken, cookiePassword: $pw, user: $auth->user->toArray());
+$sid = WorkOS::sessionManager()->authenticate(sessionData: $sealed, cookiePassword: $pw, clientId: $cid)['session_id'];
+session(['wos_session' => $sealed, 'wos_session_id' => $sid]); // store the ID now; logout needs it after the token expires
 
 // load (middleware): ['authenticated' => bool, 'user' => ?array, 'session_id' => ..., 'reason' => ...]
 $r = WorkOS::sessionManager()->authenticate(sessionData: session('wos_session', ''), cookiePassword: $pw, clientId: $cid);
 // on reason 'invalid_jwt' (expired): sessionManager()->refresh(sessionData:, cookiePassword:, clientId:) -> ['authenticated', 'sealed_session', ...]
 
-// logout: end the AuthKit session, clear local session, redirect (throws \InvalidArgumentException if session invalid)
-$logoutUrl = WorkOS::sessionManager()->getLogoutUrl(sessionData: session('wos_session', ''),
-    cookiePassword: $pw, clientId: $cid, returnTo: url('/'));
+// logout: clear local session, then end the AuthKit session with the stored ID
+$sid = session()->pull('wos_session_id');
 session()->forget('wos_session');
-return redirect()->away($logoutUrl);
+return $sid ? redirect()->away(WorkOS::userManagement()->getLogoutUrl(sessionId: $sid, returnTo: url('/'))) : redirect('/');
 ```
 
 ## Gotchas
 
 - Callback route path must equal `WORKOS_REDIRECT_URI` exactly.
 - `workos/workos-php-laravel@8` requires PHP >= 8.2 and Laravel 12 or 13.
+- Don't use `sessionManager()->getLogoutUrl(sessionData: ...)` for logout. It throws `\InvalidArgumentException` once the sealed access token expires, so logout breaks. Use `userManagement()->getLogoutUrl(sessionId: ...)` with the ID stored at callback.
 - The `returnTo` URL must be configured as a sign-out redirect in the WorkOS dashboard.
 - Laravel 11+ has no `app/Http/Kernel.php` — register any auth middleware in `bootstrap/app.php`.
 
