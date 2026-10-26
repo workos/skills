@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.2](https://github.com/workos/skills/compare/v0.8.1...v0.8.2) (2026-10-20)
+
+
+### Bug Fixes
+
+* restore verified SDK call shapes in backend references ([#56](https://github.com/workos/skills/issues/56)) ([41fdb98](https://github.com/workos/skills/commit/41fdb988f8f5e015c1feb90ac74aef50b20c0ecd))
+
 ## [0.8.1](https://github.com/workos/skills/compare/v0.8.0...v0.8.1) (2026-10-19)
 
 
