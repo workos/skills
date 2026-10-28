@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.3](https://github.com/workos/skills/compare/v0.8.2...v0.8.3) (2026-10-28)
+
+
+### Bug Fixes
+
+* route Java and Scala projects to the JVM SDK reference ([#59](https://github.com/workos/skills/issues/59)) ([0fb1cfb](https://github.com/workos/skills/commit/0fb1cfb7d5cb4a5abc86ded8770e4024ee91e33d))
+* **workos-widgets:** make SKILL.md frontmatter valid YAML ([#61](https://github.com/workos/skills/issues/61)) ([17bd384](https://github.com/workos/skills/commit/17bd38486b2c2351757eee7964976042f3ed6f6c))
+
 ## [0.8.2](https://github.com/workos/skills/compare/v0.8.1...v0.8.2) (2026-10-20)
 
 
