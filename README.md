@@ -97,7 +97,7 @@ Everything else is a **reference file** under `references/`. The router dispatch
 | `workos-ruby`        | Ruby (Rails)                       |
 | `workos-php`         | PHP                                |
 | `workos-php-laravel` | PHP Laravel                        |
-| `workos-kotlin`      | Kotlin                             |
+| `workos-kotlin`      | Kotlin, Java, Scala (JVM)          |
 | `workos-elixir`      | Elixir                             |
 
 #### Features
