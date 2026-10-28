@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join, relative, resolve, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { parse } from 'yaml';
 
@@ -9,6 +8,7 @@ import { parse } from 'yaml';
  * Builds the Agent Skills discovery files that workos.com serves at
  * /.well-known/agent-skills/: one .tar.gz per skill plus an index.json in the
  * v0.2.0 format (https://schemas.agentskills.io/discovery/0.2.0/schema.json).
+ * It also copies the standalone setup skill that workos.com serves at /SKILL.md.
  * The release workflow attaches them to each GitHub release.
  *
  * Archive URLs are absolute and point at the release being built. workos.com
@@ -24,7 +24,7 @@ const EXCLUDED_DIRS = new Set(['evals']);
 // The discovery schema caps descriptions; the skills CLI silently drops longer entries.
 const MAX_DESCRIPTION_LENGTH = 1024;
 
-export interface IndexEntry {
+interface IndexEntry {
   name: string;
   type: 'archive';
   description: string;
@@ -32,7 +32,7 @@ export interface IndexEntry {
   digest: string;
 }
 
-export interface DiscoveryIndex {
+interface DiscoveryIndex {
   $schema: typeof SCHEMA;
   skills: IndexEntry[];
 }
@@ -67,7 +67,7 @@ function tarHeader(path: string, size: number): Buffer {
 }
 
 /** A deterministic gzipped ustar archive with entries at the root (SKILL.md, not ./SKILL.md). */
-export function createArchive(dir: string): Buffer {
+function createArchive(dir: string): Buffer {
   const blocks = listFiles(dir)
     .sort()
     .flatMap((path) => {
@@ -84,7 +84,27 @@ function readFrontmatter(skillMd: string): Record<string, unknown> {
   return parse(match[1]) as Record<string, unknown>;
 }
 
-export function buildWellKnown(skillsDir: string, outDir: string, archiveBaseUrl: string): DiscoveryIndex {
+function readSkillDescription(skillMdPath: string, expectedName: string): string {
+  const { name, description } = readFrontmatter(readFileSync(skillMdPath, 'utf8'));
+  if (name !== expectedName)
+    throw new Error(`${skillMdPath} declares name "${String(name)}", expected "${expectedName}"`);
+  if (typeof description !== 'string' || !description || description.length > MAX_DESCRIPTION_LENGTH) {
+    throw new Error(`${skillMdPath} needs a description of 1-${MAX_DESCRIPTION_LENGTH} characters`);
+  }
+  return description;
+}
+
+/**
+ * Copies the standalone setup skill that workos.com serves at /SKILL.md. It
+ * lives outside plugins/ so it isn't installed alongside the router skill, and
+ * two directories deep so `npx skills add workos/skills` doesn't pick it up.
+ */
+function copySetupSkill(skillMdPath: string, outDir: string): void {
+  readSkillDescription(skillMdPath, 'workos-setup');
+  copyFileSync(skillMdPath, join(outDir, 'SKILL.md'));
+}
+
+function buildWellKnown(skillsDir: string, outDir: string, archiveBaseUrl: string): DiscoveryIndex {
   rmSync(outDir, { recursive: true, force: true });
   mkdirSync(outDir, { recursive: true });
 
@@ -94,11 +114,7 @@ export function buildWellKnown(skillsDir: string, outDir: string, archiveBaseUrl
     .sort()
     .map((dirName): IndexEntry => {
       const dir = join(skillsDir, dirName);
-      const { name, description } = readFrontmatter(readFileSync(join(dir, 'SKILL.md'), 'utf8'));
-      if (name !== dirName) throw new Error(`${dirName}/SKILL.md declares name "${String(name)}"`);
-      if (typeof description !== 'string' || !description || description.length > MAX_DESCRIPTION_LENGTH) {
-        throw new Error(`${dirName}/SKILL.md needs a description of 1-${MAX_DESCRIPTION_LENGTH} characters`);
-      }
+      const description = readSkillDescription(join(dir, 'SKILL.md'), dirName);
 
       const archive = createArchive(dir);
       const file = `${dirName}.tar.gz`;
@@ -117,12 +133,11 @@ export function buildWellKnown(skillsDir: string, outDir: string, archiveBaseUrl
   return index;
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
-  const [outDir, archiveBaseUrl] = process.argv.slice(2);
-  if (!outDir || !archiveBaseUrl) {
-    console.error('Usage: build-well-known.ts <out-dir> <release-download-url>');
-    process.exit(1);
-  }
-  const index = buildWellKnown('plugins/workos/skills', outDir, archiveBaseUrl);
-  console.log(`Wrote ${index.skills.length} skills to ${outDir}: ${index.skills.map((s) => s.name).join(', ')}`);
+const [outDir, archiveBaseUrl] = process.argv.slice(2);
+if (!outDir || !archiveBaseUrl) {
+  console.error('Usage: build-well-known.ts <out-dir> <release-download-url>');
+  process.exit(1);
 }
+const index = buildWellKnown('plugins/workos/skills', outDir, archiveBaseUrl);
+copySetupSkill('well-known/setup/SKILL.md', outDir);
+console.log(`Wrote ${index.skills.length} skills to ${outDir}: ${index.skills.map((s) => s.name).join(', ')}`);
