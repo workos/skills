@@ -98,7 +98,11 @@ describe('the setup skill served at workos.com/SKILL.md leads with the accountle
     expect(firstCodeBlock).toContain('WORKOS_MODE=agent');
   });
 
-  it('claims the same way as the router skill', () => {
+  it('verifies and claims like the router skill', () => {
+    const verify = firstSection(body, /^## Verify$/m);
+    expect(verify).toContain('Initiate login URI');
+    expect(verify).toMatch(/invitation or password-reset/);
+    expect(verify).toMatch(/tell the user exactly which ones remain/);
     expect(body).toContain('profile claim');
   });
 });

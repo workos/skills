@@ -49,8 +49,23 @@ WORKOS_MODE=agent npx workos@latest install
 
 ## Verify
 
-The installer's success report is not proof that sign-in works. Start the app,
-then sign in and sign out. To diagnose a broken integration, run
+The installer's success report is not proof that sign-in works. It also
+reports which application URLs (Sign-out URI, Initiate login URI, CORS origin)
+it saved and which it left for you. Start the app and check that:
+
+- Sign-in completes and creates an app session.
+- Sign-out ends the session and lands on the configured Sign-out URI.
+- A sign-in started outside the app, such as an invitation or password-reset
+  email, reaches the Initiate login URI and continues without a loop or
+  callback error.
+
+The Initiate login URI must be an app route that starts AuthKit sign-in, not
+the callback. Configure any URL the installer left by following the
+framework's AuthKit guide at https://workos.com/docs/authkit, or
+`references/workos-authkit-setup.md` if the `workos` skill is installed. If you
+can't save a setting or test a flow, tell the user exactly which ones remain.
+Never call setup complete from the installer's report, a build, or `doctor`
+output alone. To diagnose a broken integration, run
 `WORKOS_MODE=agent npx workos@latest doctor --json --skip-ai`.
 
 ## Claim the environment
