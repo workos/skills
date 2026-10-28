@@ -87,6 +87,22 @@ describe('accountless install leads the entry instructions', () => {
   });
 });
 
+describe('the setup skill served at workos.com/SKILL.md leads with the accountless install', () => {
+  const { description, body } = splitFrontmatter(read('well-known/setup/SKILL.md'));
+
+  it('leads the description and body with the install command', () => {
+    expectInstallLeads(description, 'setup SKILL.md description');
+    expectInstallLeads(body, 'setup SKILL.md body');
+    const firstCodeBlock = body.match(/```[a-z]*\n([\s\S]*?)```/)?.[1];
+    expect(firstCodeBlock).toContain(INSTALL);
+    expect(firstCodeBlock).toContain('WORKOS_MODE=agent');
+  });
+
+  it('claims the same way as the router skill', () => {
+    expect(body).toContain('profile claim');
+  });
+});
+
 describe('plugin manifests lead with the accountless install', () => {
   const descriptions: Array<[string, string]> = [
     ['claude plugin', readJson('plugins/workos/.claude-plugin/plugin.json').description],

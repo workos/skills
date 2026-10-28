@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { buildWellKnown } from '../build-well-known.ts';
+import { buildWellKnown, copySetupSkill } from '../build-well-known.ts';
 
 const skillsDir = join(process.cwd(), 'plugins/workos/skills');
 const sourceFiles = (dir: string, prefix = ''): string[] =>
@@ -39,6 +39,12 @@ describe('buildWellKnown', () => {
     for (const entry of entries) {
       expect(readFileSync(join(extracted, entry)).equals(readFileSync(join(skillsDir, name, entry)))).toBe(true);
     }
+  });
+
+  it('publishes the setup skill as SKILL.md', () => {
+    const setup = join(process.cwd(), 'well-known/setup/SKILL.md');
+    copySetupSkill(setup, outDir);
+    expect(readFileSync(join(outDir, 'SKILL.md'), 'utf8')).toBe(readFileSync(setup, 'utf8'));
   });
 
   it('produces identical digests when rebuilt from the same content', () => {

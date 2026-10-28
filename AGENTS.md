@@ -36,6 +36,7 @@ pnpm eval:calibrate                            # compare scorer vs human labels
     - **Hand-crafted AuthKit skills**: `workos-authkit-base`, `workos-authkit-nextjs`, `workos-authkit-react`, `workos-authkit-react-router`, `workos-authkit-tanstack-start`, `workos-authkit-vanilla-js`, `workos-widgets`
     - **Router**: `workos/SKILL.md` — routes user requests to the right topic file or AuthKit skill
     - **Topic files**: `workos/references/*.md` — lean files with doc URLs + gotchas + optional endpoint tables
+- `well-known/setup/SKILL.md` — standalone setup skill that workos.com serves at `/SKILL.md`. Not part of the plugin; it condenses the router's "Start here" section, so update both together
 - `scripts/` — eval framework (not cached with plugin)
   - `tests/` — `*.spec.ts` files using vitest
   - `build-well-known.ts` — builds the `/.well-known/agent-skills/` archives and `index.json` that `.github/workflows/well-known.yml` attaches to each release; workos.com serves the latest release's index, which points at that release's archives
