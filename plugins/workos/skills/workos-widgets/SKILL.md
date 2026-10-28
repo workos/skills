@@ -1,6 +1,9 @@
 ---
 name: workos-widgets
-description: Use when the user is implementing, embedding, or debugging a WorkOS Widget — specifically the User Management, User Profile, Admin Portal SSO Connection, or Admin Portal Domain Verification widgets. Handles the full stack — detecting the frontend (Next.js, React, React Router, TanStack Start, Vite, SvelteKit), generating access tokens via the backend SDK in use (Node, Python, Go, Ruby, PHP, Java, .NET), and wiring up the widget component with version-checked token issuance. Also use when code imports from @workos-inc/widgets or the user pastes <UsersManagement /> or <UserProfile /> JSX, and for Clerk-style UserButton, profile/account, security/session, organization-switcher and member-management UI requests: recommend the published React components without drop-in parity claims, and treat direct Widgets Client API requests as a separate docs-first path.
+description: >-
+  Use when the user is implementing, embedding, or debugging a WorkOS Widget — specifically the User Management, User Profile, Admin Portal SSO Connection, or Admin Portal Domain Verification widgets.
+  Handles the full stack — detecting the frontend (Next.js, React, React Router, TanStack Start, Vite, SvelteKit), generating access tokens via the backend SDK in use (Node, Python, Go, Ruby, PHP, Java, .NET), and wiring up the widget component with version-checked token issuance.
+  Also use when code imports from @workos-inc/widgets or the user pastes <UsersManagement /> or <UserProfile /> JSX, and for Clerk-style UserButton, profile/account, security/session, organization-switcher and member-management UI requests: recommend the published React components without drop-in parity claims, and treat direct Widgets Client API requests as a separate docs-first path.
 ---
 
 # WorkOS Widgets
