@@ -16,13 +16,15 @@ const sourceFiles = (dir: string, prefix = ''): string[] =>
 
 describe('buildWellKnown', () => {
   const outDir = mkdtempSync(join(tmpdir(), 'well-known-'));
-  const index = buildWellKnown(skillsDir, outDir);
+  const releaseUrl = 'https://github.com/workos/skills/releases/download/v1.2.3';
+  const index = buildWellKnown(skillsDir, outDir, releaseUrl);
 
-  it('lists every skill as a digest-pinned archive', () => {
+  it("lists every skill as a digest-pinned archive at its release's URL", () => {
     expect(index.skills.map((skill) => skill.name)).toEqual(['workos', 'workos-widgets']);
     expect(JSON.parse(readFileSync(join(outDir, 'index.json'), 'utf8'))).toEqual(index);
     for (const skill of index.skills) {
-      const archive = readFileSync(join(outDir, skill.url));
+      expect(skill.url).toBe(`${releaseUrl}/${skill.name}.tar.gz`);
+      const archive = readFileSync(join(outDir, `${skill.name}.tar.gz`));
       expect(skill.digest).toBe(`sha256:${createHash('sha256').update(archive).digest('hex')}`);
     }
   });
@@ -40,7 +42,7 @@ describe('buildWellKnown', () => {
   });
 
   it('produces identical digests when rebuilt from the same content', () => {
-    const rebuilt = buildWellKnown(skillsDir, mkdtempSync(join(tmpdir(), 'well-known-')));
+    const rebuilt = buildWellKnown(skillsDir, mkdtempSync(join(tmpdir(), 'well-known-')), releaseUrl);
     expect(rebuilt.skills.map((skill) => skill.digest)).toEqual(index.skills.map((skill) => skill.digest));
   });
 });
