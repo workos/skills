@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/workos/skills/compare/v0.8.3...v0.9.0) (2026-10-28)
+
+
+### Features
+
+* publish skills for workos.com/.well-known/agent-skills ([#62](https://github.com/workos/skills/issues/62)) ([bf2b481](https://github.com/workos/skills/commit/bf2b481ed6cb58582d3d58c99f0b847da83aa509))
+
 ## [0.8.3](https://github.com/workos/skills/compare/v0.8.2...v0.8.3) (2026-10-28)
 
 
