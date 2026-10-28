@@ -8,6 +8,8 @@ Fetch the README first — it's the source of truth:
 
 If this file conflicts with fetched docs, follow the docs.
 
+This is the WorkOS SDK for every JVM language: Kotlin, Java, and Scala. There is no separate Java or Scala SDK.
+
 ## Call shapes
 
 Verified against `com.workos:workos:7.5.0`. `getAuthorizationUrl`, `getLogoutUrl`, and `workos.session` are extension members, so import them explicitly.
@@ -44,7 +46,7 @@ val logoutUrl = cookie.getLogoutUrl(returnTo = "http://localhost:8080/")
 
 Order matters: add dependency → config bean → application properties → auth controller → build.
 
-1. **Install:** add `com.workos:workos` to `build.gradle.kts` dependencies (there is no `workos-kotlin` artifact). Use the version from the README; the shapes below match 7.x.
+1. **Install:** add `com.workos:workos` to the build dependencies (there is no `workos-kotlin` artifact): `build.gradle.kts` or `build.gradle` for Gradle, `pom.xml` for Maven, or `libraryDependencies += "com.workos" % "workos" % "<version>"` in `build.sbt`. Use the version from the README; the shapes below match 7.x.
 2. **Application properties** (`src/main/resources/application.properties`, or the YAML equivalent):
    ```properties
    workos.api-key=${WORKOS_API_KEY}
@@ -57,7 +59,7 @@ Order matters: add dependency → config bean → application properties → aut
    - `GET /auth/login` → `workos.userManagement.getAuthorizationUrl(AuthKitAuthorizationUrlOptions(redirectUri = uri, provider = "authkit"))` returns a URL string (`clientId` falls back to the client's); redirect to it.
    - `GET /auth/callback` → read the `code` query param, `workos.userManagement.authenticateWithCode(code = code)`, then `workos.session.sealAuthResponse(auth, cookiePassword)` and set it as an HttpOnly cookie, redirect home.
    - `GET /auth/logout` → get the AuthKit logout URL from the sealed cookie (`loadSealedSession(...).getLogoutUrl(returnTo = ...)`), clear the cookie (and `HttpSession` if used), then redirect to that URL so the AuthKit session ends too.
-5. **Build:** `./gradlew build`.
+5. **Build:** `./gradlew build`, `mvn package`, or `sbt compile`.
 
 ## Gotchas
 

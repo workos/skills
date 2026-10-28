@@ -119,17 +119,17 @@ This returns a structured JSON report with `interactionMode` (`{ mode, source }`
 
 ### Backend SDK Installation (Read `references/{name}.md`)
 
-| User wants to...                   | Read file                          |
-| ---------------------------------- | ---------------------------------- |
-| Install AuthKit in Node.js backend | `references/workos-node.md`        |
-| Install AuthKit in Python          | `references/workos-python.md`      |
-| Install AuthKit in .NET            | `references/workos-dotnet.md`      |
-| Install AuthKit in Go              | `references/workos-go.md`          |
-| Install AuthKit in Ruby            | `references/workos-ruby.md`        |
-| Install AuthKit in PHP             | `references/workos-php.md`         |
-| Install AuthKit in PHP Laravel     | `references/workos-php-laravel.md` |
-| Install AuthKit in Kotlin          | `references/workos-kotlin.md`      |
-| Install AuthKit in Elixir          | `references/workos-elixir.md`      |
+| User wants to...                          | Read file                          |
+| ----------------------------------------- | ---------------------------------- |
+| Install AuthKit in Node.js backend        | `references/workos-node.md`        |
+| Install AuthKit in Python                 | `references/workos-python.md`      |
+| Install AuthKit in .NET                   | `references/workos-dotnet.md`      |
+| Install AuthKit in Go                     | `references/workos-go.md`          |
+| Install AuthKit in Ruby                   | `references/workos-ruby.md`        |
+| Install AuthKit in PHP                    | `references/workos-php.md`         |
+| Install AuthKit in PHP Laravel            | `references/workos-php-laravel.md` |
+| Install AuthKit in Kotlin, Java, or Scala | `references/workos-kotlin.md`      |
+| Install AuthKit in Elixir                 | `references/workos-elixir.md`      |
 
 ### Features (Read `references/{name}.md`)
 
@@ -277,17 +277,17 @@ When React Router is present, read its mode checks in `references/workos-authkit
 
 If the project is NOT a JavaScript/TypeScript frontend framework, detect by manifest:
 
-| Manifest evidence                                          | Read                               |
-| ---------------------------------------------------------- | ---------------------------------- |
-| `pyproject.toml` / `requirements.txt` / `setup.py`         | `references/workos-python.md`      |
-| `go.mod`                                                   | `references/workos-go.md`          |
-| `Gemfile` / `config/routes.rb`                             | `references/workos-ruby.md`        |
-| `composer.json` with `laravel/framework` in dependencies   | `references/workos-php-laravel.md` |
-| `composer.json` without Laravel                            | `references/workos-php.md`         |
-| `*.csproj` / `*.sln`                                       | `references/workos-dotnet.md`      |
-| `build.gradle.kts` / `build.gradle`                        | `references/workos-kotlin.md`      |
-| `mix.exs`                                                  | `references/workos-elixir.md`      |
-| `package.json` with `express` / `fastify` / `hono` / `koa` | `references/workos-node.md`        |
+| Manifest evidence                                             | Read                               |
+| ------------------------------------------------------------- | ---------------------------------- |
+| `pyproject.toml` / `requirements.txt` / `setup.py`            | `references/workos-python.md`      |
+| `go.mod`                                                      | `references/workos-go.md`          |
+| `Gemfile` / `config/routes.rb`                                | `references/workos-ruby.md`        |
+| `composer.json` with `laravel/framework` in dependencies      | `references/workos-php-laravel.md` |
+| `composer.json` without Laravel                               | `references/workos-php.md`         |
+| `*.csproj` / `*.sln`                                          | `references/workos-dotnet.md`      |
+| `build.gradle.kts` / `build.gradle` / `pom.xml` / `build.sbt` | `references/workos-kotlin.md`      |
+| `mix.exs`                                                     | `references/workos-elixir.md`      |
+| `package.json` with `express` / `fastify` / `hono` / `koa`    | `references/workos-node.md`        |
 
 The Laravel-vs-plain-PHP split (presence of `laravel/framework`) is the one non-obvious case here.
 
