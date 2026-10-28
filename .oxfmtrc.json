@@ -6,5 +6,12 @@
   "singleQuote": true,
   "printWidth": 120,
   "sortPackageJson": false,
-  "ignorePatterns": ["dist/", "node_modules/", "pnpm-lock.yaml", "CHANGELOG.md", "query-spec.cjs"]
+  "ignorePatterns": [
+    "dist/",
+    "node_modules/",
+    "pnpm-lock.yaml",
+    "CHANGELOG.md",
+    "query-spec.cjs",
+    "plugins/workos/.codex-plugin/plugin.json"
+  ]
 }
