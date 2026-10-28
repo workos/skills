@@ -10,3 +10,4 @@ scripts/eval/labels.jsonl
 
 # Skill-creator eval workspaces (iteration outputs, not source)
 plugins/**/*-workspace/
+dist-well-known/

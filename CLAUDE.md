@@ -40,6 +40,7 @@ pnpm eval:calibrate                            # compare scorer vs human labels
     - **Topic files**: `workos/references/*.md` — lean files with doc URLs + gotchas + optional endpoint tables
 - `scripts/` — eval framework (not cached with plugin)
   - `tests/` — `*.spec.ts` files using vitest
+  - `build-well-known.ts` — builds the `/.well-known/agent-skills/` archives and `index.json` that `.github/workflows/well-known.yml` attaches to each release; workos.com serves the latest release's copies
 
 ## Key Conventions
 
