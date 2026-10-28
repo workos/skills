@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/workos/skills/compare/v0.9.0...v0.9.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* point the well-known index at each release's own archives ([#64](https://github.com/workos/skills/issues/64)) ([630c763](https://github.com/workos/skills/commit/630c7638a209f1552280ee9e4f1d0a9618fe49eb))
+
 ## [0.9.0](https://github.com/workos/skills/compare/v0.8.3...v0.9.0) (2026-10-28)
 
 
