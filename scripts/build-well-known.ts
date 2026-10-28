@@ -11,6 +11,10 @@ import { parse } from 'yaml';
  * v0.2.0 format (https://schemas.agentskills.io/discovery/0.2.0/schema.json).
  * The release workflow attaches them to each GitHub release.
  *
+ * Archive URLs are absolute and point at the release being built. workos.com
+ * serves only the latest index, so an index fetched or cached just before a
+ * release still resolves to archives that match its digests.
+ *
  * Every skill ships reference files, so each one is an archive rather than a
  * bare SKILL.md, which would install without them.
  */
@@ -80,7 +84,7 @@ function readFrontmatter(skillMd: string): Record<string, unknown> {
   return parse(match[1]) as Record<string, unknown>;
 }
 
-export function buildWellKnown(skillsDir: string, outDir: string): DiscoveryIndex {
+export function buildWellKnown(skillsDir: string, outDir: string, archiveBaseUrl: string): DiscoveryIndex {
   rmSync(outDir, { recursive: true, force: true });
   mkdirSync(outDir, { recursive: true });
 
@@ -103,7 +107,7 @@ export function buildWellKnown(skillsDir: string, outDir: string): DiscoveryInde
         name: dirName,
         type: 'archive',
         description,
-        url: file,
+        url: `${archiveBaseUrl}/${file}`,
         digest: `sha256:${createHash('sha256').update(archive).digest('hex')}`,
       };
     });
@@ -114,7 +118,11 @@ export function buildWellKnown(skillsDir: string, outDir: string): DiscoveryInde
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
-  const outDir = process.argv[2] ?? 'dist-well-known';
-  const index = buildWellKnown('plugins/workos/skills', outDir);
+  const [outDir, archiveBaseUrl] = process.argv.slice(2);
+  if (!outDir || !archiveBaseUrl) {
+    console.error('Usage: build-well-known.ts <out-dir> <release-download-url>');
+    process.exit(1);
+  }
+  const index = buildWellKnown('plugins/workos/skills', outDir, archiveBaseUrl);
   console.log(`Wrote ${index.skills.length} skills to ${outDir}: ${index.skills.map((s) => s.name).join(', ')}`);
 }
