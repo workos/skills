@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/workos/skills/compare/v0.9.1...v0.10.0) (2026-10-28)
+
+
+### Features
+
+* publish a standalone setup skill for workos.com/SKILL.md ([#66](https://github.com/workos/skills/issues/66)) ([27eb861](https://github.com/workos/skills/commit/27eb8615054262c3dcc4d3c900a46b40754ccb6c))
+
 ## [0.9.1](https://github.com/workos/skills/compare/v0.9.0...v0.9.1) (2026-10-28)
 
 
